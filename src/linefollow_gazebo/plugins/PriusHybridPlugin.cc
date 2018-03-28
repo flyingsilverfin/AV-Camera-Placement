@@ -371,6 +371,9 @@ void PriusHybridPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   this->dataPtr->gznode = transport::NodePtr(new transport::Node());
   this->dataPtr->gznode->Init();
 
+
+  std::cout << "node: " << &(this->dataPtr->node) << std::endl;
+
   this->dataPtr->node.Subscribe("/prius/reset",
       &PriusHybridPlugin::OnReset, this);
   this->dataPtr->node.Subscribe("/prius/stop",
@@ -673,6 +676,10 @@ void PriusHybridPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
   this->dataPtr->node.Subscribe("/keypress", &PriusHybridPlugin::OnKeyPressIgn,
       this);
+
+
+  
+
 }
 
 /////////////////////////////////////////////////
@@ -1099,7 +1106,8 @@ void PriusHybridPlugin::Update()
   // Cross-over speed is 7 miles/hour
   // 10% throttle at 0 speed
   // max 2.5% braking at higher speeds
-  double creepPercent;
+  double creepPercent = 0.0;
+/*
   if (std::abs(linearVel) <= 7)
   {
     creepPercent = 0.1 * (1 - std::abs(linearVel) / 7);
@@ -1108,6 +1116,7 @@ void PriusHybridPlugin::Update()
   {
     creepPercent = 0.025 * (7 - std::abs(linearVel));
   }
+*/
   creepPercent = ignition::math::clamp(creepPercent, -0.025, 0.1);
 
   // Gas pedal torque.
