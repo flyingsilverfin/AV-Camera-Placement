@@ -508,8 +508,52 @@
       <topicName>base_pose_ground_truth</topicName>
       <frameName>map</frameName>
       <updateRate>100.0</updateRate>
+      <gaussianNoise>0.0</gaussianNoise>
     </plugin>
-  </gazebo>
+ </gazebo>
+
+
+<!-- IMU sensor -->
+
+<joint name="imu_joint" type="fixed">
+    <axis xyz="1 0 0"/> <!-- 0 1 0 -->
+    <origin xyz="0 0 0.19"/>
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+  </joint>
+
+
+<link name="imu_link">
+  <inertial>
+    <mass value="0.001"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.0001"/>
+  </inertial>
+  <visual>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <box size="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+  <collision>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <box size=".001 .001 .001"/>
+    </geometry>
+  </collision>
+</link>
+
+<gazebo>
+    <plugin name="imu_plugin" filename="libgazebo_ros_imu.so">
+      <alwaysOn>true</alwaysOn>
+      <bodyName>imu_link</bodyName>
+      <topicName>imu</topicName>
+      <serviceName>imu_service</serviceName>
+      <gaussianNoise>2.98e-08</gaussianNoise>
+      <updateRate>100.0</updateRate>
+    </plugin>
+</gazebo>
+
 <!--
   <gazebo reference="center_laser_link">
     <sensor name='center_laser_sensor' type='ray'>
