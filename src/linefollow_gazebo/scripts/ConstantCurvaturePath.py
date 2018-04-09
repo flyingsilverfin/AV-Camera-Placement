@@ -36,12 +36,22 @@ class ConstantCurvaturePath(object):
 
         # to avoid repeatedly computing curve points if ever needed
         # save them as PointStamped and reuse
-        self.concrete_curve_cache = None
+        self.cache = {
+            "curve": None,
+            "speed": 0,
+            "end_time": -1,
+            "start_time": -1
+        }
 
-    def begin(self, current_time, current_position, current_orientation, speed):
+    def begin(self, current_time, current_position, current_orientation):
+        """begin
+
+        :param current_time: current sim time (`time` from rospy.get_rostime()) 
+        :param current_position: current position given as a Point or numpy array (x,y,z)
+        :param current_orientation: current orientation quaternion as Quaternion msg or numpy array (x,y,z,w)
+        """
         # translate and rotate path centered at (0,0,0) and x-axis aligned to match current_pose and current_orientation
-        self.speed = speed        
-        self.transform = TransformStamped()
+        self.path_start_transform = TransformStamped()
 
         if type(current_position) == Point:
             x, y, z = current_position.x, current_position.y, current_position.z
@@ -53,42 +63,66 @@ class ConstantCurvaturePath(object):
             return
         pos_delta = pos - self.init_point
 
-        self.transform.translation.x = pos_delta[0] 
-        self.transform.translation.y = pos_delta[1] 
-        self.transform.translation.z = pos_delta[2] 
+        self.path_start_transform.transform.translation.x = pos_delta[0] 
+        self.path_start_transform.transform.translation.y = pos_delta[1] 
+        self.path_start_transform.transform.translation.z = pos_delta[2] 
         
 
         # just going to assume init_orientation is x-axis aligned...
         if type(current_orientation) == Quaternion:
-            self.transform.rotation = current_orientation
+            self.path_start_transform.transform.rotation = current_orientation
         elif type(current_orientation) == type(np.empty(4)):
-            self.transform.rotation = Quaternion(*current_orientation)
+            self.path_start_transform.transform.rotation = Quaternion(*current_orientation)
         else:
             rospy.logerr("Unknown orientation type: " + str(type(current_orientation)))
             return
       
-        self.start_time = current_time
+        self.tracking_start_time = current_time 
+        rospy.loginfo("Tracking start time: " + str(self.tracking_start_time)) 
 
-        self.concrete_curve_cache = None
-
-    def get_concrete_curve_points(self, start_time, end_time, speed=1.0, steps=100, return_type='numpy')
+    def get_concrete_curve_points(self, start_time, end_time, speed=1.0, steps=100, return_type='numpy'):
         curve_points_stamped = self.get_points_transformed(start_time=start_time,
                                                            end_time=end_time,
                                                            speed=speed,
-                                                           transform=self.transform,
+                                                           transform=self.path_start_transform,
                                                            steps=steps)
-        self.concrete_curve_cache = curve_points_stamped
-
+        self.update_cached_curve(start_time, end_time, speed, steps, curve=curve_points_stamped)
         if return_type == 'numpy':
-            points = np.array([np.array(p.point.x, p.point.y, p.point.z) for p in curve_points_stamped])
+            points = np.array([np.array([p.point.x, p.point.y, p.point.z]) for p in curve_points_stamped])
             return points
         elif return_type == 'Point':
             rospy.logerr("Point type concrete path not implemented")
             raise NotImplementedException("Point type not implemented")
-        elif return_type == 'PointStamped'):
+        elif return_type == 'PointStamped':
             return curve_points_stamped
         else:
             raise UnknownPathTypeException("Unknown return type requested: " + return_type)
+
+
+    # TODO test this
+    def update_cached_curve(self, start_time, end_time, speed, steps, curve=None):
+        """
+        Save to the cache the concrete path computed with the given parameters
+        if `curve` is not None, just save that into the cache as it's been computed before
+        """
+
+        if self.cache['curve'] is not None and
+           self.cache['start_time'] == start_time and
+           self.cache['end_time'] == end_time and
+           self.cache['speed'] == speed and
+           len(self.cache['curve']) == steps:
+
+            rospy.loginfo("Curve is already cached, not updating cache")
+            return
+
+        self.cache['start_time'] = start_time
+        self.cache['end_time'] = end_time
+        self.cache['speed'] = speed
+
+        if curve is None:
+            curve = self.get_concrete_curve_points(start_time, end_time, speed, steps, return_type='PointStamped')
+        assert type(curve[0]) == PointStamped
+        self.cache['curve'] = curve 
 
 
     # for debugging, test transformed paths 
@@ -134,7 +168,7 @@ class ConstantCurvaturePath(object):
             dx = self.r * np.cos(a * dt - np.pi/2) # subtract pi/2 to start at x = 0 and increasing
             dy = self.r * np.sin(a * dt - np.pi/2) + (self.r) # add radius to offset to (x,y) = (0,0) and both increasing (if positive curvature)
             dz = 0.0
-            pt = self.init_point + np.array([dx, dy, dz])
+            pt = np.array([dx, dy, dz])
 
         if return_type == 'numpy':
             return pt
@@ -147,32 +181,107 @@ class ConstantCurvaturePath(object):
             raise UnknownPathTypeException("Unknown requested point return type: " + return_type) 
 
 
+    # gets unit tangent of the curve as numpy vector
+    def get_unit_tangent(self, t, speed, return_type='numpy'):
+        if self.curvature == 0.0:
+            vec = np.array([1.0, 0.0, 0.0])
+        else:
+            dt = t - self.start_time
+            a = np.sqrt(speed) * self.curvature
+            # use derivative of equations in `get_point` to get x'(t) and y'(t), z'(t) = 0 always
+            x_ = self.r * (-1) * a * np.sin(a*dt - np.pi/2)
+            y_ = self.r * a * np.cos(a * dt - np.pi/2)
+            vec = np.array([x_, y_, 0.0])
 
-    def error(self, position, speed, time, error_type='time_error'):
+        T = vec/np.dot(vec, vec) # normalize to unit vector
+
+        if return_type == 'numpy':
+            return T
+        else:
+            rospy.logerr("Can only return numpy array for tangent")
+            raise TypeError("Bad type for tangent: " + return_type)
+
+
+
+    # compute an indicated type of tracking error
+    # current options under consideration are 
+    # time error: Error from position and position it should be at time T
+    # crosstrack error: perpendicular distance to closest point on curve
+    # hamilton (?) error: related to a point on the curve some distance ahead and crosstrack error?
+    def error(self, position, heading, speed, time, error_type='time_error'):
         
-        if error_type='time_error':
-            return self.time_error(position, time, speed)
+        if error_type== 'time_error':
+            return self.time_error(position, heading, time, speed)
 
-        elif error_type='crosstrack':
+        elif error_type == 'crosstrack':
             # calculate closest point on entirety of path
             # BAD for two reasons:
             # 1) may be so far off path we've approached another point and then start tracking in the opposite direction
             # 2) direction agnostic (eg just following closest points while moving)
             # 3) computationally expensive
             return self.crosstrack_error(self, position)
-
         else:
             raise UnknownErrorTypeException("Unkown error metric: " + error_type)
 
-    def time_error(self, position, time):
-        target_point = self.get_point(time, speed) 
+    def time_error(self, position, heading, time, speed):
+        target_point = self.get_point(time, speed, return_type='numpy')
 
-        # TODO implement some error as a function of current position and target position
+        if type(position) == Point:
+            pos = np.array([position.x, position.y, position.z])
+        elif type(position) == np.empty(3):
+            pos = position
+        else:
+            rospy.logerr("Can't handle position of type: " + str(type(position)))
+            raise Exception("Unknown position type")
+        
+		if type(heading) == Quaternion:
+			# convert Quaternion geomtry_msg to numpy
+			q = quat_msg_to_numpy(heading)
+			# convert numpy quaternion into a direction vector
+			heading = quat_mult_point(q, np.array([1.0, 0.0, 0.0])
+		elif type(heading) == type(np.empty(3)) and heading.shape = (3,):
+			pass
+		else:
+			rospy.logerr("Heading provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
+			raise Exception("Invalid heading type")
+
+	    heading = normalize(heading)	
+ 
+        # target_tangent = self.get_unit_tangent(time, speed)
+ 
+        # use a custom error here:
+        # compute angle between position and target point => theta
+        # compute distance
+        # return sin(theta)*distance
+ 
+        diff = target_point - position  
+        distance = np.linalg.norm(target_point - position)
+        dotprod = np.dot(target_point, pos)
+        theta = np.arccos(dotprod)
+        sin_theta = np.sin(theta)
+        return sin_theta * distance
     
-    def crosstrack_error(self, position):
-        if self.concrete_curve_cache == None
-            self.get_concrete_curve_points() # updates cache internally
+    def crosstrack_error(self, position, time, speed, distance_resolution=1.0):
+        """
+        Used when curve tracking has started
+        """
+        update_rate = speed/distance_resolution # number of points to sample per second at constant speed
+        if self.cached_curve['end_time'] is not None and self.cached_curve['start_time'] is not None and self.cached_curve['curve'] is not None:
+            dt = self.cached_curve['end_time'] - self.cached_curve['start_time']
+            dt = dt / len(self.cached_curve['curve'])
+        else:
+            dt = update_rate   
+        
+        end_time = max(2*time, self.cached_curve['end_time'])
+        total_steps = (end_time - self.tracking_start_time)/dt
+        self.update_cached_curve(self.tracking_start_time,
+                                 end_time,
+                                 speed=speed,
+                                 steps=total_steps)
 
+        curve = self.cached_curve
+
+        
         # TODO implement crosstrack distance as error
 
 

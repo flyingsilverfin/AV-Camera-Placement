@@ -5,11 +5,11 @@
 
   <param name="robot_description" textfile="$(arg model)"/>
 
-
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find linefollow_gazebo)/worlds/linefollow.world"/>
     <!-- more default parameters can be changed here -->
+    <arg name="use_sim_time" value="true"/>
   </include>
 
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" >

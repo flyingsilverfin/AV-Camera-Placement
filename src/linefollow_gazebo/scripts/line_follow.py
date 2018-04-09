@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
+import abc
+
 import math
 import numpy as np
-from numpy import pi as PI
 import rospy
 import tf2_py as tf2
 import tf2_ros
-import tf_conversions.transformations as tf_transformations
+import tf_conversions
 
 from sensor_msgs.msg import Imu
 from prius_msgs.msg import Control
@@ -18,158 +19,147 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
+class PriusControlMsgGenerator(object):
+    def __init__(self):
+        self.seq = 0
 
+    def populate_header(self, prius_msg):
+        header = prius_msg.header
 
-class ConstantCurvaturePath(object):
-    """
-    Create an abstract representation of a constant curvature path
-    When begin() is called, it takes a pose and orientation and the path is then translated and rotated to that start point   
-    
-    Designed for path tracking
-    Time parametrized requires a speed to work when begin() is called
-    """
-
-    def __init__(self, curvature, time_parametrized=True):
-        self.init_point = np.array([0.0, 0.0, 0.0)]
-        # TODO check this is the right Quaternion for x-axis aligned orientation
-        self.init_orientation = tf_transformations.quaternion_from_euler(0, 0, 0)
-        self.curvature = curvature
-        if self.curvature != 0.0:
-            self.r = 1/self.curvature
-        self.time_parametrized = time_parametrized
+        header.seq = self.seq
+        self.seq += 1
         
-        self.start_time = 0.0
+        now = rospy.get_rostime()
 
-    def begin(self, current_time, current_position, current_orientation, speed):
-        # translate and rotate path centered at (0,0,0) and x-axis aligned to match current_pose and current_orientation
-        self.speed = speed        
-        self.transform = TransformStamped()
+        header.stamp.s = now.secs
+        header.stamp.ns = now.nsecs
 
-        if type(current_position) == Point:
-            x, y, z = current_position.x, current_position.y, current_position.z
-            pos = np.array([x, y, z])
-        elif type(current_position) == type(np.empty(3)):
-            pos = current_position
-        else:
-            rospy.logerr("Unkown position type: " + str(type(current_position)))
-            return
-        pos_delta = pos - self.init_point
+        header.frame_id = 0 # TODO frame ID of base_link...?
 
-        self.transform.translation.x = pos_delta[0] 
-        self.transform.translation.y = pos_delta[1] 
-        self.transform.translation.z = pos_delta[2] 
-        
+    def forward(self, throttle, steer_angle):
+        assert throttle >= 0.0 and throttle <= 1.0, "Require throttle to be within range [0.0, 1.0]"
+        assert steer_angle >= 1.0 and steer_angle <= 1.0, "Require steer angle to be in range [-1.0, 1.0]"
+        msg = Control()
+        self.populate_header(msg)
+        msg.throttle = throttle
+        msg.steer = steer_angle
+        msg.brake = 0.0
+        msg.shift_gears = 2
 
-        # just going to assume init_orientation is x-axis aligned...
-        if type(current_orientation) == Quaternion:
-            self.transform.rotation = current_orientation
-        elif type(current_orientation) == type(np.empty(4)):
-            self.transform.rotation = Quaternion(*current_orientation)
-        else:
-            rospy.logerr("Unknown orientation type: " + str(type(current_orientation)))
-            return
-      
-        self.start_time = current_time
+        return msg
 
-
-    # for debugging, test transformed paths 
-    def get_points_transformed(self, start_time, end_time, transform, speed=1.0, steps=100):
-        path = self.get_abstract_curve_points(start_time, end_time, speed, steps, return_type='PointStamped')
-        # apply transform to all the points
-        for i in range(len(path)):
-            path[i] = tf2_geometry_msgs.do_transform_point(path[i], transform)
-        return path
-
-
-    # as per ROS/Gazebo standards, speed is m/s
-    def get_abstract_curve_points(self, start_time, end_time, speed=1.0, steps=100, return_type='numpy');
-        """ 
-        Computes a set of `steps` points representing the time-parametrized curve
-        from t=`start_time` to t=`end_time` traversed at a given constant speed
-        TODO variable speeds
-        returns as a numpy array of numpy arrays, Point, or PointStamped
-        """
-
-        abstract_path = np.empty(steps)
-        dt = (float(end_time) - start_time) / steps
-        for (t,i) in enumerate(np.arange(start_time, end_time, dt)):
-            abstract_path[i] = self.get_point(t, speed, return_type=return_type)
-        
-        return abstract_path
-        
-   
-    # get points on curve relative to abstract location
-    # other methods can apply required transforms such as translation/rotation
-    def get_point(self, t, speed, return_type='numpy'):
-        dt = t - self.start_time
-        if self.curvature == 0.0:
-            # straight line along x axis-from start point
-            pt = self.init_point + np.array([dt*speed, 0,0, 0.0)]
-
-        else:
-            # get coefficient for within x(t) = R*cos(a*t), y(t) = R*sin(a*t)
-            # such that the speed is constant as given
-            # works out to a = sqrt(speed)/R
-            # => a = sqrt(speed) * curvature
-            a = np.sqrt(speed) * self.curvature
-            dx = self.r * np.cos(a * (dt - np.pi/2)) # subtract pi/2 to start curve at x = 0 and increasing
-            dy = self.r * np.sin(a * (dt - np.pi/2)) + self.r # add self.r to start at (x,y) = (0,0) and both increasing
-            dz = 0.0
-            pt = self.init_point + np.array([dx, dy, dz])
-
-        if return_type == 'numpy':
-            return pt
-        elif return_type == 'Point':
-            return Point(*pt)
-        elif return_type == 'PointStamped':
-            return PointStamped(point=Point(*pt))
-        else:
-            rospy.logerr("Unknown return type: " + return_type)
-            raise TypeError("Uknown requested point return type: " + return_type) 
-
-class Line_Follow(object):
-    def __init__(self, positioning=None):
-        rospy.loginfo("Create Line_Follow object!")
-        rospy.Subscriber("/imu", Imu, self.on_imu) 
-        self.rate = rospy.get_param("~rate", 20.0)
+class LineFollowController(object):
+    def __init__(self, curve, throttle, positioning=None):
+        rospy.loginfo("Create LineFollowController object!")
+#        rospy.Subscriber("/imu", Imu, self.on_imu) 
+        self.rate = rospy.get_param("~rate", 20.0)  # low rate to show rate
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
+        self.prius_msg_generator = PriusControlMsgGenerator
+        self.prius_control_pub = rospy.Publisher("/prius", Control, 5)
 
-        self.started = True
-        self.timer = rospy.Timer(rospy.Duration(self.period), self.update)
+        self.curve = curve
+        self.previous_v_x = 0.0
 
-    def on_imu(self, imu_msg):
-        rospy.loginfo_throttle(10, str(imu_msg.linear_acceleration))
-        self.last_imu = imu_msg
-        
+    def begin(self, throttle):
+        self.throttle = throttle 
+        # get vehicle moving up to constant speed
 
-    def update(self):
-        if not self.started:
-            return
-        # geti map position from either true or calculated position (doesn't matter for testing)
+        self.repeated_msg = self.prius_msg_generator.forward(self.throttle, 0.0) # get speed up until acceleration stops
+        self.prius_control_pub.publish(self.repeated_msg)
+
+        # Wait until at speed to start tracking! 
+        self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
+
+    def wait_until_at_speed(self, event, accel_tolerance=0.01):
+
         pose = self.positioning.get_pose()
+
+        vel_linear = pose.twist.twist.linear
+        v_x = vel_linear.x
+        dv_x = v_x - self.previous_v_x
+        self.previous_v_x = v_x
+
+        # if change in velocity is less than tolerance, we've reached desired speed
+
+        # check if have stopped accelerating and velocity has some magnitude
+        # that means we've finished accelerating
+        if dv_x < accel_tolerance and np.abs(v_x) > 0.01:
+			self.speed = v_x # save attained speed for later use	
+            self.timer.shutdown() # stop this update loop
+            self.begin_track_path() # begin path tracking!
+            return
+
+        self.prius_control_pub.publish(self.repeated_msg)
+
+    def begin_track_path(self):
+
+        now = rospy.get_rostime()
+        current_pose = self.positioning.get_pose()
+        
+        rospy.loginfo("Starting path tracking at: " + str(current_pose))
+
+        self.curve.begin(now.to_sec(), current_pose.pose.pose.position,
+                         current_pose.pose.pose.rotation)
+        
+        
+        self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
+        self.tracking = True
+
+        
+    def track_path_update(self, event):
+        if not self.tracking:
+            rospy.logdebug("Path tracking update called when not tracking")
+            return
+        # get map position from either true or calculated position (doesn't matter for testing)
+        pose = self.positioning.get_pose() # either a nav_msgs/Odometry or some other msg type
+        
         position = pose.pose.pose.position
+        orientation = pose.pose.pose.rotation
+
+		# orietation should be very close to 		
+		# the Transform from vehicle to world coordinates
+		# of the vehicle's orientation
+		#TODO this sanity check
+
+        now = rospy.get_rostime()
+        secs = now.to_sec()
+
+        err = self.curve.error(position, heading, self.tracking_speed, secs, error_type='time_error')
+
+        # TODO implement PID/LQR controller based on this error
+
+		
+        
+        
+        
 
         
-        
-        
-        prius_msg = Control(shift_gears=3, throttle=
-        
-
-class True_Position(object):
+class Positioning(object):
     def __init__(self):
-        rospy.loginfo("Create True Position following")
-        rospy.Subscriber("/base_pose_ground_truth", Odometry, self.on_odom)
-        self.last_post = None
+        self.last_pose = None
 
-    def on_odom(self, odom_msg):
-        rospy.loginfo_throttle(10, odom_msg)
-        self.last_pose = odom_msg
+    def on_update(self, msg):
+        self.last_pose = msg
 
     def get_pose(self):
         return self.last_pose
 
+class True_Position(Positioning):
+    def __init__(self):
+        rospy.loginfo("Create True Positioning")
+        rospy.Subscriber("/base_pose_ground_truth", Odometry, self.on_update)
+
+
+# Next steps...
+class EKF_Position(Positioning):
+    def __init__(self):
+        pass
+    
+    def on_imu(self, imu_msg):
+        rospy.loginfo_throttle(10, str(imu_msg.linear_acceleration))
+        self.last_imu = imu_msg
 
 if __name__ == "__main__":
     rospy.init_node("line_follow_py")
