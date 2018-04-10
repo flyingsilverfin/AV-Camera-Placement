@@ -8,7 +8,6 @@
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find linefollow_gazebo)/worlds/linefollow.world"/>
-    <!-- more default parameters can be changed here -->
     <arg name="use_sim_time" value="true"/>
   </include>
 
@@ -25,4 +24,24 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
   <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" />
+
+  <!--
+  <node name="steering_pid" pkg="pid" type="controller" output="screen">
+    <param name="node_name" value="prius_steering_pid" />
+    <param name="Kp" value="5.0" />
+    <param name="Ki" value="0.1" />
+    <param name="Kd" value="0.1" />
+    <param name="upper_limit" value="1.0" />
+    <param name="lower_limit" value="-1.0" />
+    <param name="windup_limit" value="10" />
+    <param name="max_loop_frequency" value="100.0" />
+    <param name="min_loop_frequency" value="100.0" />
+    <remap from="state" to="/prius_control/error" />    
+    <remap from="control_effort" to="/prius_control/control_effort" />
+    <remap from="setpoint" to="/prius_control/setpoint" />
+  </node>
+  -->
+
+
+
 </launch>

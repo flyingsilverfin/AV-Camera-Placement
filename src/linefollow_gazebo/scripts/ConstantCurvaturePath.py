@@ -12,7 +12,7 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
-
+from helper import *
 
 class ConstantCurvaturePath(object):
     """
@@ -32,7 +32,7 @@ class ConstantCurvaturePath(object):
             self.r = np.abs(1/self.curvature)
         self.time_parametrized = time_parametrized
         
-        self.start_time = 0.0
+        self.tracking_start_time = 0.0
 
         # to avoid repeatedly computing curve points if ever needed
         # save them as PointStamped and reuse
@@ -50,6 +50,11 @@ class ConstantCurvaturePath(object):
         :param current_position: current position given as a Point or numpy array (x,y,z)
         :param current_orientation: current orientation quaternion as Quaternion msg or numpy array (x,y,z,w)
         """
+        
+        rospy.loginfo("starting curve tracking at position: {}".format(current_position))
+        rospy.loginfo("starting curve tracking at orientation: {}".format(current_orientation)) 
+
+
         # translate and rotate path centered at (0,0,0) and x-axis aligned to match current_pose and current_orientation
         self.path_start_transform = TransformStamped()
 
@@ -66,16 +71,22 @@ class ConstantCurvaturePath(object):
         self.path_start_transform.transform.translation.x = pos_delta[0] 
         self.path_start_transform.transform.translation.y = pos_delta[1] 
         self.path_start_transform.transform.translation.z = pos_delta[2] 
-        
+       
+        # store in numpy too for cheaper manipulations
+        # can remove one method later
+        self.path_start_translate_numpy = pos_delta
 
         # just going to assume init_orientation is x-axis aligned...
         if type(current_orientation) == Quaternion:
             self.path_start_transform.transform.rotation = current_orientation
+            self.path_start_rotate_numpy_quat = np.array([current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
         elif type(current_orientation) == type(np.empty(4)):
             self.path_start_transform.transform.rotation = Quaternion(*current_orientation)
+            self.path_start_rotate_numpy_quat = current_orientation
         else:
             rospy.logerr("Unknown orientation type: " + str(type(current_orientation)))
             return
+        
       
         self.tracking_start_time = current_time 
         rospy.loginfo("Tracking start time: " + str(self.tracking_start_time)) 
@@ -86,6 +97,9 @@ class ConstantCurvaturePath(object):
                                                            speed=speed,
                                                            transform=self.path_start_transform,
                                                            steps=steps)
+
+
+
         self.update_cached_curve(start_time, end_time, speed, steps, curve=curve_points_stamped)
         if return_type == 'numpy':
             points = np.array([np.array([p.point.x, p.point.y, p.point.z]) for p in curve_points_stamped])
@@ -106,10 +120,10 @@ class ConstantCurvaturePath(object):
         if `curve` is not None, just save that into the cache as it's been computed before
         """
 
-        if self.cache['curve'] is not None and
-           self.cache['start_time'] == start_time and
-           self.cache['end_time'] == end_time and
-           self.cache['speed'] == speed and
+        if self.cache['curve'] is not None and  \
+           self.cache['start_time'] == start_time and \
+           self.cache['end_time'] == end_time and \
+           self.cache['speed'] == speed and \
            len(self.cache['curve']) == steps:
 
             rospy.loginfo("Curve is already cached, not updating cache")
@@ -146,15 +160,15 @@ class ConstantCurvaturePath(object):
         abstract_path =[] 
         dt = (float(end_time) - start_time) / steps
         for t in np.arange(start_time, end_time, dt):
-            abstract_path.append(self.get_point(t, speed, return_type=return_type))
+            abstract_path.append(self.get_abstract_point(t, speed, return_type=return_type))
         
         return abstract_path
         
    
     # get points on curve relative to abstract location
     # other methods can apply required transforms such as translation/rotation
-    def get_point(self, t, speed, return_type='numpy'):
-        dt = t - self.start_time
+    def get_abstract_point(self, t, speed, return_type='numpy'):
+        dt = t - self.tracking_start_time
         if self.curvature == 0.0:
             # straight line along x axis-from start point
             pt = self.init_point + np.array([dt*speed, 0.0, 0.0])
@@ -181,14 +195,33 @@ class ConstantCurvaturePath(object):
             raise UnknownPathTypeException("Unknown requested point return type: " + return_type) 
 
 
+    def get_concrete_point(self, t, speed, return_type='numpy'):
+        abstract_point = self.get_abstract_point(t, speed, return_type='numpy')
+
+        # apply transforms
+        # apply rotation first
+        abstract_point = quat_mult_point(self.path_start_rotate_numpy_quat, abstract_point)
+        # then apply translation
+        concrete_point = abstract_point + self.path_start_translate_numpy
+
+        if return_type == 'numpy':
+            return concrete_point
+        elif return_type == 'Point':
+            return Point(*concrete_point)
+        elif return_type == 'PointStamped':
+            return PointStamped(point=Point(*concrete_point))
+        else:
+            rospy.logerr("Unknown return type: " + return_type)
+            raise UnknownPathTypeException("Unknown requested concrete point return type: " + return_type) 
+
     # gets unit tangent of the curve as numpy vector
     def get_unit_tangent(self, t, speed, return_type='numpy'):
         if self.curvature == 0.0:
             vec = np.array([1.0, 0.0, 0.0])
         else:
-            dt = t - self.start_time
+            dt = t - self.tracking_start_time
             a = np.sqrt(speed) * self.curvature
-            # use derivative of equations in `get_point` to get x'(t) and y'(t), z'(t) = 0 always
+            # use derivative of equations in `get_abstract_point` to get x'(t) and y'(t), z'(t) = 0 always
             x_ = self.r * (-1) * a * np.sin(a*dt - np.pi/2)
             y_ = self.r * a * np.cos(a * dt - np.pi/2)
             vec = np.array([x_, y_, 0.0])
@@ -224,42 +257,54 @@ class ConstantCurvaturePath(object):
             raise UnknownErrorTypeException("Unkown error metric: " + error_type)
 
     def time_error(self, position, heading, time, speed):
-        target_point = self.get_point(time, speed, return_type='numpy')
+        target_point = self.get_concrete_point(time, speed, return_type='numpy')
 
         if type(position) == Point:
             pos = np.array([position.x, position.y, position.z])
-        elif type(position) == np.empty(3):
+        elif type(position) == type(np.empty(3)):
             pos = position
         else:
             rospy.logerr("Can't handle position of type: " + str(type(position)))
             raise Exception("Unknown position type")
         
-		if type(heading) == Quaternion:
-			# convert Quaternion geomtry_msg to numpy
-			q = quat_msg_to_numpy(heading)
-			# convert numpy quaternion into a direction vector
-			heading = quat_mult_point(q, np.array([1.0, 0.0, 0.0])
-		elif type(heading) == type(np.empty(3)) and heading.shape = (3,):
-			pass
-		else:
-			rospy.logerr("Heading provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
-			raise Exception("Invalid heading type")
+        if type(heading) == Quaternion:
+            # convert Quaternion geomtry_msg to numpy
+            q = quat_msg_to_numpy(heading)
+            # convert numpy quaternion into a direction vector
+            heading = quat_mult_point(q, np.array([1.0, 0.0, 0.0]))
+        elif type(heading) == type(np.empty(3)) and heading.shape == (3,):
+            pass
+        elif type(heading) == type(np.empty(4)) and heading.shape == (4,):
+            heading = quat_mult_point(heading, np.array([1.0, 0.0, 0.0]))
+        else:
+            rospy.logerr("Heading provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
+            raise Exception("Invalid heading type")
 
-	    heading = normalize(heading)	
- 
+        heading = normalize(heading)    
+
         # target_tangent = self.get_unit_tangent(time, speed)
  
         # use a custom error here:
         # compute angle between position and target point => theta
         # compute distance
-        # return sin(theta)*distance
+        # return (0.1 + sin(theta))*distance
+        # this ensure distance is always accounted for but also scaled up if the angle is bad
  
-        diff = target_point - position  
-        distance = np.linalg.norm(target_point - position)
-        dotprod = np.dot(target_point, pos)
-        theta = np.arccos(dotprod)
-        sin_theta = np.sin(theta)
-        return sin_theta * distance
+        diff = target_point - pos  
+        distance = np.linalg.norm(diff)
+        dotprod = np.dot(heading, diff)
+        # this dot product is equal to cos(theta) when we divide through by `|diff|` 
+        # want to compute sin(theta)
+        # sin(theta) = sqrt(1 - cos(theta)**2)
+        if distance > EPSILON:
+            dotprod = dotprod/distance  # distance is large enough to avoid numerical errors
+            sin_theta = np.sqrt(1 - dotprod**2)
+        else:
+            sin_theta = 9999 # value doesn't matter since distance ~= 0
+
+        error = (0.1+sin_theta) * distance
+
+        return error 
     
     def crosstrack_error(self, position, time, speed, distance_resolution=1.0):
         """

@@ -19,55 +19,36 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
-class PriusControlMsgGenerator(object):
-    def __init__(self):
-        self.seq = 0
+from std_msgs.msg import Float64, Bool
 
-    def populate_header(self, prius_msg):
-        header = prius_msg.header
-
-        header.seq = self.seq
-        self.seq += 1
-        
-        now = rospy.get_rostime()
-
-        header.stamp.s = now.secs
-        header.stamp.ns = now.nsecs
-
-        header.frame_id = 0 # TODO frame ID of base_link...?
-
-    def forward(self, throttle, steer_angle):
-        assert throttle >= 0.0 and throttle <= 1.0, "Require throttle to be within range [0.0, 1.0]"
-        assert steer_angle >= 1.0 and steer_angle <= 1.0, "Require steer angle to be in range [-1.0, 1.0]"
-        msg = Control()
-        self.populate_header(msg)
-        msg.throttle = throttle
-        msg.steer = steer_angle
-        msg.brake = 0.0
-        msg.shift_gears = 2
-
-        return msg
+from PriusControlMsgGenerator import PriusControlMsgGenerator
+from Positioning import TruePositioning
+from ConstantCurvaturePath import ConstantCurvaturePath
+from PID import PID
 
 class LineFollowController(object):
-    def __init__(self, curve, throttle, positioning=None):
-        rospy.loginfo("Create LineFollowController object!")
-#        rospy.Subscriber("/imu", Imu, self.on_imu) 
+    def __init__(self, curve, positioning=None):
+        rospy.loginfo("Create LineFollowController object")
         self.rate = rospy.get_param("~rate", 20.0)  # low rate to show rate
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
-        self.prius_msg_generator = PriusControlMsgGenerator
-        self.prius_control_pub = rospy.Publisher("/prius", Control, 5)
+        self.prius_msg_generator = PriusControlMsgGenerator()
+        # topic to publish prius Control message
+        self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
+
+        self.prius_steering_pid = PID(kp=0.2, ki=0.01, kd=0.01, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0)
 
         self.curve = curve
         self.previous_v_x = 0.0
+        self.tracking = False
 
     def begin(self, throttle):
         self.throttle = throttle 
         # get vehicle moving up to constant speed
 
         self.repeated_msg = self.prius_msg_generator.forward(self.throttle, 0.0) # get speed up until acceleration stops
-        self.prius_control_pub.publish(self.repeated_msg)
+        self.prius_move.publish(self.repeated_msg)
 
         # Wait until at speed to start tracking! 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
@@ -75,6 +56,11 @@ class LineFollowController(object):
     def wait_until_at_speed(self, event, accel_tolerance=0.01):
 
         pose = self.positioning.get_pose()
+        
+        if pose is None:
+            print("Pose is None")
+            rospy.loginfo("Pose received from positioning is None, will accelerate when Pose is received")
+            return
 
         vel_linear = pose.twist.twist.linear
         v_x = vel_linear.x
@@ -85,15 +71,23 @@ class LineFollowController(object):
 
         # check if have stopped accelerating and velocity has some magnitude
         # that means we've finished accelerating
-        if dv_x < accel_tolerance and np.abs(v_x) > 0.01:
-			self.speed = v_x # save attained speed for later use	
+        if dv_x < accel_tolerance and np.abs(v_x) > 0.2:
+            self.velocity = v_x # save attained speed for later use    
             self.timer.shutdown() # stop this update loop
             self.begin_track_path() # begin path tracking!
             return
 
-        self.prius_control_pub.publish(self.repeated_msg)
+        self.prius_msg_generator.update_msg(self.repeated_msg) #update seq number
+        rospy.loginfo("Sending Prius Control msg: {}".format(self.repeated_msg))
+        self.prius_move.publish(self.repeated_msg)
 
     def begin_track_path(self):
+
+        # don't attempt to re-initalize tracking if it's running
+        # messes with pubs/subs
+        if self.tracking:
+            rospy.logerror("Already tracking path!")
+            return
 
         now = rospy.get_rostime()
         current_pose = self.positioning.get_pose()
@@ -101,68 +95,96 @@ class LineFollowController(object):
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
         self.curve.begin(now.to_sec(), current_pose.pose.pose.position,
-                         current_pose.pose.pose.rotation)
-        
+                         current_pose.pose.pose.orientation)
+      
+
+        # create connection to PID steering controller 
+        # self.prius_steering_pid_enable = rospy.Publisher("/pid_enable", Bool, queue_size=1)
+        # self.prius_steering_pid_enable.publish(True)
+        # self.prius_steering_pid_state = rospy.Publisher("/prius_control/error", Float64, queue_size=5)
+        # self.prius_steering_pid_control_effort = rospy.Subscriber("/prius_control/effort", Float64, self.on_prius_pid_steer)
+        # self.prius_steering_pid_setpoint = rospy.Publisher("/prius_control/setpoint", Float64, queue_size=5, latch=True)
+        # self.prius_steering_pid_setpoint.publish(0.0)
         
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
+
         self.tracking = True
 
-        
+
     def track_path_update(self, event):
         if not self.tracking:
-            rospy.logdebug("Path tracking update called when not tracking")
+            rospy.logerror("Path tracking updatecalled when not tracking, call begin_track_path_first!")
+            # self.prius_steering_pid_enable.publish(False) 
+            # self.prius_steering_pid_state.unregister()
+            # self.prius_steering_pid_control_effort.unregister()
+            # self.prius_steering_pid_setpoint.unregister()
             return
-        # get map position from either true or calculated position (doesn't matter for testing)
+
+        # get position from either true or calculated position (doesn't matter for testing)
         pose = self.positioning.get_pose() # either a nav_msgs/Odometry or some other msg type
         
         position = pose.pose.pose.position
-        orientation = pose.pose.pose.rotation
+        orientation = pose.pose.pose.orientation
 
-		# orietation should be very close to 		
-		# the Transform from vehicle to world coordinates
-		# of the vehicle's orientation
-		#TODO this sanity check
+        # orietation should be very close to        
+        # the Transform from vehicle to world coordinates
+        # of the vehicle's orientation
+        #TODO this sanity check
 
         now = rospy.get_rostime()
         secs = now.to_sec()
 
-        err = self.curve.error(position, heading, self.tracking_speed, secs, error_type='time_error')
+        heading = orientation
+        err = self.curve.error(position, heading, self.velocity, secs, error_type='time_error')
 
-        # TODO implement PID/LQR controller based on this error
 
-		
+        steering_control = self.prius_steering_pid.update(now, err)
+        rospy.loginfo_throttle(0.5, "Tracking error: {0}, PID response: {1}".format(err, steering_control))
+        prius_msg = self.prius_msg_generator.forward(self.throttle, steering_control)
+        self.prius_move.publish(prius_msg)
+        
+        # self.prius_steering_pid_state.publish(err) # publish error to the PID controller
+        # self.prius_steering_pid_setpoint.publish(0.0)
+
+#    def on_prius_pid_steer(self, msg):
+#        """on_prius_pid_steer converts the PID Float64 message to a `prius` Control msg
+#    
+#        :param msg: the message that arrives irom steering PID node
+#        """
+#        if not self.tracking:
+#            rospy.loginfo("Received prius PID steer msg when not tracking")
+#            return
+#        rospy.loginfo("Received PID control msg: {}".format(msg))
+#        steer = msg.data
+#        prius_msg = self.prius_msg_generator.forward(self.throttle, steer)
+#        self.prius_move.publish(prius_msg)
         
         
+    def stop_path_tracking(self):
+        self.tracking = False
+        # self.prius_steering_pid_enable.publish(False)
+        # self.prius_steering_pid_state.unregister()
+        # self.prius_steering_pid_control_effort.unregister()
+        # self.prius_steering_pid_setpoint.unregister()
+        self.timer.shutdown() 
+
+
         
-
-        
-class Positioning(object):
-    def __init__(self):
-        self.last_pose = None
-
-    def on_update(self, msg):
-        self.last_pose = msg
-
-    def get_pose(self):
-        return self.last_pose
-
-class True_Position(Positioning):
-    def __init__(self):
-        rospy.loginfo("Create True Positioning")
-        rospy.Subscriber("/base_pose_ground_truth", Odometry, self.on_update)
-
-
-# Next steps...
-class EKF_Position(Positioning):
-    def __init__(self):
-        pass
-    
-    def on_imu(self, imu_msg):
-        rospy.loginfo_throttle(10, str(imu_msg.linear_acceleration))
-        self.last_imu = imu_msg
 
 if __name__ == "__main__":
     rospy.init_node("line_follow_py")
-    positioning = True_Position()
-    line_follow = Line_Follow(positioning=positioning)    
+
+
+    # wait until clock messages arrive
+    # and hence simulation is ready
+    while rospy.get_time() == 0:
+        rospy.sleep(1)
+
+    rospy.sleep(3)
+    rospy.loginfo("Clock is no longer zero")
+
+    positioning = TruePositioning()
+    path = ConstantCurvaturePath(curvature=0.1)
+    line_follow = LineFollowController(curve=path, positioning=positioning)
+    line_follow.begin(throttle=0.1)
     rospy.spin()

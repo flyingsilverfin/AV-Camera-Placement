@@ -10,8 +10,11 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
 
+# Accuracy near 0 for normalization
+EPSILON = 0.001
+
 def quat_msg_to_numpy(quat):
-    x, y, z, w = quat.x, quaty, quat.z, quat.w
+    x, y, z, w = quat.x, quat.y, quat.z, quat.w
     numpy_quat = np.array([w, x, y, z])
     return numpy_quat
 
@@ -29,4 +32,7 @@ def quat_mult_point(quat, vec):
     return rotated[1:]
 
 def normalize(vec):
-	return vec/np.dot(vec, vec)
+    return vec/np.linalg.norm(vec)
+
+
+
