@@ -23,13 +23,13 @@ def quat_mult_quat(quat1, quat2):
     return tf_conversions.transformations.quaternion_multiply(quat1, quat2)
 
 def quat_mult_point(quat, vec):
-    vec_quat = np.array([0, vec[0], vec[1], vec[2]])
+    vec_quat = np.array([vec[0], vec[1], vec[2], 0])
     q_conj = tf_conversions.transformations.quaternion_conjugate(quat)
 
     # rotation = q*r*q_conj
     a = quat_mult_quat(quat, vec_quat)
     rotated = quat_mult_quat(a, q_conj)
-    return rotated[1:]
+    return rotated[:3]
 
 def normalize(vec):
     return vec/np.linalg.norm(vec)

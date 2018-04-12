@@ -31,7 +31,7 @@ class ConstantCurvaturePath(object):
         if self.curvature != 0.0:
             self.r = np.abs(1/self.curvature)
         self.time_parametrized = time_parametrized
-        
+       
         self.tracking_start_time = 0.0
 
         # to avoid repeatedly computing curve points if ever needed
