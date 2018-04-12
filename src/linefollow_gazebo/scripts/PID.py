@@ -13,7 +13,7 @@ class PID(object):
         self.kd = kd
 
         # setpoint for PID
-        self.setpoint = 0.0
+        self.setpoint = setpoint 
 
         # used to limit update rate of PID
         # if 0 then update one each new sample regardless

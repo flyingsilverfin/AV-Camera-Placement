@@ -40,7 +40,8 @@ class ConstantCurvaturePath(object):
             "curve": None,
             "speed": 0,
             "end_time": -1,
-            "start_time": -1
+            "start_time": -1,
+            "type": None
         }
 
     def begin(self, current_time, current_position, current_orientation):
@@ -100,7 +101,6 @@ class ConstantCurvaturePath(object):
 
 
 
-        self.update_cached_curve(start_time, end_time, speed, steps, curve=curve_points_stamped)
         if return_type == 'numpy':
             points = np.array([np.array([p.point.x, p.point.y, p.point.z]) for p in curve_points_stamped])
             return points
@@ -114,7 +114,7 @@ class ConstantCurvaturePath(object):
 
 
     # TODO test this
-    def update_cached_curve(self, start_time, end_time, speed, steps, curve=None):
+    def update_cached_curve(self, start_time, end_time, speed, steps, curve=None, return_type='PointStamped'):
         """
         Save to the cache the concrete path computed with the given parameters
         if `curve` is not None, just save that into the cache as it's been computed before
@@ -124,7 +124,8 @@ class ConstantCurvaturePath(object):
            self.cache['start_time'] == start_time and \
            self.cache['end_time'] == end_time and \
            self.cache['speed'] == speed and \
-           len(self.cache['curve']) == steps:
+           len(self.cache['curve']) == steps and \
+           self.cache['type'] == return_type:
 
             rospy.loginfo("Curve is already cached, not updating cache")
             return
@@ -134,8 +135,7 @@ class ConstantCurvaturePath(object):
         self.cache['speed'] = speed
 
         if curve is None:
-            curve = self.get_concrete_curve_points(start_time, end_time, speed, steps, return_type='PointStamped')
-        assert type(curve[0]) == PointStamped
+            curve = self.get_concrete_curve_points(start_time, end_time, speed, steps, return_type=return_type)
         self.cache['curve'] = curve 
 
 
@@ -235,7 +235,8 @@ class ConstantCurvaturePath(object):
             raise TypeError("Bad type for tangent: " + return_type)
 
 
-
+    """
+    "
     # compute an indicated type of tracking error
     # current options under consideration are 
     # time error: Error from position and position it should be at time T
@@ -246,88 +247,161 @@ class ConstantCurvaturePath(object):
         if error_type== 'time_error':
             return self.time_error(position, heading, time, speed)
 
-        elif error_type == 'crosstrack':
+        elif error_type == 'closest': # aka 'crosstrack' variant
             # calculate closest point on entirety of path
             # BAD for two reasons:
             # 1) may be so far off path we've approached another point and then start tracking in the opposite direction
             # 2) direction agnostic (eg just following closest points while moving)
-            # 3) computationally expensive
-            return self.crosstrack_error(self, position)
+            # 3) computationally expensive (negated with caching)
+            return self.closest_error(self, position, heading)
+
+        elif error_type == 'windowed':
+            return self.windowed_error(position, heading, time=time, speed=speed)
         else:
             raise UnknownErrorTypeException("Unkown error metric: " + error_type)
+    "
+    """
+
+    def _calculate_error(self, position, heading, target):
+        
+        # using a custom error here
+        # calculate angle bteween heading vector and position->target vector
+        # using atan2d(x1*y2-y1*x2,x1*x2+y1*y2)
+        # which calculates angle from X to Y 
+        # and returns between -pi and pi
+        # use X as heading Y as pos->target
+        # then use angle/pi to normalize the angle
+        position = get_as_numpy_position(position)
+        diff = target - position  
+        distance = np.linalg.norm(diff)
+
+        a = heading[0] * diff[1] - diff[1] * heading[1]
+        b = heading[0] * heading[1] + diff[0] * diff[1]
+
+        angle = np.arctan2(a, b)
+        sign = 1 if angle == 0 else angle/np.abs(angle) # get sign of the angle
+        # add a small value as a function of the distance for when parallel but offset
+        #rospy.loginfo("heading: {2}, diff: {3}, a: {0}, b: {1}, angle: {4}, sign: {5}".format(a, b, heading, diff, angle, sign))
+        error = distance * angle / np.pi + sign*0.1*distance 
+
+        return error 
 
     def time_error(self, position, heading, time, speed):
         target_point = self.get_concrete_point(time, speed, return_type='numpy')
 
-        if type(position) == Point:
-            pos = np.array([position.x, position.y, position.z])
-        elif type(position) == type(np.empty(3)):
-            pos = position
-        else:
-            rospy.logerr("Can't handle position of type: " + str(type(position)))
-            raise Exception("Unknown position type")
-        
-        if type(heading) == Quaternion:
-            # convert Quaternion geomtry_msg to numpy
-            q = quat_msg_to_numpy(heading)
-            # convert numpy quaternion into a direction vector
-            heading = quat_mult_point(q, np.array([1.0, 0.0, 0.0]))
-        elif type(heading) == type(np.empty(3)) and heading.shape == (3,):
-            pass
-        elif type(heading) == type(np.empty(4)) and heading.shape == (4,):
-            heading = quat_mult_point(heading, np.array([1.0, 0.0, 0.0]))
-        else:
-            rospy.logerr("Heading provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
-            raise Exception("Invalid heading type")
-
-        heading = normalize(heading)    
-
-        # target_tangent = self.get_unit_tangent(time, speed)
+        pos = get_as_numpy_position(position)
  
-        # use a custom error here:
-        # compute angle between position and target point => theta
-        # compute distance
-        # return (0.1 + sin(theta))*distance
-        # this ensure distance is always accounted for but also scaled up if the angle is bad
- 
-        diff = target_point - pos  
-        distance = np.linalg.norm(diff)
-        dotprod = np.dot(heading, diff)
-        # this dot product is equal to cos(theta) when we divide through by `|diff|` 
-        # want to compute sin(theta)
-        # sin(theta) = sqrt(1 - cos(theta)**2)
-        if distance > EPSILON:
-            dotprod = dotprod/distance  # distance is large enough to avoid numerical errors
-            sin_theta = np.sqrt(1 - dotprod**2)
-        else:
-            sin_theta = 9999 # value doesn't matter since distance ~= 0
 
-        error = (0.1+sin_theta) * distance
-
-        return error 
+        return self._calculate_error(pos, heading, target_point)
     
-    def crosstrack_error(self, position, time, speed, distance_resolution=1.0):
+
+    def closest_error(self, position, heading, last_closest_point, distance_resolution=1.0, max_horizon=100.0):
+        """crosstrack_error - calculates closest point and corresponding error
+
+        :param position:
+        :param time:
+        :param speed:
+        :param distance_resolution:
+        :param max_horizon: DISTANCE IN METERS horizon from last closest point
         """
-        Used when curve tracking has started
-        """
-        update_rate = speed/distance_resolution # number of points to sample per second at constant speed
-        if self.cached_curve['end_time'] is not None and self.cached_curve['start_time'] is not None and self.cached_curve['curve'] is not None:
-            dt = self.cached_curve['end_time'] - self.cached_curve['start_time']
-            dt = dt / len(self.cached_curve['curve'])
+
+        pos = get_as_numpy_position(position)
+        heading = get_as_numpy_quaternion(heading)
+       
+        if self.cache['curve'] is None:
+            self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + 100, 1.0, max_horizon/distance_resolution, return_type='numpy')
+
+
+        # the cache must contain last_closest_point
+        curve = self.cache['curve']
+        index = 0  
+        point = curve[index] # default to first point in list
+        for i, pt in enumerate(curve):
+            print "Curve index & point: {0}, {1}. last_closest_point:  {2}".format(i, pt, last_closest_point)
+            if np.array_equal(pt, last_closest_point):
+                index = i
+                point = pt
+                break
+       
+        
+        cached_start_time = self.cache['start_time']
+        cached_end_time = self.cache['end_time']
+        dt = cached_end_time - cached_start_time
+        steps = len(curve) 
+        index_time = float(index)/steps * dt + cached_start_time 
+
+
+        start_time = index_time 
+        speed = 1
+        steps = max_horizon/distance_resolution
+        end_time = start_time + max_horizon/speed
+
+        rospy.loginfo_throttle(0.25, "Point: {0}, index: {1}, index time = start time: {2}, end_time using horizon: {3}, cached_end_time: {4}".format(point, index, index_time, end_time, cached_end_time))
+        if end_time > cached_end_time:
+            # TODO update cached curve to include points in the horizon too
+            save_ahead_cache_mult = 5
+            self.update_cached_curve(index_time, 
+                                     index_time + save_ahead_cache_mult * speed * max_horizon, 
+                                     speed,
+                                     steps = save_ahead_cache_mult * max_horizon / distance_resolution,
+                                     return_type='numpy')
+
+            # update curve, index, and point to reflect cache 
+            curve = self.cache['curve']
+            index = 0
+            assert np.linalg.norm(curve[index] - point) < distance_resolution, "Updated curve has point different from previous closest point: curve[0] {0} vs previous closest: {1}".format(curve[index], point)
+            point = curve[index]
+       
+        self.cache['curve'] = self.cache['curve'][index:]
+        self.cache['start_time'] = index_time
+
+
+        closest_dist, closest_point = np.linalg.norm(point - pos), point 
+        for pt in curve:
+            d = np.linalg.norm(pt - pos)
+            if d < closest_dist:
+                closest_dist = d
+                closest_point = pt
+        
+        
+        return self._calculate_error(pos, heading, closest_point), closest_point
+       
+         
+
+
+    """
+    "
+    def closest_concrete_point_in_window(self, position, speed, time, time_window=10.0, distance_resolution=1.0):
+       
+        start_time = time - time_window
+        end_time = time + time_window
+
+        # calculate number of steps to compute to achieve the desired resolution
+        total_dist = speed * 2*time_window 
+        steps = total_dist / distance_resolution
+        
+        pts = self.get_concrete_curve_points(start_time, end_time, speed=speed, steps=steps, return_type='numpy')
+
+        if type(position) == type(numpy.empty(3)):
+            pos = position
+        elif type(position) == Point:
+            pos = np.array([position.x, position.y, position.z])
         else:
-            dt = update_rate   
-        
-        end_time = max(2*time, self.cached_curve['end_time'])
-        total_steps = (end_time - self.tracking_start_time)/dt
-        self.update_cached_curve(self.tracking_start_time,
-                                 end_time,
-                                 speed=speed,
-                                 steps=total_steps)
+            rospy.logerr("Unknown position type: {}".format(type(position)))
+            return
 
-        curve = self.cached_curve
+        distances = np.linalg.norm(pts - pos)
+        index = np.argmin(distances)
+        closest_point = pts[index]
 
+        # return both the point and the time on the path of that point
         
-        # TODO implement crosstrack distance as error
+        return closest_point, start_time + 2*time_window * (index/float(steps))
+    "
+    """            
+
+    #def next_closest_point(self, position, last_time, distance_resolution=1.0):
+
 
 
 class UnknownErrorTypeException(Exception):

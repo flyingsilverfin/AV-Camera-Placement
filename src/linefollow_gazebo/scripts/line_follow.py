@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import abc
-
+ 
 import math
 import numpy as np
 import rospy
@@ -25,6 +25,8 @@ from PriusControlMsgGenerator import PriusControlMsgGenerator
 from Positioning import TruePositioning
 from ConstantCurvaturePath import ConstantCurvaturePath
 from PID import PID
+from VisualizeMarker import VisualizeMarker
+from helper import *
 
 class LineFollowController(object):
     def __init__(self, curve, positioning=None):
@@ -37,11 +39,13 @@ class LineFollowController(object):
         # topic to publish prius Control message
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
 
-        self.prius_steering_pid = PID(kp=0.2, ki=0.01, kd=0.01, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0)
+        self.prius_steering_pid = PID(kp=0.2, ki=0.0, kd=0.0, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0)
 
         self.curve = curve
         self.previous_v_x = 0.0
         self.tracking = False
+
+        self.visualize = VisualizeMarker()
 
     def begin(self, throttle):
         self.throttle = throttle 
@@ -53,7 +57,7 @@ class LineFollowController(object):
         # Wait until at speed to start tracking! 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
 
-    def wait_until_at_speed(self, event, accel_tolerance=0.01):
+    def wait_until_at_speed(self, event, accel_tolerance=0.5):
 
         pose = self.positioning.get_pose()
         
@@ -63,7 +67,7 @@ class LineFollowController(object):
             return
 
         vel_linear = pose.twist.twist.linear
-        v_x = vel_linear.x
+        v_x, v_y, v_z = vel_linear.x, vel_linear.y, vel_linear.z
         dv_x = v_x - self.previous_v_x
         self.previous_v_x = v_x
 
@@ -72,7 +76,7 @@ class LineFollowController(object):
         # check if have stopped accelerating and velocity has some magnitude
         # that means we've finished accelerating
         if dv_x < accel_tolerance and np.abs(v_x) > 0.2:
-            self.velocity = v_x # save attained speed for later use    
+            self.avg_speed = np.sqrt(v_x**2 + v_y**2 + v_z**2) # save attained speed for later use    
             self.timer.shutdown() # stop this update loop
             self.begin_track_path() # begin path tracking!
             return
@@ -94,7 +98,11 @@ class LineFollowController(object):
         
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
-        self.curve.begin(now.to_sec(), current_pose.pose.pose.position,
+        pos = current_pose.pose.pose.position
+    
+        self.last_target_point = get_as_numpy_position(pos)
+
+        self.curve.begin(now.to_sec(), pos,
                          current_pose.pose.pose.orientation)
       
 
@@ -120,26 +128,39 @@ class LineFollowController(object):
             # self.prius_steering_pid_setpoint.unregister()
             return
 
+        now = rospy.get_rostime()
+        secs = now.to_sec()
+        
         # get position from either true or calculated position (doesn't matter for testing)
         pose = self.positioning.get_pose() # either a nav_msgs/Odometry or some other msg type
-        
+
+        vel = pose.twist.twist.linear
+        speed = np.linalg.norm([vel.x, vel.y, vel.z])
+
+        # some rough estimate of our average speed
+        self.avg_speed = self.avg_speed * 0.99 + speed*0.01
+
         position = pose.pose.pose.position
         orientation = pose.pose.pose.orientation
+
 
         # orietation should be very close to        
         # the Transform from vehicle to world coordinates
         # of the vehicle's orientation
         #TODO this sanity check
 
-        now = rospy.get_rostime()
-        secs = now.to_sec()
 
         heading = orientation
-        err = self.curve.error(position, heading, self.velocity, secs, error_type='time_error')
+        err, target_point = self.curve.closest_error(position, heading, self.last_target_point)
+        self.last_target_point = target_point
 
+        p = [position.x, position.y, position.z]
+        self.visualize.draw_n_points([p, self.last_target_point])
+
+#        err = self.curve.error(position, heading, self.avg_speed, secs, error_type='closest')
 
         steering_control = self.prius_steering_pid.update(now, err)
-        rospy.loginfo_throttle(0.5, "Tracking error: {0}, PID response: {1}".format(err, steering_control))
+        rospy.loginfo_throttle(0.5, "Tracking error: {0}, PID response: {1}, Avg Speed: {2}".format(err, steering_control, self.avg_speed))
         prius_msg = self.prius_msg_generator.forward(self.throttle, steering_control)
         self.prius_move.publish(prius_msg)
         
@@ -180,11 +201,11 @@ if __name__ == "__main__":
     while rospy.get_time() == 0:
         rospy.sleep(1)
 
-    rospy.sleep(3)
+    rospy.sleep(2)
     rospy.loginfo("Clock is no longer zero")
 
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.1)
+    path = ConstantCurvaturePath(curvature=0.05)
     line_follow = LineFollowController(curve=path, positioning=positioning)
     line_follow.begin(throttle=0.1)
     rospy.spin()
