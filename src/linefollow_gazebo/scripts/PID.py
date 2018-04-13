@@ -6,7 +6,7 @@
 
 class PID(object):
 
-    def __init__(self, kp=0.2, ki=0.0, kd=0.0, setpoint=0.0, sample_time=0.0, lower_limit=-1.0, upper_limit=1.0, windup=10.0):
+    def __init__(self, kp=0.2, ki=0.0, kd=0.0, setpoint=0.0, sample_time=0.0, lower_limit=-1.0, upper_limit=1.0, windup=5.0):
         # PID gain constants
         self.kp = kp
         self.ki = ki
@@ -58,7 +58,7 @@ class PID(object):
             elif self.I > self.windup:
                 self.I = self.windup
 
-            control += self.di * self.I
+            control += self.ki * self.I
 
             # D term
             if dt > 0.0:    # just in case of strange divide by 0 cases
@@ -70,6 +70,8 @@ class PID(object):
             control = self.effort_limit_low
         elif control > self.effort_limit_high:
             control = self.effort_limit_high
+
+        self.last_time = time
         
         # return control value
         return control

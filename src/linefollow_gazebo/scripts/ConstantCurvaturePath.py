@@ -38,6 +38,7 @@ class ConstantCurvaturePath(object):
         # save them as PointStamped and reuse
         self.cache = {
             "curve": None,
+            "tangents": None,
             "speed": 0,
             "end_time": -1,
             "start_time": -1,
@@ -114,13 +115,14 @@ class ConstantCurvaturePath(object):
 
 
     # TODO test this
-    def update_cached_curve(self, start_time, end_time, speed, steps, curve=None, return_type='PointStamped'):
+    def update_cached_curve(self, start_time, end_time, speed, steps, curve=None, tangents=None, return_type='PointStamped'):
         """
         Save to the cache the concrete path computed with the given parameters
         if `curve` is not None, just save that into the cache as it's been computed before
         """
 
         if self.cache['curve'] is not None and  \
+           self.cache['tangents'] is not None and \
            self.cache['start_time'] == start_time and \
            self.cache['end_time'] == end_time and \
            self.cache['speed'] == speed and \
@@ -136,8 +138,11 @@ class ConstantCurvaturePath(object):
 
         if curve is None:
             curve = self.get_concrete_curve_points(start_time, end_time, speed, steps, return_type=return_type)
-        self.cache['curve'] = curve 
 
+        if tangents is None:
+            tangents = self.get_concrete_unit_tangents(start_time, end_time, speed, steps, return_type='numpy')
+        self.cache['curve'] = curve 
+        self.cache['tangents'] = tangents
 
     # for debugging, test transformed paths 
     def get_points_transformed(self, start_time, end_time, transform, speed=1.0, steps=100):
@@ -215,7 +220,7 @@ class ConstantCurvaturePath(object):
             raise UnknownPathTypeException("Unknown requested concrete point return type: " + return_type) 
 
     # gets unit tangent of the curve as numpy vector
-    def get_unit_tangent(self, t, speed, return_type='numpy'):
+    def get_abstract_unit_tangent(self, t, speed, return_type='numpy'):
         if self.curvature == 0.0:
             vec = np.array([1.0, 0.0, 0.0])
         else:
@@ -234,6 +239,31 @@ class ConstantCurvaturePath(object):
             rospy.logerr("Can only return numpy array for tangent")
             raise TypeError("Bad type for tangent: " + return_type)
 
+    def get_concrete_unit_tangents(self, start_time, end_time, speed=1.0, steps=100, return_type='numpy'):
+        """ 
+        Computes a set of `steps` points representing the time-parametrized curve's unit tangents
+        from t=`start_time` to t=`end_time` traversed at a given constant speed
+        returns given type, but depends on abstract_unit_tangent implementation
+        """
+
+        tangents = []
+        dt = (float(end_time) - start_time) / steps
+        for t in np.arange(start_time, end_time, dt):
+            tangents.append(self.get_concrete_unit_tangent(t, speed, return_type=return_type))
+
+        if return_type == 'numpy':
+            return np.array(tangents)
+        else:
+            rospy.logerr("Can only return numpy tangents")
+            raise TypeError("Bad type for tangents: " + return_type)
+        
+    def get_concrete_unit_tangent(self, t, speed, return_type='numpy'):
+        tangent = self.get_abstract_unit_tangent(t, speed, return_type=return_type)
+
+        # apply rotation to the abstract tangent
+        rot_quat = self.path_start_rotate_numpy_quat
+        rotated_tangent = quat_mult_point(rot_quat, tangent)
+        return rotated_tangent
 
     """
     "
@@ -262,27 +292,42 @@ class ConstantCurvaturePath(object):
     "
     """
 
-    def _calculate_error(self, position, heading, target):
+    def _calculate_error(self, position, heading, target, target_direction):
         
         # using a custom error here
         # calculate angle bteween heading vector and position->target vector
-        # using atan2d(x1*y2-y1*x2,x1*x2+y1*y2)
-        # which calculates angle from X to Y 
-        # and returns between -pi and pi
-        # use X as heading Y as pos->target
-        # then use angle/pi to normalize the angle
+        # arctan2(y2, x2) - arctan2(y1, x1) #NOTE found to be numerically unstable, along with a few other options
+        # which calculates angle from vector 2 to vector 1 
+        # and returns between 0 and 2pi
+
         position = get_as_numpy_position(position)
-        diff = target - position  
+        heading = normalize(get_as_numpy_direction_vec(heading))
+        diff = target - position         
         distance = np.linalg.norm(diff)
 
-        a = heading[0] * diff[1] - diff[1] * heading[1]
-        b = heading[0] * heading[1] + diff[0] * diff[1]
+        target_direction = normalize(target_direction)
+        
+        #print("Vehicle position: {0},  heading: {1}, target: {2}, target direction {3}".format(position, heading, target, target_direction))
 
-        angle = np.arctan2(a, b)
+
+        # we can get the angle without the sign using a.b = |a||b|cos(theta)
+        angle = np.arccos(np.dot(target_direction, heading)) # require these to be normalized
+
+        # adjust the sign using the cross product
+        normal_vec = np.cross(heading, target_direction)
+        # if pointing UP ie. z > 0, heading is to the RHS of target_direction 
+        # and angle needs to be negated (or any number of other things could be reversed)
+        if normal_vec[2] > 0:
+            angle *= -1
+
         sign = 1 if angle == 0 else angle/np.abs(angle) # get sign of the angle
         # add a small value as a function of the distance for when parallel but offset
         #rospy.loginfo("heading: {2}, diff: {3}, a: {0}, b: {1}, angle: {4}, sign: {5}".format(a, b, heading, diff, angle, sign))
-        error = distance * angle / np.pi + sign*0.1*distance 
+        
+        #error = distance * angle / np.pi + sign*0.1*distance 
+        error = distance * angle/np.pi + sign*0.1*distance
+
+        print("Angle: {0}, distance: {1}".format(angle, distance))
 
         return error 
 
@@ -295,8 +340,8 @@ class ConstantCurvaturePath(object):
         return self._calculate_error(pos, heading, target_point)
     
 
-    def closest_error(self, position, heading, last_closest_point, distance_resolution=1.0, max_horizon=100.0):
-        """crosstrack_error - calculates closest point and corresponding error
+    def closest_error(self, position, heading, last_closest_point, distance_resolution=0.1, max_horizon=None):
+        """crosstrack_error - calculates closest point that we haven't visited and corresponding error
 
         :param position:
         :param time:
@@ -305,31 +350,34 @@ class ConstantCurvaturePath(object):
         :param max_horizon: DISTANCE IN METERS horizon from last closest point
         """
 
+        # set a default max horizon equal to one radius or 10m whichever is less 
+        if max_horizon is None:
+            if self.curvature == 0:
+                max_horizon = 10.0
+            else:
+                max_horizon = min(10.0, self.r)
+        
         pos = get_as_numpy_position(position)
-        heading = get_as_numpy_quaternion(heading)
-       
-        if self.cache['curve'] is None:
-            self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + 100, 1.0, max_horizon/distance_resolution, return_type='numpy')
-
+      
+        if self.cache['curve'] is None or self.cache['tangents'] is None:
+            #note : speed is 1.0 for these => max_horizon/1.0 = time into the future for that horizon 
+            self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + max_horizon/1.0, 1.0, max_horizon/distance_resolution, return_type='numpy')
 
         # the cache must contain last_closest_point
         curve = self.cache['curve']
         index = 0  
         point = curve[index] # default to first point in list
         for i, pt in enumerate(curve):
-            print "Curve index & point: {0}, {1}. last_closest_point:  {2}".format(i, pt, last_closest_point)
             if np.array_equal(pt, last_closest_point):
                 index = i
                 point = pt
                 break
        
-        
         cached_start_time = self.cache['start_time']
         cached_end_time = self.cache['end_time']
         dt = cached_end_time - cached_start_time
         steps = len(curve) 
         index_time = float(index)/steps * dt + cached_start_time 
-
 
         start_time = index_time 
         speed = 1
@@ -339,7 +387,7 @@ class ConstantCurvaturePath(object):
         rospy.loginfo_throttle(0.25, "Point: {0}, index: {1}, index time = start time: {2}, end_time using horizon: {3}, cached_end_time: {4}".format(point, index, index_time, end_time, cached_end_time))
         if end_time > cached_end_time:
             # TODO update cached curve to include points in the horizon too
-            save_ahead_cache_mult = 5
+            save_ahead_cache_mult = 4 
             self.update_cached_curve(index_time, 
                                      index_time + save_ahead_cache_mult * speed * max_horizon, 
                                      speed,
@@ -352,21 +400,24 @@ class ConstantCurvaturePath(object):
             assert np.linalg.norm(curve[index] - point) < distance_resolution, "Updated curve has point different from previous closest point: curve[0] {0} vs previous closest: {1}".format(curve[index], point)
             point = curve[index]
        
+        # cut off cache so we can only ever move forward
         self.cache['curve'] = self.cache['curve'][index:]
+        self.cache['tangents'] = self.cache['tangents'][index:]
         self.cache['start_time'] = index_time
 
-
-        closest_dist, closest_point = np.linalg.norm(point - pos), point 
-        for pt in curve:
+        closest_index, closest_dist, closest_point = index, np.linalg.norm(point - pos), point 
+        # add a bias towards making progress
+        for i, pt in enumerate(curve):
             d = np.linalg.norm(pt - pos)
-            if d < closest_dist:
+            # allow some slack to pick a forward point if it's close enough
+            if d - distance_resolution/2 < closest_dist:
                 closest_dist = d
                 closest_point = pt
-        
-        
-        return self._calculate_error(pos, heading, closest_point), closest_point
+                closest_index = i
        
-         
+        closest_point_tangent = self.cache['tangents'][closest_index]
+
+        return self._calculate_error(pos, heading, closest_point, closest_point_tangent), closest_point
 
 
     """

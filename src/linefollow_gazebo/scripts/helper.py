@@ -4,7 +4,7 @@ import rospy
 import tf_conversions
 
 import tf2_geometry_msgs
-from geometry_msgs.msg import PointStamped, TransformStamped
+from geometry_msgs.msg import PointStamped, TransformStamped, Vector3
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
@@ -15,7 +15,7 @@ EPSILON = 0.001
 
 def quat_msg_to_numpy(quat):
     x, y, z, w = quat.x, quat.y, quat.z, quat.w
-    numpy_quat = np.array([w, x, y, z])
+    numpy_quat = np.array([x, y, z, w])
     return numpy_quat
 
 
@@ -52,12 +52,23 @@ def get_as_numpy_quaternion(quat):
         q = quat_msg_to_numpy(quat)
         # convert numpy quaternion into a direction vector
         quat = quat_mult_point(q, np.array([1.0, 0.0, 0.0]))
-    elif type(quat) == type(np.empty(3)) and quat.shape == (3,):
-        pass
+    #elif type(quat) == type(np.empty(3)) and quat.shape == (3,):
+    #    pass
     elif type(quat) == type(np.empty(4)) and quat.shape == (4,):
         quat = quat_mult_point(quat, np.array([1.0, 0.0, 0.0]))
     else:
         rospy.logerr("Quat provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
         raise Exception("Invalid quat type")
 
-    return quat
+    return normalize(quat)
+
+def get_as_numpy_direction_vec(orientation):
+    if type(orientation) == type(np.empty(3,)) and orientation.shape == (3,):
+        return orientation
+
+    elif type(orientation) == Vector3:
+        return np.array([orientation.x, orientation.y, orientation.z])
+    else:
+        q = get_as_numpy_quaternion(orientation)
+        return quat_mult_point(q, np.array([1.0, 0, 0]))
+        
