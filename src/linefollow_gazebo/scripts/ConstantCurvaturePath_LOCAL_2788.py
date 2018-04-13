@@ -329,8 +329,6 @@ class ConstantCurvaturePath(object):
 
         print("Angle: {0}, distance: {1}".format(angle, distance))
 
-        print("Angle: {0}, distance: {1}".format(angle, distance))
-
         return error 
 
     def time_error(self, position, heading, time, speed):
@@ -361,11 +359,7 @@ class ConstantCurvaturePath(object):
         
         pos = get_as_numpy_position(position)
       
-<<<<<<< HEAD
         if self.cache['curve'] is None or self.cache['tangents'] is None:
-=======
-        if self.cache['curve'] is None:
->>>>>>> 1c502c1a8b25a7bd42b0a351fac9137206e265b9
             #note : speed is 1.0 for these => max_horizon/1.0 = time into the future for that horizon 
             self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + max_horizon/1.0, 1.0, max_horizon/distance_resolution, return_type='numpy')
 
@@ -393,11 +387,7 @@ class ConstantCurvaturePath(object):
         rospy.loginfo_throttle(0.25, "Point: {0}, index: {1}, index time = start time: {2}, end_time using horizon: {3}, cached_end_time: {4}".format(point, index, index_time, end_time, cached_end_time))
         if end_time > cached_end_time:
             # TODO update cached curve to include points in the horizon too
-<<<<<<< HEAD
             save_ahead_cache_mult = 4 
-=======
-            save_ahead_cache_mult = 2
->>>>>>> 1c502c1a8b25a7bd42b0a351fac9137206e265b9
             self.update_cached_curve(index_time, 
                                      index_time + save_ahead_cache_mult * speed * max_horizon, 
                                      speed,
@@ -415,29 +405,19 @@ class ConstantCurvaturePath(object):
         self.cache['tangents'] = self.cache['tangents'][index:]
         self.cache['start_time'] = index_time
 
-<<<<<<< HEAD
         closest_index, closest_dist, closest_point = index, np.linalg.norm(point - pos), point 
         # add a bias towards making progress
         for i, pt in enumerate(curve):
-=======
-        closest_dist, closest_point = np.linalg.norm(point - pos), point 
-        for pt in curve:
->>>>>>> 1c502c1a8b25a7bd42b0a351fac9137206e265b9
             d = np.linalg.norm(pt - pos)
             # allow some slack to pick a forward point if it's close enough
             if d - distance_resolution/2 < closest_dist:
                 closest_dist = d
                 closest_point = pt
-<<<<<<< HEAD
                 closest_index = i
        
         closest_point_tangent = self.cache['tangents'][closest_index]
 
         return self._calculate_error(pos, heading, closest_point, closest_point_tangent), closest_point
-=======
-        
-        return self._calculate_error(pos, heading, closest_point), closest_point
->>>>>>> 1c502c1a8b25a7bd42b0a351fac9137206e265b9
 
 
     """

@@ -301,6 +301,7 @@ class ConstantCurvaturePath(object):
         # and returns between 0 and 2pi
 
         position = get_as_numpy_position(position)
+<<<<<<< HEAD
         heading = normalize(get_as_numpy_direction_vec(heading))
         diff = target - position         
         distance = np.linalg.norm(diff)
@@ -319,6 +320,15 @@ class ConstantCurvaturePath(object):
         # and angle needs to be negated (or any number of other things could be reversed)
         if normal_vec[2] > 0:
             angle *= -1
+=======
+        heading = get_as_numpy_direction_vec(heading)
+        print("Vehicle position: {0} || heading: {1} || target: {2}".format(position, heading, target))
+        diff = target - position  
+        distance = np.linalg.norm(diff)
+
+        a = heading[0] * diff[1] - diff[0] * heading[1]
+        b = heading[0] * heading[1] + diff[0] * diff[1]
+>>>>>>> 1c502c1a8b25a7bd42b0a351fac9137206e265b9
 
         sign = 1 if angle == 0 else angle/np.abs(angle) # get sign of the angle
         # add a small value as a function of the distance for when parallel but offset
