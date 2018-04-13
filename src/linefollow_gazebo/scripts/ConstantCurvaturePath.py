@@ -272,10 +272,12 @@ class ConstantCurvaturePath(object):
         # use X as heading Y as pos->target
         # then use angle/pi to normalize the angle
         position = get_as_numpy_position(position)
+        heading = get_as_numpy_direction_vec(heading)
+        print("Vehicle position: {0} || heading: {1} || target: {2}".format(position, heading, target))
         diff = target - position  
         distance = np.linalg.norm(diff)
 
-        a = heading[0] * diff[1] - diff[1] * heading[1]
+        a = heading[0] * diff[1] - diff[0] * heading[1]
         b = heading[0] * heading[1] + diff[0] * diff[1]
 
         angle = np.arctan2(a, b)
@@ -283,6 +285,8 @@ class ConstantCurvaturePath(object):
         # add a small value as a function of the distance for when parallel but offset
         #rospy.loginfo("heading: {2}, diff: {3}, a: {0}, b: {1}, angle: {4}, sign: {5}".format(a, b, heading, diff, angle, sign))
         error = distance * angle / np.pi + sign*0.1*distance 
+
+        print("Angle: {0}, distance: {1}".format(angle, distance))
 
         return error 
 
@@ -295,8 +299,8 @@ class ConstantCurvaturePath(object):
         return self._calculate_error(pos, heading, target_point)
     
 
-    def closest_error(self, position, heading, last_closest_point, distance_resolution=1.0, max_horizon=100.0):
-        """crosstrack_error - calculates closest point and corresponding error
+    def closest_error(self, position, heading, last_closest_point, distance_resolution=0.1, max_horizon=None):
+        """crosstrack_error - calculates closest point that we haven't visited and corresponding error
 
         :param position:
         :param time:
@@ -305,31 +309,34 @@ class ConstantCurvaturePath(object):
         :param max_horizon: DISTANCE IN METERS horizon from last closest point
         """
 
+        # set a default max horizon equal to one radius or 10m whichever is less 
+        if max_horizon is None:
+            if self.curvature == 0:
+                max_horizon = 10.0
+            else:
+                max_horizon = min(10.0, self.r)
+        
         pos = get_as_numpy_position(position)
-        heading = get_as_numpy_quaternion(heading)
-       
+      
         if self.cache['curve'] is None:
-            self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + 100, 1.0, max_horizon/distance_resolution, return_type='numpy')
-
+            #note : speed is 1.0 for these => max_horizon/1.0 = time into the future for that horizon 
+            self.update_cached_curve(self.tracking_start_time, self.tracking_start_time + max_horizon/1.0, 1.0, max_horizon/distance_resolution, return_type='numpy')
 
         # the cache must contain last_closest_point
         curve = self.cache['curve']
         index = 0  
         point = curve[index] # default to first point in list
         for i, pt in enumerate(curve):
-            print "Curve index & point: {0}, {1}. last_closest_point:  {2}".format(i, pt, last_closest_point)
             if np.array_equal(pt, last_closest_point):
                 index = i
                 point = pt
                 break
        
-        
         cached_start_time = self.cache['start_time']
         cached_end_time = self.cache['end_time']
         dt = cached_end_time - cached_start_time
         steps = len(curve) 
         index_time = float(index)/steps * dt + cached_start_time 
-
 
         start_time = index_time 
         speed = 1
@@ -339,7 +346,7 @@ class ConstantCurvaturePath(object):
         rospy.loginfo_throttle(0.25, "Point: {0}, index: {1}, index time = start time: {2}, end_time using horizon: {3}, cached_end_time: {4}".format(point, index, index_time, end_time, cached_end_time))
         if end_time > cached_end_time:
             # TODO update cached curve to include points in the horizon too
-            save_ahead_cache_mult = 5
+            save_ahead_cache_mult = 2
             self.update_cached_curve(index_time, 
                                      index_time + save_ahead_cache_mult * speed * max_horizon, 
                                      speed,
@@ -352,9 +359,9 @@ class ConstantCurvaturePath(object):
             assert np.linalg.norm(curve[index] - point) < distance_resolution, "Updated curve has point different from previous closest point: curve[0] {0} vs previous closest: {1}".format(curve[index], point)
             point = curve[index]
        
+        # cut off cache so we can only ever move forward
         self.cache['curve'] = self.cache['curve'][index:]
         self.cache['start_time'] = index_time
-
 
         closest_dist, closest_point = np.linalg.norm(point - pos), point 
         for pt in curve:
@@ -363,10 +370,7 @@ class ConstantCurvaturePath(object):
                 closest_dist = d
                 closest_point = pt
         
-        
         return self._calculate_error(pos, heading, closest_point), closest_point
-       
-         
 
 
     """
