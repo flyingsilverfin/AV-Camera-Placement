@@ -55,8 +55,10 @@ class Camera(object):
 
 
     def set_fov(self, horizontal=np.pi/4, vertical=np.pi/4):
-        self.w_fov = horizontal
-        self.h_fov = vertical
+        # TODO these /2 are here because I dropped a /2 in the math somewhere...
+
+        self.w_fov = horizontal/2
+        self.h_fov = vertical/2
 
     def set_resolution(self, h=300, w=400):
         self.R_y = h
@@ -134,20 +136,19 @@ class Camera(object):
 
 
     def _x_ray(self, x):
-        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2*x/self.R_x)
+        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2.0*x/self.R_x)
    
     def _y_ray(self, y):
-        return np.tan(self.h_fov) * self.f * -1 * ( 1 - 2*y/self.R_y)
+        return np.tan(self.h_fov) * self.f * -1 * ( 1 - 2.0*y/self.R_y)
 
     def _get_pixel_ray(self, x, y):
         return normalize(np.array([ self._x_ray(x), self._y_ray(y), self.f ]))
 
     def pixel_to_plane(self, x, y):
         if x < 0 or x > self.R_x:
-            print("x pixel {0} is out of pixel space of [0, {1}]".format(x, self.R_x))
-            return None
+            print("WARN: x pixel {0} is out of pixel space of [0, {1}]".format(x, self.R_x))
         if y < 0 or y > self.R_y:
-            print("y pixel {0} is out of pixel space of [0, {1}]".format(y, self.R_y))
+            print("WARN: y pixel {0} is out of pixel space of [0, {1}]".format(y, self.R_y))
 
         # ray going from (0,0,0) through image plane pixel position of (x,y)
         ray_vec = self._get_pixel_ray(x, y)
@@ -166,6 +167,23 @@ class Camera(object):
 #        point = quat_mult_point(self.inv_rotation, un_translated)
 
         return point
+
+
+    def plane_area_of_pixel(self, x, y):
+        # get three ground points: (x,y), (x+1, y), (x, y+1) and compute difference vectors
+        c = self.pixel_to_plane(x,y)
+        dx = self.pixel_to_plane(x+1, y) 
+        dy = self.pixel_to_plane(x, y+1) 
+        if c is None:
+            return None
+
+        dx -= c
+        dy -= c
+        # area of parallelogram is |cross product|
+        cross = np.cross(dx, dy)
+        ground_area = np.linalg.norm(cross)
+        return ground_area
+
 
     
     # convenience feature for debugging
@@ -189,9 +207,13 @@ if __name__ == "__main__":
     """
 
     # camera pointing down onto XY plane at Z=5
-    camera = Camera(position=np.array([0,0,1]), 
-                    orientation_quaternion=normalize(np.array([0.0, 1.0, 0.0, 2.0]))#]0.0, 1.0, 0.0, 0.0]))
+    camera = Camera(position=np.array([0,0,4]), 
+                    orientation_quaternion=normalize(np.array([0.0, 1.0, 0.0, 1.5]))#]0.0, 1.0, 0.0, 0.0]))
+                    #orientation_quaternion=normalize(np.array([0.680, -0.680, 0.195, 0.195]))#]0.0, 1.0, 0.0, 0.0]))
                    )
+    camera.set_resolution(h=600,w=800)
+    # TODO this is weird
+    camera.set_fov(horizontal=np.pi, vertical=np.pi/5)
 
 
     # plane with normal pointing up along Z axis
@@ -210,9 +232,9 @@ if __name__ == "__main__":
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.set_xlim([-10, 10])
-    ax.set_ylim([-10, 10])
-    ax.set_zlim([-2, 2])
+    ax.set_xlim([-5, 5])
+    ax.set_ylim([-5, 5])
+    ax.set_zlim([-5, 5])
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('Z axis')
@@ -275,3 +297,9 @@ if __name__ == "__main__":
 #    plt.scatter(corners[:, 0], corners[:, 1])
     plt.show()
 
+
+    # calculate area at some pixels
+
+    target_pixels = np.array([[0,0], [0, camera.R_y], [camera.R_x, camera.R_y]])
+    for p in target_pixels:
+        print("Ground area covered by pixel {0} is {1}".format(p, camera.plane_area_of_pixel(*p)))
