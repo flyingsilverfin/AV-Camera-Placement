@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 
-import abc
- 
-import math
 import numpy as np
 import rospy
-import tf2_py as tf2
-import tf2_ros
-import tf_conversions
 
 from sensor_msgs.msg import Imu
 from prius_msgs.msg import Control
@@ -106,14 +100,6 @@ class LineFollowController(object):
                          current_pose.pose.pose.orientation)
       
 
-        # create connection to PID steering controller 
-        # self.prius_steering_pid_enable = rospy.Publisher("/pid_enable", Bool, queue_size=1)
-        # self.prius_steering_pid_enable.publish(True)
-        # self.prius_steering_pid_state = rospy.Publisher("/prius_control/error", Float64, queue_size=5)
-        # self.prius_steering_pid_control_effort = rospy.Subscriber("/prius_control/effort", Float64, self.on_prius_pid_steer)
-        # self.prius_steering_pid_setpoint = rospy.Publisher("/prius_control/setpoint", Float64, queue_size=5, latch=True)
-        # self.prius_steering_pid_setpoint.publish(0.0)
-        
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
         self.tracking = True
@@ -122,10 +108,6 @@ class LineFollowController(object):
     def track_path_update(self, event):
         if not self.tracking:
             rospy.logerror("Path tracking updatecalled when not tracking, call begin_track_path_first!")
-            # self.prius_steering_pid_enable.publish(False) 
-            # self.prius_steering_pid_state.unregister()
-            # self.prius_steering_pid_control_effort.unregister()
-            # self.prius_steering_pid_setpoint.unregister()
             return
 
         now = rospy.get_rostime()
@@ -143,8 +125,7 @@ class LineFollowController(object):
         position = pose.pose.pose.position
         orientation = pose.pose.pose.orientation
 
-        # orientation should be very close to direction of linear velocity       
-
+        # orientation should be very close to direction of linear velocity, use this instead       
 
         heading = pose.twist.twist.linear
         err, target_point = self.curve.closest_error(position, heading, self.last_target_point)
@@ -153,39 +134,15 @@ class LineFollowController(object):
         p = [position.x, position.y, position.z]
         self.visualize.draw_n_points([p, self.last_target_point])
 
-#        err = self.curve.error(position, heading, self.avg_speed, secs, error_type='closest')
-#        err = -1 * err
-
         steering_control = self.prius_steering_pid.update(secs, err)
         rospy.loginfo("Tracking error: {0}, PID response: {1}".format(err, steering_control, self.avg_speed))
         prius_msg = self.prius_msg_generator.forward(self.throttle, steering_control)
         self.prius_move.publish(prius_msg)
         
-        # self.prius_steering_pid_state.publish(err) # publish error to the PID controller
-        # self.prius_steering_pid_setpoint.publish(0.0)
-
-#    def on_prius_pid_steer(self, msg):
-#        """on_prius_pid_steer converts the PID Float64 message to a `prius` Control msg
-#    
-#        :param msg: the message that arrives irom steering PID node
-#        """
-#        if not self.tracking:
-#            rospy.loginfo("Received prius PID steer msg when not tracking")
-#            return
-#        rospy.loginfo("Received PID control msg: {}".format(msg))
-#        steer = msg.data
-#        prius_msg = self.prius_msg_generator.forward(self.throttle, steer)
-#        self.prius_move.publish(prius_msg)
-        
         
     def stop_path_tracking(self):
         self.tracking = False
-        # self.prius_steering_pid_enable.publish(False)
-        # self.prius_steering_pid_state.unregister()
-        # self.prius_steering_pid_control_effort.unregister()
-        # self.prius_steering_pid_setpoint.unregister()
         self.timer.shutdown() 
-
 
         
 
@@ -202,7 +159,7 @@ if __name__ == "__main__":
     rospy.loginfo("Clock is no longer zero")
 
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.0) # turn radius limit around curvature=0.3
+    path = ConstantCurvaturePath(curvature=0.04) # turn radius limit around curvature=0.3
     line_follow = LineFollowController(curve=path, positioning=positioning)
-    line_follow.begin(throttle=0.1)
+    line_follow.begin(throttle=0.2)
     rospy.spin()

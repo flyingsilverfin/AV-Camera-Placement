@@ -14,7 +14,7 @@ class VisualizeMarker(object):
         self.last_msg = rospy.get_time()
         self.publish_period = 1.0/rate
 
-    def draw_n_points(self, points, width=0.5, height=0.5, rgba='default', duration=15.0):
+    def draw_n_points(self, points, width=0.5, height=0.5, rgba='default', duration=10.0):
         now = rospy.get_time()
         if now - self.last_msg < self.publish_period:
             return
