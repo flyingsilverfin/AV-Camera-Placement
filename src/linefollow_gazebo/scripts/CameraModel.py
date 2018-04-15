@@ -1,5 +1,5 @@
 
-
+import json
 import numpy as np
 import tf_conversions
 
@@ -22,17 +22,18 @@ def plot_points(axes, points, color='blue'):
 # some traffic camera information
 # https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf
 class Camera(object):
-    def __init__(self, position, orientation_quaternion):
-       
+    def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0):
+        
         self.position = np.array(position)
-
-        self.orientation = orientation_quaternion
-
+        self.orientation_rpy = np.deg2rad(np.array([90.0, orientation_pitch_deg, orientation_yaw_deg]))
+        self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
+        self.generate_transform()
 
         # initialize to some defaults
         self.set_fov()
         self.set_resolution()
         self.set_focal_length()
+        self.set_target_plane()
 
         self.original_plane = None
 
@@ -48,17 +49,19 @@ class Camera(object):
 
         self.camera_sp_orientation_vector = quat_mult_point(self.rotation, self.orientation_vector)
         desired_camera_orientation = np.array([0.0, 0.0, 1.0])
+        
+        # it must be true that we are aligned with the Z-axis after rotating into camera space
         assert np.allclose(self.camera_sp_orientation_vector, desired_camera_orientation)
 
         # update target plane transformation
         self.transform_target_plane()
 
 
-    def set_fov(self, horizontal=np.pi/4, vertical=np.pi/4):
+    def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0):
         # TODO these /2 are here because I dropped a /2 in the math somewhere...
 
-        self.w_fov = horizontal/2
-        self.h_fov = vertical/2
+        self.w_fov = np.deg2rad(horizontal_deg)/2
+        self.h_fov = np.deg2rad(vertical_deg)/2
 
     def set_resolution(self, h=300, w=400):
         self.R_y = h
@@ -74,10 +77,12 @@ class Camera(object):
         self.setup()
 
 
-    def set_orientation(self, orientation_quaternion):
-        self.orientation_quaternion = orientation_quaternion
-        self.setup()
+    def set_orientation(self, orientation_pitch_deg=0.0, orientation_pitch_yaw=0.0):
 
+        self.orientation_rpy = np.deg2rad(np.array([90.0, orientation_pitch_deg, orientation_yaw_deg]))
+        self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
+        self.setup()
+       
     def generate_transform(self):
         """ Creates translation and rotation to move world such that camera is at (0,0,0) and looking at (0,0,1)
         """
@@ -105,7 +110,7 @@ class Camera(object):
         return r - self.translation
 
 
-    def set_target_plane(self, normal, point):
+    def set_target_plane(self, normal=np.array([0.0, 0.0, 1.0]), point=np.array([1.0, 1.0, 0.0])):
         """ Saves a target plane that will be intersected with and computed over, transforms into camera space """
         if np.array_equal(point, np.array([0.0, 0.0, 0.0])):
             print("Use a different plane point than 0,0,0")
@@ -121,7 +126,7 @@ class Camera(object):
 
     def transform_target_plane(self):
    
-        if self.original_plane is None:
+        if self.original_plane is None or self.rotation is None:
             return
 
         # normal doesn't need to be translated, but it needs to be rotated
@@ -144,11 +149,11 @@ class Camera(object):
     def _get_pixel_ray(self, x, y):
         return normalize(np.array([ self._x_ray(x), self._y_ray(y), self.f ]))
 
-    def pixel_to_plane(self, x, y):
-        if x < 0 or x > self.R_x:
-            print("WARN: x pixel {0} is out of pixel space of [0, {1}]".format(x, self.R_x))
-        if y < 0 or y > self.R_y:
-            print("WARN: y pixel {0} is out of pixel space of [0, {1}]".format(y, self.R_y))
+    def pixel_to_plane(self, x, y, verbose=False):
+        if (x < 0 or x >= self.R_x) and verbose:
+            print("WARN: x pixel {0} is out of pixel space of [0, {1})".format(x, self.R_x))
+        if (y < 0 or y >= self.R_y) and verbose:
+            print("WARN: y pixel {0} is out of pixel space of [0, {1})".format(y, self.R_y))
 
         # ray going from (0,0,0) through image plane pixel position of (x,y)
         ray_vec = self._get_pixel_ray(x, y)
@@ -207,13 +212,13 @@ if __name__ == "__main__":
     """
 
     # camera pointing down onto XY plane at Z=5
-    camera = Camera(position=np.array([0,0,4]), 
-                    orientation_quaternion=normalize(np.array([0.0, 1.0, 0.0, 1.5]))#]0.0, 1.0, 0.0, 0.0]))
-                    #orientation_quaternion=normalize(np.array([0.680, -0.680, 0.195, 0.195]))#]0.0, 1.0, 0.0, 0.0]))
+    camera = Camera(position=np.array([0,0,1]), 
+                    orientation_pitch_deg=45.0,
+                    orientation_yaw_deg=45.0
                    )
-    camera.set_resolution(h=600,w=800)
+    camera.set_resolution(h=30,w=40)
     # TODO this is weird
-    camera.set_fov(horizontal=np.pi, vertical=np.pi/5)
+    camera.set_fov(horizontal_deg=45.0, vertical_deg=45.0)
 
 
     # plane with normal pointing up along Z axis
@@ -300,6 +305,53 @@ if __name__ == "__main__":
 
     # calculate area at some pixels
 
-    target_pixels = np.array([[0,0], [0, camera.R_y], [camera.R_x, camera.R_y]])
+    target_pixels = np.array([[0,0], [0, camera.R_y-1], [camera.R_x-1, camera.R_y-1]])
     for p in target_pixels:
         print("Ground area covered by pixel {0} is {1}".format(p, camera.plane_area_of_pixel(*p)))
+
+
+
+    xs = np.arange(0, camera.R_x-1)
+    ys = np.arange(0, camera.R_y-1)
+    xs, ys = np.meshgrid(xs,ys)
+    areas = np.zeros_like(xs, dtype=np.float64)
+    xs, ys = xs.ravel(), ys.ravel()
+    pixels = zip(xs, ys)
+
+    data = {
+        'fov': "{0}, {1}".format(camera.h_fov, camera.w_fov),
+        'resolution': "{0}, {1}".format(camera.R_x, camera.R_y),
+        'orientation_rpy': "{}".format(camera.orientation_rpy),
+        'position': "{}".format(camera.position),
+        'pixels_to_area': {}
+    }
+
+    print(pixels)
+    for p in pixels:
+        pix_str = str(list(p))
+        area = camera.plane_area_of_pixel(*p)
+        data['pixels_to_area'][pix_str] = area 
+        print(p)
+        areas[p[1], p[0]] = area 
+
+    f = open('data/camera_pixel_areas.json','w')
+    j = json.dumps(data)
+    f.write(j)
+    f.close()
+
+    print(areas)
+
+    fig_areas = plt.figure()
+    ax_areas = fig_areas.add_subplot('111', projection='3d')
+    ax_areas.set_xlabel('X')
+    ax_areas.set_ylabel('Y')
+    ax_areas.set_zlabel('Z (cm^2)')
+
+    bottom = np.zeros_like(xs)
+    width = depth = 1
+
+    ax_areas.bar3d(xs, ys, bottom, width, depth, areas.ravel()*10000, shade=True)
+    plt.savefig('data/camera_pixel_areas.eps')
+    plt.show()
+
+
