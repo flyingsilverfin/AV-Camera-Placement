@@ -25,7 +25,7 @@ class Camera(object):
     def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0):
         
         self.position = np.array(position)
-        self.orientation_rpy = np.deg2rad(np.array([90.0, orientation_pitch_deg, orientation_yaw_deg]))
+        self.orientation_rpy = np.deg2rad(np.array([00.0, orientation_pitch_deg, orientation_yaw_deg]))
         self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
         self.generate_transform()
 
@@ -79,7 +79,7 @@ class Camera(object):
 
     def set_orientation(self, orientation_pitch_deg=0.0, orientation_pitch_yaw=0.0):
 
-        self.orientation_rpy = np.deg2rad(np.array([90.0, orientation_pitch_deg, orientation_yaw_deg]))
+        self.orientation_rpy = np.deg2rad(np.array([00.0, orientation_pitch_deg, orientation_yaw_deg]))
         self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
         self.setup()
        
@@ -140,14 +140,39 @@ class Camera(object):
         }
 
 
-    def _x_ray(self, x):
-        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2.0*x/self.R_x)
-   
-    def _y_ray(self, y):
-        return np.tan(self.h_fov) * self.f * -1 * ( 1 - 2.0*y/self.R_y)
+    def _x_ray(self, theta, phi):
+        t = theta# - self.orientation_rpy[1]
+        p = phi# - self.orientation_rpy[2]
 
+        return self.f * np.cos(t) * np.sin(p)
+
+    def _y_ray(self, theta, phi):
+        t = theta# - self.orientation_rpy[1]
+        p = phi# - self.orientation_rpy[2]
+
+        return self.f * np.sin(t) * np.cos(t)
+
+    def _z_ray(self, theta, phi):
+        p = phi# - self.orientation_rpy[2]
+        return self.f * np.cos(p)
+    
     def _get_pixel_ray(self, x, y):
-        return normalize(np.array([ self._x_ray(x), self._y_ray(y), self.f ]))
+        theta = x * self.w_fov/self.R_x - self.w_fov/2
+        phi = self.h_fov/2 - y*self.h_fov/self.R_y
+
+        return normalize(np.array([self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)]))
+
+
+
+
+#    def _x_ray(self, x):
+#        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2.0*x/self.R_x)
+   
+#    def _y_ray(self, y):
+#        return np.tan(self.h_fov) * self.f * -1 * ( 1 - 2.0*y/self.R_y)
+
+#    def _get_pixel_ray(self, x, y):
+#        return normalize(np.array([ self._x_ray(x), self._y_ray(y), self.f ]))
 
     def pixel_to_plane(self, x, y, verbose=False):
         if (x < 0 or x >= self.R_x) and verbose:
@@ -178,7 +203,7 @@ class Camera(object):
         # get three ground points: (x,y), (x+1, y), (x, y+1) and compute difference vectors
         c = self.pixel_to_plane(x,y)
         dx = self.pixel_to_plane(x+1, y) 
-        dy = self.pixel_to_plane(x, y+1) 
+        dy = self.pixel_to_plane(x, y-1) 
         if c is None:
             return None
 
@@ -216,9 +241,9 @@ if __name__ == "__main__":
                     orientation_pitch_deg=45.0,
                     orientation_yaw_deg=45.0
                    )
-    camera.set_resolution(h=30,w=40)
-    # TODO this is weird
-    camera.set_fov(horizontal_deg=45.0, vertical_deg=45.0)
+    camera.set_resolution(h=15,w=15)
+    camera.set_fov(horizontal_deg=135.0, vertical_deg=135.0)
+    camera.set_focal_length(0.01)
 
 
     # plane with normal pointing up along Z axis
