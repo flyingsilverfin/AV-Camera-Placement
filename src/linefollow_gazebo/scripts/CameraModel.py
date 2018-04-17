@@ -160,6 +160,8 @@ class Camera(object):
         theta = x * self.w_fov/self.R_x - self.w_fov/2
         phi = self.h_fov/2 - y*self.h_fov/self.R_y
 
+        # In "Accuracy of fish-eye lens models" this corresponds to the 'equidistant' fish eye lens model
+
         return normalize(np.array([self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)]))
 
 
