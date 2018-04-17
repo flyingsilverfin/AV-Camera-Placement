@@ -14,10 +14,10 @@ def plot_vector(axes, start, direction, color='Blues'):
     U, V, W =  direction
     ax.quiver(X, Y, Z, U, V, W, cmap=color)
 
-def plot_points(axes, points, color='blue'):
+def plot_points(axes, points, color='blue', size=2):
     if points.shape[0] == 0:
         return
-    ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color) 
+    ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, s=size) 
 
 # some traffic camera information
 # https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf
@@ -235,15 +235,17 @@ if __name__ == "__main__":
     """
     VISUAL TESTS
     """
+    
+    plot_pixel_areas = False
 
     # camera pointing down onto XY plane at Z=5
     camera = Camera(position=np.array([0,0,1]), 
                     orientation_pitch_deg=45.0,
                     orientation_yaw_deg=45.0
                    )
-    camera.set_resolution(h=15,w=15)
+    camera.set_resolution(h=150,w=150)
     camera.set_fov(horizontal_deg=135.0, vertical_deg=135.0)
-    camera.set_focal_length(0.01)
+    camera.set_focal_length(0.1)
 
 
     # plane with normal pointing up along Z axis
@@ -257,6 +259,16 @@ if __name__ == "__main__":
     print(corners)
 
     corners = np.array([c for c in corners if c is not None])
+
+    others_x = np.arange(0, camera.R_x, 10)
+    others_y = np.arange(0, camera.R_y, 10)
+    xs, ys = np.meshgrid(others_x, others_y)
+    xs, ys = xs.ravel(), ys.ravel()
+    pts = []
+    for x,y in zip(xs, ys):
+        pts.append(camera.pixel_to_plane(x, y))
+
+
 
 
     fig = plt.figure()
@@ -278,18 +290,19 @@ if __name__ == "__main__":
 
 
     camera_sp_orientation = camera.camera_sp_orientation_vector
-    plot_vector(ax, np.array([0,0,0]), camera_sp_orientation)
+    #plot_vector(ax, np.array([0,0,0]), camera_sp_orientation)
 
     plot_points(ax, corners)
+    plot_points(ax, np.array(pts))
 
     a = camera.original_plane['a']
     n = camera.original_plane['n']
-    plot_vector(ax, a, n) 
+    #plot_vector(ax, a, n) 
 
 
     cam_sp_a = camera.target_plane['a']
     cam_sp_n = camera.target_plane['n']
-    plot_vector(ax, cam_sp_a, cam_sp_n)
+    #plot_vector(ax, cam_sp_a, cam_sp_n)
 
 
     pix_0_0_ray = camera._get_pixel_ray(0.0, 0.0)
@@ -297,10 +310,10 @@ if __name__ == "__main__":
     pix_0_Ry_ray = camera._get_pixel_ray(0.0, y)
     pix_Rx_0_ray = camera._get_pixel_ray(x, 0.0)
     pix_Rx_Ry_ray = camera._get_pixel_ray(x, y)
-    plot_vector(ax, np.array([0,0,0]), pix_0_0_ray)
-    plot_vector(ax, np.array([0,0,0]), pix_0_Ry_ray)
-    plot_vector(ax, np.array([0,0,0]), pix_Rx_0_ray)
-    plot_vector(ax, np.array([0,0,0]), pix_Rx_Ry_ray)
+#    plot_vector(ax, np.array([0,0,0]), pix_0_0_ray)
+#    plot_vector(ax, np.array([0,0,0]), pix_0_Ry_ray)
+#    plot_vector(ax, np.array([0,0,0]), pix_Rx_0_ray)
+#    plot_vector(ax, np.array([0,0,0]), pix_Rx_Ry_ray)
    
     cam_sp_angle1 = np.dot(pix_0_0_ray, pix_Rx_0_ray)
     cam_sp_angle2 = np.dot(pix_0_0_ray, pix_0_Ry_ray)
@@ -318,8 +331,8 @@ if __name__ == "__main__":
     print("{0}, {1}, {2}, {3}".format(p_0_0, p_0_y, p_x_y, p_x_0))
     print("Angle (0,0) -> (Rx, 0): {0}, (0,0)->(0,Ry): {1}, (0, Ry)->(Rx, Ry): {2}".format(angle1, angle2, angle3))
     plot_vector(ax, pos, p_0_0)
-    plot_vector(ax, pos, p_0_y*4)
-    plot_vector(ax, pos, p_x_y*4)
+    plot_vector(ax, pos, p_0_y)
+    plot_vector(ax, pos, p_x_y)
     plot_vector(ax, pos, p_x_0)
 
 
@@ -328,55 +341,51 @@ if __name__ == "__main__":
     plt.show()
 
 
-    # calculate area at some pixels
 
-    target_pixels = np.array([[0,0], [0, camera.R_y-1], [camera.R_x-1, camera.R_y-1]])
-    for p in target_pixels:
-        print("Ground area covered by pixel {0} is {1}".format(p, camera.plane_area_of_pixel(*p)))
-
-
-
-    xs = np.arange(0, camera.R_x-1)
-    ys = np.arange(0, camera.R_y-1)
-    xs, ys = np.meshgrid(xs,ys)
-    areas = np.zeros_like(xs, dtype=np.float64)
-    xs, ys = xs.ravel(), ys.ravel()
-    pixels = zip(xs, ys)
-
-    data = {
-        'fov': "{0}, {1}".format(camera.h_fov, camera.w_fov),
-        'resolution': "{0}, {1}".format(camera.R_x, camera.R_y),
-        'orientation_rpy': "{}".format(camera.orientation_rpy),
-        'position': "{}".format(camera.position),
-        'pixels_to_area': {}
-    }
-
-    print(pixels)
-    for p in pixels:
-        pix_str = str(list(p))
-        area = camera.plane_area_of_pixel(*p)
-        data['pixels_to_area'][pix_str] = area 
-        print(p)
-        areas[p[1], p[0]] = area 
-
-    f = open('data/camera_pixel_areas.json','w')
-    j = json.dumps(data)
-    f.write(j)
-    f.close()
-
-    print(areas)
-
-    fig_areas = plt.figure()
-    ax_areas = fig_areas.add_subplot('111', projection='3d')
-    ax_areas.set_xlabel('X')
-    ax_areas.set_ylabel('Y')
-    ax_areas.set_zlabel('Z (cm^2)')
-
-    bottom = np.zeros_like(xs)
-    width = depth = 1
-
-    ax_areas.bar3d(xs, ys, bottom, width, depth, areas.ravel()*10000, shade=True)
-    plt.savefig('data/camera_pixel_areas.eps')
-    plt.show()
-
+    if plot_pixel_areas:
+    
+    
+        xs = np.arange(0, camera.R_x-1)
+        ys = np.arange(0, camera.R_y-1)
+        xs, ys = np.meshgrid(xs,ys)
+        areas = np.zeros_like(xs, dtype=np.float64)
+        xs, ys = xs.ravel(), ys.ravel()
+        pixels = zip(xs, ys)
+    
+        data = {
+            'fov': "{0}, {1}".format(camera.h_fov, camera.w_fov),
+            'resolution': "{0}, {1}".format(camera.R_x, camera.R_y),
+            'orientation_rpy': "{}".format(camera.orientation_rpy),
+            'position': "{}".format(camera.position),
+            'pixels_to_area': {}
+        }
+    
+        print(pixels)
+        for p in pixels:
+            pix_str = str(list(p))
+            area = camera.plane_area_of_pixel(*p)
+            data['pixels_to_area'][pix_str] = area 
+        #    print(p)
+            areas[p[1], p[0]] = area 
+    
+        f = open('data/camera_pixel_areas.json','w')
+        j = json.dumps(data)
+        f.write(j)
+        f.close()
+    
+    #    print(areas)
+    
+        fig_areas = plt.figure()
+        ax_areas = fig_areas.add_subplot('111', projection='3d')
+        ax_areas.set_xlabel('X')
+        ax_areas.set_ylabel('Y')
+        ax_areas.set_zlabel('Z (cm^2)')
+    
+        bottom = np.zeros_like(xs)
+        width = depth = 1
+    
+        ax_areas.bar3d(xs, ys, bottom, width, depth, areas.ravel()*10000, shade=True)
+        plt.savefig('data/camera_pixel_areas.eps')
+        plt.show()
+    
 
