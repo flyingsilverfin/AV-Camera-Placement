@@ -60,8 +60,8 @@ class Camera(object):
     def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0):
         # TODO these /2 are here because I dropped a /2 in the math somewhere...
 
-        self.w_fov = np.deg2rad(horizontal_deg)/2
-        self.h_fov = np.deg2rad(vertical_deg)/2
+        self.w_fov = np.deg2rad(horizontal_deg)
+        self.h_fov = np.deg2rad(vertical_deg)
 
     def set_resolution(self, h=300, w=400):
         self.R_y = h
@@ -150,7 +150,7 @@ class Camera(object):
         t = theta# - self.orientation_rpy[1]
         p = phi# - self.orientation_rpy[2]
 
-        return self.f * np.sin(t) * np.cos(t)
+        return self.f * np.sin(t) * np.sin(p)
 
     def _z_ray(self, theta, phi):
         p = phi# - self.orientation_rpy[2]
@@ -160,9 +160,20 @@ class Camera(object):
         theta = x * self.w_fov/self.R_x - self.w_fov/2
         phi = self.h_fov/2 - y*self.h_fov/self.R_y
 
-        # In "Accuracy of fish-eye lens models" this corresponds to the 'equidistant' fish eye lens model
+        phi += np.pi/2 # need to do this x-axis aligned ie. such that pixel (0,0) is on x-axis
 
-        return normalize(np.array([self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)]))
+        # In "Accuracy of fish-eye lens models" this corresponds to the 'equidistant' fish eye lens model
+        # NOTE: focal length doesn't affect anything here! Only scales the rays... 
+        # using a different fish eye lens model would bring focal length back into play
+
+
+        x_axis_aligned_ray = np.array([self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)])
+
+        # rotate it up about Y axis by 90 degrees to get to z-axis aligned as required
+
+        quat = transforms.quaternion_from_euler(0.0, -np.pi/2, 0.0)
+        rotated = quat_mult_point(quat, x_axis_aligned_ray)
+        return normalize(rotated)
 
 
 
@@ -238,15 +249,15 @@ if __name__ == "__main__":
     VISUAL TESTS
     """
     
-    plot_pixel_areas = False
+    plot_pixel_areas = True #False
 
     # camera pointing down onto XY plane at Z=5
     camera = Camera(position=np.array([0,0,1]), 
                     orientation_pitch_deg=45.0,
                     orientation_yaw_deg=45.0
                    )
-    camera.set_resolution(h=150,w=150)
-    camera.set_fov(horizontal_deg=135.0, vertical_deg=135.0)
+    camera.set_resolution(h=100,w=100)
+    camera.set_fov(horizontal_deg=85.0, vertical_deg=50.0)
     camera.set_focal_length(0.1)
 
 
@@ -262,13 +273,15 @@ if __name__ == "__main__":
 
     corners = np.array([c for c in corners if c is not None])
 
-    others_x = np.arange(0, camera.R_x, 10)
-    others_y = np.arange(0, camera.R_y, 10)
+    others_x = np.arange(0, camera.R_x - 1, 2)
+    others_y = np.arange(0, camera.R_y - 1, 2)
     xs, ys = np.meshgrid(others_x, others_y)
     xs, ys = xs.ravel(), ys.ravel()
     pts = []
     for x,y in zip(xs, ys):
-        pts.append(camera.pixel_to_plane(x, y))
+        pt = camera.pixel_to_plane(x, y)
+        if pt is not None:
+            pts.append(pt)
 
 
 
@@ -347,12 +360,13 @@ if __name__ == "__main__":
     if plot_pixel_areas:
     
     
-        xs = np.arange(0, camera.R_x-1)
-        ys = np.arange(0, camera.R_y-1)
+        xs = np.arange(0, camera.R_x)
+        ys = np.arange(0, camera.R_y)
         xs, ys = np.meshgrid(xs,ys)
         areas = np.zeros_like(xs, dtype=np.float64)
-        xs, ys = xs.ravel(), ys.ravel()
-        pixels = zip(xs, ys)
+        xs_, ys_ = xs.ravel(), ys.ravel()
+        print(xs_.shape, xs.shape)
+        pixels = zip(xs_, ys_)
     
         data = {
             'fov': "{0}, {1}".format(camera.h_fov, camera.w_fov),
@@ -383,11 +397,30 @@ if __name__ == "__main__":
         ax_areas.set_ylabel('Y')
         ax_areas.set_zlabel('Z (cm^2)')
     
-        bottom = np.zeros_like(xs)
+        bottom = np.zeros_like(xs_)
         width = depth = 1
-    
-        ax_areas.bar3d(xs, ys, bottom, width, depth, areas.ravel()*10000, shade=True)
-        plt.savefig('data/camera_pixel_areas.eps')
-        plt.show()
-    
+   
+        areas *= 10000 # convert to cm^2 from m^2
+
+        camera_properties = np.array([camera.w_fov, camera.h_fov, camera.orientation_rpy[1], camera.orientation_rpy[2]])
+        camera_properties = np.rad2deg(camera_properties)
+
+        ax_areas.bar3d(xs_, ys_, bottom, width, depth, areas.ravel(), shade=True)
+        plt.savefig('data/camera_pixel_areas_fov-{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
+        plt.clf()
+        plt.cla()
+        plt.close()
+        #plt.show()
+   
+        m, median = np.min(areas), np.median(areas)
+        contour_steps = 3.0
+        step = (median - m)/contour_steps
+        contour_values = np.arange(m, np.max(areas), step)
+
+        contours = plt.contour(xs, ys, areas, levels=contour_values)
+        plt.xlabel("X pixel")
+        plt.ylabel("Y pixel")
+        plt.clabel(contours, inline=1, fontsize=10)
+        plt.savefig('data/camera_pixel_area_contours_fov-{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
+        #plt.show()
 

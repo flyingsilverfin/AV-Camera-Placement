@@ -25,7 +25,7 @@ from helper import *
 class LineFollowController(object):
     def __init__(self, curve, positioning=None):
         rospy.loginfo("Create LineFollowController object")
-        self.rate = rospy.get_param("~rate", 20.0)  # low rate to show 
+        self.rate = rospy.get_param("~rate", 50.0)  # low rate to show 
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
@@ -33,7 +33,7 @@ class LineFollowController(object):
         # topic to publish prius Control message
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
 
-        self.prius_steering_pid = PID(kp=7.0, ki=0.9, kd=0.00, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0, windup=2.0)
+        self.prius_steering_pid = PID(kp=1.0, ki=0.01, kd=0.05, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0, windup=0.5)
 
         self.curve = curve
         self.previous_v_x = 0.0

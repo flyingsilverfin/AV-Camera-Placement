@@ -310,26 +310,19 @@ class ConstantCurvaturePath(object):
         #print("Vehicle position: {0},  heading: {1}, target: {2}, target direction {3}".format(position, heading, target, target_direction))
 
 
-        # we can get the angle without the sign using a.b = |a||b|cos(theta)
-        angle = np.arccos(np.dot(target_direction, heading)) # require these to be normalized
+       
+        angle_to_target_position = 0 if distance < EPSILON else angle_from_to(heading, diff)
+#        angle_position_sign = 1 if angle_to_target_position == 0 else angle_to_target_position/np.abs(angle_to_target_position)
+        angle_to_target_steering = angle_from_to(heading, target_direction)
+#        angle_steering_sign = 1 if angle_to_target_steering == 0 else angle_to_target_steering/np.abs(angle_to_target_steering)
 
-        # adjust the sign using the cross product
-        normal_vec = np.cross(heading, target_direction)
-        # if pointing UP ie. z > 0, heading is to the RHS of target_direction 
-        # and angle needs to be negated (or any number of other things could be reversed)
-        if normal_vec[2] > 0:
-            angle *= -1
+        weighting = 0.2 
+        error = distance * (weighting * angle_to_target_position + (1-weighting)*angle_to_target_steering)/np.pi
 
-        sign = 1 if angle == 0 else angle/np.abs(angle) # get sign of the angle
-        # add a small value as a function of the distance for when parallel but offset
-        #rospy.loginfo("heading: {2}, diff: {3}, a: {0}, b: {1}, angle: {4}, sign: {5}".format(a, b, heading, diff, angle, sign))
-        
         #error = distance * angle / np.pi + sign*0.1*distance 
-        error = distance * angle/np.pi + sign*0.1*distance
+#        error = distance * angle/np.pi + sign*0.1*distance
 
-        print("Angle: {0}, distance: {1}".format(angle, distance))
-
-        print("Angle: {0}, distance: {1}".format(angle, distance))
+        print("Heading: {3}, Diff: {4}, Angle to target pos: {0}, angle diff target heading: {1}, distance: {2}".format(angle_to_target_position, angle_to_target_steering, distance, heading, diff))
 
         return error 
 

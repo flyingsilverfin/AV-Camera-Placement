@@ -9,6 +9,7 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
+EPSILON = 0.001
 
 def quat_msg_to_numpy(quat):
     x, y, z, w = quat.x, quat.y, quat.z, quat.w
@@ -79,3 +80,20 @@ def get_as_numpy_direction_vec(orientation):
         q = get_as_numpy_quaternion(orientation)
         return quat_mult_point(q, np.array([1.0, 0, 0]))
         
+
+
+def angle_from_to(from_, to):
+    # we can get the angle without the sign using a.b = |a||b|cos(theta)
+    dot = np.dot(from_, to)
+    dot /= (np.linalg.norm(from_) * np.linalg.norm(to))
+
+    angle = np.arccos(dot) # require these to be normalized
+
+    # adjust the sign using the cross product
+    normal_vec = np.cross(from_, to)
+    # if pointing UP ie. z > 0, heading is to the RHS of target_direction 
+    # and angle needs to be negated (or any number of other things could be reversed)
+    if normal_vec[2] > 0:
+        angle *= -1
+
+    return angle
