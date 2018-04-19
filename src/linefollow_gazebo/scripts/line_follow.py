@@ -110,34 +110,55 @@ class LineFollowController(object):
             rospy.logerror("Path tracking updatecalled when not tracking, call begin_track_path_first!")
             return
 
+        steer_angle = self.hoffman_control()
+        rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
+        prius_msg = self.prius_msg_generator.forward(self.throttle, steer_angle)
+        self.prius_move.publish(prius_msg)
+       
+
+    def hoffman_control(self, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
+        """ Returns a steering command from -1.0 to 1.0 according to hoffman controller """
         now = rospy.get_rostime()
         secs = now.to_sec()
+
+        pose = self.positioning.get_pose()
+
+        heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear) # NOTE: orientation from `pose` should be close to heading using velocity!
+        position = get_as_numpy_position(pose.pose.pose.position)
         
-        # get position from either true or calculated position (doesn't matter for testing)
-        pose = self.positioning.get_pose() # either a nav_msgs/Odometry or some other msg type
+        closest_point, closest_heading = self.curve.closest_point_tangent(position, heading, self.last_target_point, max_horizon=2.0)
+        self.last_target_point = closest_point
 
-        vel = pose.twist.twist.linear
-        speed = np.linalg.norm([vel.x, vel.y, vel.z])
+        if viz:
+            self.visualize.draw_n_points([position, self.last_target_point])
 
-        # some rough estimate of our average speed
-        self.avg_speed = self.avg_speed * 0.99 + speed*0.01
+        crosstrack_dist = np.linalg.norm(closest_point - position)
+        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=3.30)
 
-        position = pose.pose.pose.position
-        orientation = pose.pose.pose.orientation
+        # convert angle to command angle
+        steer_command = new_wheel_angle/steering_angle_limit
+        if steer_command < -1.0:
+            return -1.0
+        elif steer_command > 1.0:
+            return 1.0
 
-        # orientation should be very close to direction of linear velocity, use this instead       
+        return steer_command
 
-        heading = pose.twist.twist.linear
-        err, target_point = self.curve.closest_error(position, heading, self.last_target_point)
-        self.last_target_point = target_point
+    
+    
+    def hoffman_steer_angle(self, crosstrack_distance, velocity, target_heading, k=1.0):
+        """ Calculates steering angle directly (no feedback) using Stanley 2006 line tracking function (Hoffman et al)
+        """
+        
+        heading = normalize(velocity)
+        speed = np.linalg.norm(velocity)
+        #angle = angle_from_to(heading, target_heading)
+        angle = angle_from_to(target_heading, heading)
+        rospy.loginfo("Angle Phi heading->target_heading: {0}, crosstrack_dist: {1}, speed: {2}".format(angle, crosstrack_distance, speed))
 
-        p = [position.x, position.y, position.z]
-        self.visualize.draw_n_points([p, self.last_target_point])
+        new_steering_angle = angle + np.arctan2(k*crosstrack_distance, speed)
 
-        steering_control = self.prius_steering_pid.update(secs, err)
-        rospy.loginfo("Tracking error: {0}, PID response: {1}".format(err, steering_control, self.avg_speed))
-        prius_msg = self.prius_msg_generator.forward(self.throttle, steering_control)
-        self.prius_move.publish(prius_msg)
+        return new_steering_angle
         
         
     def stop_path_tracking(self):
@@ -159,7 +180,7 @@ if __name__ == "__main__":
     rospy.loginfo("Clock is no longer zero")
 
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.04) # turn radius limit around curvature=0.3
+    path = ConstantCurvaturePath(curvature=0.02) # turn radius limit around curvature=0.3
     line_follow = LineFollowController(curve=path, positioning=positioning)
     line_follow.begin(throttle=0.2)
     rospy.spin()

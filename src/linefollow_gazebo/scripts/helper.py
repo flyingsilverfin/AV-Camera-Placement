@@ -71,6 +71,7 @@ def get_as_numpy_quaternion(quat):
     return normalize(quat)
 
 def get_as_numpy_direction_vec(orientation):
+    # returns an orientation as a vector along that direction
     if type(orientation) == type(np.empty(3,)) and orientation.shape == (3,):
         return orientation
 
@@ -80,6 +81,15 @@ def get_as_numpy_direction_vec(orientation):
         q = get_as_numpy_quaternion(orientation)
         return quat_mult_point(q, np.array([1.0, 0, 0]))
         
+def get_as_numpy_velocity_vec(vel):
+    if type(vel) == np.ndarray:
+        return vel
+
+    elif type(vel) == Vector3:
+        return np.array([vel.x, vel.y, vel.z])
+
+    else:
+        raise TypeError("Uknown velocity type: {}".format(type(vel)))
 
 
 def angle_from_to(from_, to):

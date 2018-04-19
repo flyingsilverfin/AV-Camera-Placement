@@ -143,6 +143,7 @@ class ConstantCurvaturePath(object):
             tangents = self.get_concrete_unit_tangents(start_time, end_time, speed, steps, return_type='numpy')
         self.cache['curve'] = curve 
         self.cache['tangents'] = tangents
+        assert self.cache['tangents'].shape[0] == self.cache['curve'].shape[0], "Mismatched curve and tangents!"
 
     # for debugging, test transformed paths 
     def get_points_transformed(self, start_time, end_time, transform, speed=1.0, steps=100):
@@ -292,37 +293,32 @@ class ConstantCurvaturePath(object):
     "
     """
 
-    def _calculate_error(self, position, heading, target, target_direction):
+    def _calculate_error(self, position, current_steer_angle, velocity, target, target_direction):
         
-        # using a custom error here
-        # calculate angle bteween heading vector and position->target vector
-        # arctan2(y2, x2) - arctan2(y1, x1) #NOTE found to be numerically unstable, along with a few other options
-        # which calculates angle from vector 2 to vector 1 
-        # and returns between 0 and 2pi
-
         position = get_as_numpy_position(position)
         heading = normalize(get_as_numpy_direction_vec(heading))
         diff = target - position         
-        distance = np.linalg.norm(diff)
+        crosstrack_distance = np.linalg.norm(diff)
+
+
+        # need forward velocity in direction of vehicle orientation...
+
+        speed = np.linalg.norm(get_as_numpy_velocity_vec(velocity))
 
         target_direction = normalize(target_direction)
         
-        #print("Vehicle position: {0},  heading: {1}, target: {2}, target direction {3}".format(position, heading, target, target_direction))
-
-
        
-        angle_to_target_position = 0 if distance < EPSILON else angle_from_to(heading, diff)
-#        angle_position_sign = 1 if angle_to_target_position == 0 else angle_to_target_position/np.abs(angle_to_target_position)
-        angle_to_target_steering = angle_from_to(heading, target_direction)
-#        angle_steering_sign = 1 if angle_to_target_steering == 0 else angle_to_target_steering/np.abs(angle_to_target_steering)
+        angle_heading_target = angle_from_to(heading, target_direction)
+        angle_steering_target = angle_from_to(target_direction, current_steer_angle)
+        
 
         weighting = 0.2 
-        error = distance * (weighting * angle_to_target_position + (1-weighting)*angle_to_target_steering)/np.pi
+        error = distance * (weighting * angle_to_target_position + (1-weighting)*angle_heading_target)/np.pi
 
         #error = distance * angle / np.pi + sign*0.1*distance 
 #        error = distance * angle/np.pi + sign*0.1*distance
 
-        print("Heading: {3}, Diff: {4}, Angle to target pos: {0}, angle diff target heading: {1}, distance: {2}".format(angle_to_target_position, angle_to_target_steering, distance, heading, diff))
+        print("Heading: {3}, Diff: {4}, Angle to target pos: {0}, angle diff target heading: {1}, distance: {2}".format(angle_to_target_position, angle_heading_target, distance, heading, diff))
 
         return error 
 
@@ -333,18 +329,9 @@ class ConstantCurvaturePath(object):
  
 
         return self._calculate_error(pos, heading, target_point)
-    
 
-    def closest_error(self, position, heading, last_closest_point, distance_resolution=0.1, max_horizon=None):
-        """crosstrack_error - calculates closest point that we haven't visited and corresponding error
 
-        :param position:
-        :param time:
-        :param speed:
-        :param distance_resolution:
-        :param max_horizon: DISTANCE IN METERS horizon from last closest point
-        """
-
+    def closest_point_tangent(self, position, heading, last_closest_point, distance_resolution=0.1, max_horizon=None):
         # set a default max horizon equal to one radius or 10m whichever is less 
         if max_horizon is None:
             if self.curvature == 0:
@@ -367,7 +354,7 @@ class ConstantCurvaturePath(object):
                 index = i
                 point = pt
                 break
-       
+      
         cached_start_time = self.cache['start_time']
         cached_end_time = self.cache['end_time']
         dt = cached_end_time - cached_start_time
@@ -380,6 +367,8 @@ class ConstantCurvaturePath(object):
         end_time = start_time + max_horizon/speed
 
         rospy.loginfo_throttle(0.25, "Point: {0}, index: {1}, index time = start time: {2}, end_time using horizon: {3}, cached_end_time: {4}".format(point, index, index_time, end_time, cached_end_time))
+
+        # check if the end time we want to search to is in the cached computed points
         if end_time > cached_end_time:
             # TODO update cached curve to include points in the horizon too
             save_ahead_cache_mult = 4 
@@ -395,7 +384,7 @@ class ConstantCurvaturePath(object):
             assert np.linalg.norm(curve[index] - point) < distance_resolution, "Updated curve has point different from previous closest point: curve[0] {0} vs previous closest: {1}".format(curve[index], point)
             point = curve[index]
        
-        # cut off cache so we can only ever move forward
+        # cut off cache so we can only ever move forward on the curve and not lock onto a remote point
         self.cache['curve'] = self.cache['curve'][index:]
         self.cache['tangents'] = self.cache['tangents'][index:]
         self.cache['start_time'] = index_time
@@ -412,8 +401,7 @@ class ConstantCurvaturePath(object):
        
         closest_point_tangent = self.cache['tangents'][closest_index]
 
-        return self._calculate_error(pos, heading, closest_point, closest_point_tangent), closest_point
-
+        return closest_point, closest_point_tangent 
 
     """
     "
