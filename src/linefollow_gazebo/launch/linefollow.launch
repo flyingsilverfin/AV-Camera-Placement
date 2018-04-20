@@ -19,12 +19,20 @@
 
   <node pkg="tf2_ros" type="static_transform_publisher" name="very_inaccurate_odom" args="0 0 0 0 0 0 odom base_link"/>
 
+  <!-- this is just to satisfy my curiosity. Problem solved by setting odom equal to map coordinates in the first place -->:
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_pos" args="0 0 0 0 0 0 map odom"/>
 
- <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 3 -y -12 -z 0.5 -model prius"/>
-
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0 -y 0 -z 0.5 -model prius"/>
+ 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
   <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" />
+
+
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf" clear_params="true">
+    <rosparam command="load" file="$(find localization)/params/ekf.yaml" />
+  </node>
+
 
   <!--
   <node name="steering_pid" pkg="pid" type="controller" output="screen">

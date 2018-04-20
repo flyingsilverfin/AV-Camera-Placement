@@ -16,7 +16,7 @@ from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Float64, Bool
 
 from PriusControlMsgGenerator import PriusControlMsgGenerator
-from Positioning import TruePositioning
+from Positioning import TruePositioning, EKFPositioning
 from ConstantCurvaturePath import ConstantCurvaturePath
 from PID import PID
 from VisualizeMarker import VisualizeMarker
@@ -25,7 +25,7 @@ from helper import *
 class LineFollowController(object):
     def __init__(self, curve, positioning=None):
         rospy.loginfo("Create LineFollowController object")
-        self.rate = rospy.get_param("~rate", 50.0)  # low rate to show 
+        self.rate = rospy.get_param("~rate", 50.0)   
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
@@ -33,7 +33,6 @@ class LineFollowController(object):
         # topic to publish prius Control message
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
 
-        self.prius_steering_pid = PID(kp=1.0, ki=0.01, kd=0.05, setpoint=0.0, lower_limit=-1.0, upper_limit=1.0, windup=0.5)
 
         self.curve = curve
         self.previous_v_x = 0.0
@@ -53,7 +52,7 @@ class LineFollowController(object):
 
     def wait_until_at_speed(self, event, accel_tolerance=0.5):
 
-        pose = self.positioning.get_pose()
+        pose = self.positioning.get_odom()
         
         if pose is None:
             print("Pose is None")
@@ -88,7 +87,7 @@ class LineFollowController(object):
             return
 
         now = rospy.get_rostime()
-        current_pose = self.positioning.get_pose()
+        current_pose = self.positioning.get_odom()
         
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
@@ -121,7 +120,7 @@ class LineFollowController(object):
         now = rospy.get_rostime()
         secs = now.to_sec()
 
-        pose = self.positioning.get_pose()
+        pose = self.positioning.get_odom()
 
         heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear) # NOTE: orientation from `pose` should be close to heading using velocity!
         position = get_as_numpy_position(pose.pose.pose.position)
@@ -165,7 +164,31 @@ class LineFollowController(object):
         self.tracking = False
         self.timer.shutdown() 
 
+
+
+# Occasionally publishes a true(er) position with some variance to a topic
+class Testing(object):
+    def __init__(self, true_positioning, update_period=2.0, variance=1.0):
+        rospy.loginfo("Create Testing object")
+        self.true_pos = true_positioning 
+        self.pub = rospy.Publisher("/testing/occasional_odom", Odometry, queue_size=5)
+        self.variance = variance
         
+        self.timer = rospy.Timer(rospy.Duration(update_period), self.update)
+
+    def update(self, event):
+        pose = self.true_pos.get_odom()
+        rospy.loginfo("Pose to update tru(er) position: {0}".format(pose))
+        if pose is None:
+            return
+        
+        # add some noise
+        noise = np.diag(np.random.normal(scale=self.variance, size=6)).ravel()
+        cov = np.array(pose.pose.covariance)
+        pose.pose.covariance = cov + noise
+
+        self.pub.publish(pose)
+
 
 if __name__ == "__main__":
     rospy.init_node("line_follow_py")
@@ -179,8 +202,14 @@ if __name__ == "__main__":
     rospy.sleep(2)
     rospy.loginfo("Clock is no longer zero")
 
+    ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.02) # turn radius limit around curvature=0.3
+    path = ConstantCurvaturePath(curvature=0.00) # turn radius limit around curvature=0.3
     line_follow = LineFollowController(curve=path, positioning=positioning)
     line_follow.begin(throttle=0.2)
+
+    #Testing(true_positioning=positioning)
+
+
+
     rospy.spin()

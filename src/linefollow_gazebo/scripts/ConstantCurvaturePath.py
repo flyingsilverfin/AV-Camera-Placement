@@ -362,7 +362,7 @@ class ConstantCurvaturePath(object):
         index_time = float(index)/steps * dt + cached_start_time 
 
         start_time = index_time 
-        speed = 1
+        speed = 1.0
         steps = max_horizon/distance_resolution
         end_time = start_time + max_horizon/speed
 
@@ -385,21 +385,22 @@ class ConstantCurvaturePath(object):
             point = curve[index]
        
         # cut off cache so we can only ever move forward on the curve and not lock onto a remote point
-        self.cache['curve'] = self.cache['curve'][index:]
-        self.cache['tangents'] = self.cache['tangents'][index:]
+        curve = self.cache['curve'] = self.cache['curve'][index:]
+        tangents = self.cache['tangents'] = self.cache['tangents'][index:]
         self.cache['start_time'] = index_time
 
         closest_index, closest_dist, closest_point = index, np.linalg.norm(point - pos), point 
-        # add a bias towards making progress
-        for i, pt in enumerate(curve):
+
+        horizon_steps = int(max_horizon/distance_resolution)
+        for i, pt in enumerate(curve[0 : horizon_steps]):
             d = np.linalg.norm(pt - pos)
-            # allow some slack to pick a forward point if it's close enough
+            # allow some slack to pick a forward point if it's close enough so we squash oscillations
             if d - distance_resolution/2 < closest_dist:
                 closest_dist = d
                 closest_point = pt
                 closest_index = i
        
-        closest_point_tangent = self.cache['tangents'][closest_index]
+        closest_point_tangent = tangents[closest_index]
 
         return closest_point, closest_point_tangent 
 

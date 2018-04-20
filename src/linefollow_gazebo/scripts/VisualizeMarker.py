@@ -54,4 +54,9 @@ class VisualizeMarker(object):
         self.last_msg = now
 
 
+    # PoseWithCovariance is already built into RViz!
+    #def draw_ellipse(self, center, major_axis, minor_axis, duration=10.0):
+        
+
+
 
