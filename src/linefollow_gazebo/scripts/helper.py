@@ -99,11 +99,18 @@ def angle_from_to(from_, to):
 
     angle = np.arccos(dot) # require these to be normalized
 
-    # adjust the sign using the cross product
-    normal_vec = np.cross(from_, to)
-    # if pointing UP ie. z > 0, heading is to the RHS of target_direction 
+    # adjust the sign
+    rhs = a_rhs_of_b(from_, to)
     # and angle needs to be negated (or any number of other things could be reversed)
-    if normal_vec[2] > 0:
+    if rhs:
         angle *= -1
 
     return angle
+
+
+def a_rhs_of_b(a, b):
+    """ Returns True if vector `a` is on the RHS or `b` using cross product """
+    normal = np.cross(a, b)
+    # if pointing UP, ie. z > 0, then b is to the RHS of a
+    return normal[2] > 0
+

@@ -179,7 +179,7 @@ class ConstantCurvaturePath(object):
             # straight line along x axis-from start point
             pt = self.init_point + np.array([dt*speed, 0.0, 0.0])
 
-        else:
+        else:r
             # get coefficient for within x(t) = R*cos(a*t), y(t) = R*sin(a*t)
             # such that the speed is constant as given
             # works out to a = sqrt(speed)/R
@@ -357,7 +357,7 @@ class ConstantCurvaturePath(object):
       
         cached_start_time = self.cache['start_time']
         cached_end_time = self.cache['end_time']
-        dt = cached_end_time - cached_start_time
+        dt = cached_end_time - cached_start_time2
         steps = len(curve) 
         index_time = float(index)/steps * dt + cached_start_time 
 
@@ -395,7 +395,7 @@ class ConstantCurvaturePath(object):
         for i, pt in enumerate(curve[0 : horizon_steps]):
             d = np.linalg.norm(pt - pos)
             # allow some slack to pick a forward point if it's close enough so we squash oscillations
-            if d - distance_resolution/2 < closest_dist:
+            if d  < closest_dist: #- distance_resolution/2 < closest_dist:
                 closest_dist = d
                 closest_point = pt
                 closest_index = i

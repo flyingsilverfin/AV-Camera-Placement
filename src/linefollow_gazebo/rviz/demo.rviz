@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Marker1
+        - /PoseWithCovariance1
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -131,6 +132,8 @@ Visualization Manager:
           Value: true
         imu_link:
           Value: true
+        map:
+          Value: true
         odom:
           Value: true
         rear_left_wheel:
@@ -145,23 +148,24 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        odom:
-          base_link:
-            chassis:
-              fl_axle:
-                front_left_wheel:
+        map:
+          odom:
+            base_link:
+              chassis:
+                fl_axle:
+                  front_left_wheel:
+                    {}
+                fr_axle:
+                  front_right_wheel:
+                    {}
+                rear_left_wheel:
                   {}
-              fr_axle:
-                front_right_wheel:
+                rear_right_wheel:
                   {}
-              rear_left_wheel:
+                steering_wheel:
+                  {}
+              imu_link:
                 {}
-              rear_right_wheel:
-                {}
-              steering_wheel:
-                {}
-            imu_link:
-              {}
       Update Interval: 0
       Value: true
     - Class: rviz/Marker
@@ -171,6 +175,36 @@ Visualization Manager:
       Namespaces:
         "": true
       Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.100000001
+      Class: rviz/PoseWithCovariance
+      Color: 255; 25; 0
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.300000012
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Head Length: 0.300000012
+      Head Radius: 0.100000001
+      Name: PoseWithCovariance
+      Shaft Length: 1
+      Shaft Radius: 0.0500000007
+      Shape: Arrow
+      Topic: /pose_estimate
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -195,16 +229,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 97.2531815
+      Distance: 357.538513
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.16149569
-        Y: -11.7367058
-        Z: 0.975754917
+        X: 77.8170547
+        Y: -15.8691902
+        Z: 30.8150673
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false

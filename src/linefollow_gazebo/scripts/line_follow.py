@@ -131,7 +131,13 @@ class LineFollowController(object):
         if viz:
             self.visualize.draw_n_points([position, self.last_target_point])
 
-        crosstrack_dist = np.linalg.norm(closest_point - position)
+        diff = closest_point - position
+        crosstrack_dist = np.linalg.norm(diff)
+        # needs to be a signed crosstrack distance
+        if a_rhs_of_b(diff, heading):
+            # if target is on LHS of heading negate
+            crosstrack_dist *= -1
+
         new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=3.30)
 
         # convert angle to command angle
@@ -145,7 +151,7 @@ class LineFollowController(object):
 
     
     
-    def hoffman_steer_angle(self, crosstrack_distance, velocity, target_heading, k=1.0):
+    def hoffman_steer_angle(self, signed_crosstrack_distance, velocity, target_heading, k=1.0):
         """ Calculates steering angle directly (no feedback) using Stanley 2006 line tracking function (Hoffman et al)
         """
         
@@ -153,9 +159,9 @@ class LineFollowController(object):
         speed = np.linalg.norm(velocity)
         #angle = angle_from_to(heading, target_heading)
         angle = angle_from_to(target_heading, heading)
-        rospy.loginfo("Angle Phi heading->target_heading: {0}, crosstrack_dist: {1}, speed: {2}".format(angle, crosstrack_distance, speed))
+        rospy.loginfo("Angle Phi heading->target_heading: {0}, signed_crosstrack_dist: {1}, speed: {2}".format(angle, signed_crosstrack_distance, speed))
 
-        new_steering_angle = angle + np.arctan2(k*crosstrack_distance, speed)
+        new_steering_angle = angle + np.arctan2(k*signed_crosstrack_distance, speed)
 
         return new_steering_angle
         
@@ -204,11 +210,11 @@ if __name__ == "__main__":
 
     ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.00) # turn radius limit around curvature=0.3
+    path = ConstantCurvaturePath(curvature=0.02) # turn radius limit around curvature=0.3
     line_follow = LineFollowController(curve=path, positioning=positioning)
     line_follow.begin(throttle=0.2)
 
-    #Testing(true_positioning=positioning)
+    Testing(true_positioning=positioning)
 
 
 
