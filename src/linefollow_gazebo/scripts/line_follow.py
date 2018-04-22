@@ -18,12 +18,12 @@ from std_msgs.msg import Float64, Bool
 from PriusControlMsgGenerator import PriusControlMsgGenerator
 from Positioning import TruePositioning, EKFPositioning
 from ConstantCurvaturePath import ConstantCurvaturePath
-from PID import PID
 from VisualizeMarker import VisualizeMarker
 from helper import *
+from Path import Path, ForwardPathTracker
 
 class LineFollowController(object):
-    def __init__(self, curve, positioning=None):
+    def __init__(self, path, positioning=None):
         rospy.loginfo("Create LineFollowController object")
         self.rate = rospy.get_param("~rate", 50.0)   
         self.period = 1.0 / self.rate
@@ -34,7 +34,8 @@ class LineFollowController(object):
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
 
 
-        self.curve = curve
+        self.path = path
+
         self.previous_v_x = 0.0
         self.tracking = False
 
@@ -92,12 +93,13 @@ class LineFollowController(object):
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
         pos = current_pose.pose.pose.position
+        orientation = current_pose.pose.pose.orientation
     
         self.last_target_point = get_as_numpy_position(pos)
 
-        self.curve.begin(now.to_sec(), pos,
-                         current_pose.pose.pose.orientation)
-      
+        self.path.set_start(pos, orientation)
+        self.path_tracker = self.path.get_tracker()
+        self.path_tracker.update(pos)
 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
@@ -109,27 +111,30 @@ class LineFollowController(object):
             rospy.logerror("Path tracking updatecalled when not tracking, call begin_track_path_first!")
             return
 
-        steer_angle = self.hoffman_control()
+        now = rospy.get_rostime()
+        secs = now.to_sec()
+
+        pose = self.positioning.get_odom()
+        position = get_as_numpy_position(pose.pose.pose.position)
+        heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear)
+
+        self.path_tracker.update(position)
+
+        steer_angle = self.hoffman_control(position, heading, vel)
         rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
         prius_msg = self.prius_msg_generator.forward(self.throttle, steer_angle)
         self.prius_move.publish(prius_msg)
        
 
-    def hoffman_control(self, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
+    def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
         """ Returns a steering command from -1.0 to 1.0 according to hoffman controller """
-        now = rospy.get_rostime()
-        secs = now.to_sec()
 
-        pose = self.positioning.get_odom()
-
-        heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear) # NOTE: orientation from `pose` should be close to heading using velocity!
-        position = get_as_numpy_position(pose.pose.pose.position)
         
-        closest_point, closest_heading = self.curve.closest_point_tangent(position, heading, self.last_target_point, max_horizon=2.0)
-        self.last_target_point = closest_point
+        closest_point = self.path_tracker.get_closest_point()
+        closest_heading = self.path_tracker.get_closest_tangent()
 
         if viz:
-            self.visualize.draw_n_points([position, self.last_target_point])
+            self.visualize.draw_n_points([position, closest_point])
 
         diff = closest_point - position
         crosstrack_dist = np.linalg.norm(diff)
@@ -152,7 +157,7 @@ class LineFollowController(object):
     
     
     def hoffman_steer_angle(self, signed_crosstrack_distance, velocity, target_heading, k=1.0):
-        """ Calculates steering angle directly (no feedback) using Stanley 2006 line tracking function (Hoffman et al)
+        """ Calculates steering angle directly (no feedback) using basic Stanley 2006 line tracking function (Hoffman et al)
         """
         
         heading = normalize(velocity)
@@ -211,7 +216,11 @@ if __name__ == "__main__":
     ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
     positioning = TruePositioning()
     path = ConstantCurvaturePath(curvature=0.02) # turn radius limit around curvature=0.3
-    line_follow = LineFollowController(curve=path, positioning=positioning)
+
+    path = Path()
+    path.add_segment(curvature=0.02, length=-1)
+
+    line_follow = LineFollowController(path=path, positioning=positioning)
     line_follow.begin(throttle=0.2)
 
     Testing(true_positioning=positioning)

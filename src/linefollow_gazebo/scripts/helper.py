@@ -3,7 +3,6 @@ import numpy as np
 import rospy
 import tf_conversions
 
-import tf2_geometry_msgs
 from geometry_msgs.msg import PointStamped, TransformStamped, Vector3
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
@@ -38,6 +37,20 @@ def quat_inv_mult(quat1, quat2):
     q = tf_conversions.transformations.quaternion_multiply(quat2, inv)
     return q 
 
+def rotation_to_quat(rotation):
+    if rotation.shape == (3,3):
+        # extend for homogenous coords
+        rotation = np.vstack([rotation, [0, 0, 0]])
+        rotation = np.hstack([rotation, np.array([0, 0, 0, 1]).reshape(-1, 1)])
+    return tf_conversions.transformations.quaternion_from_matrix(rotation)
+
+def quat_inv(quat):
+    return tf_conversions.transformations.quaternion_inverse(quat)
+
+
+def quat_from_rpy(r, p, y):
+    rpy = np.deg2rad([r, p, y])
+    return tf_conversions.transformations.quaternion_from_euler(*rpy)
 
 def normalize(vec):
     return vec/np.linalg.norm(vec)
@@ -63,7 +76,7 @@ def get_as_numpy_quaternion(quat):
     #elif type(quat) == type(np.empty(3)) and quat.shape == (3,):
     #    pass
     elif type(quat) == type(np.empty(4)) and quat.shape == (4,):
-        quat = quat_mult_point(quat, np.array([1.0, 0.0, 0.0]))
+        pass
     else:
         rospy.logerr("Quat provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
         raise Exception("Invalid quat type")
