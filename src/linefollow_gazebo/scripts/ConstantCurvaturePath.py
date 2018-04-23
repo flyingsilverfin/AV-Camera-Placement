@@ -19,8 +19,8 @@ class ConstantCurvaturePath(object):
         
         # Init order matters!
         self.curvature = curvature
-        if self.curvature > 0.0:
-            self.r = np.abs(1/self.curvature)
+        if np.abs(curvature) > 0.0:
+            self.r = 1.0/self.curvature
 
         # list to store sequence of transformations, rotations or translations in homogenous coordinates
         # order matters - stored in reverse order for easy append
@@ -34,9 +34,6 @@ class ConstantCurvaturePath(object):
 
         # set up some defaults
         self.set_start_time()
-        self.set_start_position()
-        self.set_start_orientation_rpy()
-        
 
         self.length = length 
         self.speed = 1.0 # default to 1.0 m/s for parametrization 
@@ -183,6 +180,8 @@ class ConstantCurvaturePath(object):
 
 
     def to_world_rotation(self, point):
+        if self.rotation is None:
+            return point
         # convert point to homogenous coords
         point = np.append(point, [1.0])
         rotated = np.matmul(self.rotation, point)
@@ -191,6 +190,8 @@ class ConstantCurvaturePath(object):
        
 
     def to_world_coord(self, point):
+        if self.transform is None:
+            return point
         # point => homogenous
         point = np.append(point, [1.0])
         transformed = np.matmul(self.transform, point)
@@ -198,6 +199,9 @@ class ConstantCurvaturePath(object):
         return vector
 
     def from_world_coord(self, point):
+        if self.inv_transform is None:
+            return point
+        # point => homogenous
         point = np.append(point, [1.0])
         transformed = np.matmul(self.inv_transform, point)
         vector = transformed[:-1]/transformed[-1]
@@ -285,9 +289,9 @@ class ConstantCurvaturePath(object):
         self.rotation = None 
 
     def set_start_position(self, pos=np.array([0.0, 0.0, 0.0])):
-        if len(self.transformations) > 1 or (len(self.transformations) == 1 and len(self.rotations) != 1):
-            raise Exception("Cannot set start position if more than 1 transform (ie. a rotation) exists. \
-                             Try add_translation instead or reset_transforms first")
+        # if there are any existing translations, cannot set a start translation
+        if len(self.transformations) != len(self.rotations):
+            raise Exception("Cannot set start position if any translations already exist")
 
         pos = get_as_numpy_position(pos)
 
@@ -307,14 +311,13 @@ class ConstantCurvaturePath(object):
 
 
     def set_start_orientation_matrix(self, rotation_matrix):
-        if len(self.transformations) > 1 or (len(self.transformations) == 1 and len(self.rotations) != 0):
-            raise Exception("Cannot set start orientation if more than 1 transform (ie. a translation) exists. \
-                             Try add_rotation instead or reset_transforms first")
+        # if there are existing rotations, cannot set start rotation
+        if len(self.rotations) != 0:
+            raise Exception("Cannot set start orientation if any rotations exist")
         
         self.transformations.append(rotation_matrix)
         self.rotations.append(rotation_matrix)
 
-        print("Rotation matrix: ", rotation_matrix, self.rotation)
         self.transform = rotation_matrix if self.transform is None else np.matmul(rotation_matrix, self.transform)
         self.rotation = rotation_matrix if self.rotation is None else np.matmul(rotation_matrix, self.rotation)
         self.inv_transform = inv_transform(self.transform)

@@ -53,8 +53,7 @@ class TestCCP(unittest.TestCase):
     def test_set_start_orientation(self):
         self.create(0.1, 0.5*10*2*np.pi)
 
-        quat = quat_from_rpy(0.0, 0.0, 90.0)
-        self.curve.set_start_orientation(quat)
+        self.curve.set_start_orientation_rpy(np.array([0.0, 0.0, 90.0]))
 
         exp_p_t0, p_t0 = np.array([0.0, 0.0, 0.0]), self.curve.point_at(0.0)
         self.assertTrue(np.allclose(p_t0, exp_p_t0), "After rotation of degrees around Z axis got {0} instead of expected {1}".format(p_t0, exp_p_t0))

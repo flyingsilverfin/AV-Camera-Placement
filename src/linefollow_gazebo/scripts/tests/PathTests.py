@@ -144,11 +144,11 @@ class TestPath(unittest.TestCase):
         self.addOneSegment(0.0, 10.0)
         self.addOneSegment(0.1, 0.5*2*10*np.pi)
 
-        orientation = quat_from_rpy(0.0, 0.0, 90.0)
+        orientation = np.array([0.0, 0.0, 90.0])
         start = np.array([1.0, 1.0, 0.0])
         self.path.set_start(orientation, start)
 
-        ts = [0.0, 5.0, 10.0, 0.25*2*10*np.pi, 0.5*2*10*np.pi]
+        ts = [0.0, 5.0, 10.0, 10 + 0.25*2*10*np.pi, 10 + 0.5*2*10*np.pi]
         pts = [self.path.get_point_at(t) for t in ts]
         expected = [[1.0, 1.0, 0.0],
                     [1.0, 6.0, 0.0],

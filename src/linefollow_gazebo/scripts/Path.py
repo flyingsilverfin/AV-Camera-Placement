@@ -3,6 +3,7 @@ Piecewise paths analytically defined
 """
 import numpy as np
 from ConstantCurvaturePath import ConstantCurvaturePath
+from helper import rpy_to_matrix
 
 # A Path is defined as a sequence of curves
 # Time parametrized from t = 0 at a speed of 1 m/s
@@ -17,13 +18,13 @@ class Path(object):
     """ Class Representing a Path, componses of multiple curves. Defined from t = 0 onwards, parametrized at implicity speed 1 m/s so time == distance"""
 
 
-    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_rpy=np.array([0.0, 0.0, 0.0]), repeat=False):
+    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_rpy_deg=np.array([0.0, 0.0, 0.0]), repeat=False):
         if len(curvatures) != len(lengths):
             raise Exception("Path creation must provide both curvatures and lengths for each segment")
 
         self.segments = []
         self.start_pos = start_pos
-        self.start_orientation = start_orientation_rpy
+        self.start_orientation_rpy = start_orientation_rpy_deg
         self.end_time = 0.0
         self.repeat = repeat
         
@@ -39,7 +40,7 @@ class Path(object):
             first_segment = ConstantCurvaturePath(curvatures[0], lengths[0])
             first_segment.set_start_time(0.0)
             first_segment.set_start_position(start_pos)
-            first_segment.set_start_orientation(start_orientation_rpy)
+            first_segment.set_start_orientation_rpy(start_orientation_rpy_deg)
             self.segments.append(first_segment)
             
             if lengths[0] != -1:
@@ -75,16 +76,45 @@ class Path(object):
 
         else:
             pos = self.start_pos
-            orientation_quat = self.start_orientation
+            orientation_matrix = rpy_to_matrix(*self.start_orientation_rpy)
 
         new_segment = ConstantCurvaturePath(curvature, length)
         new_segment.set_start_time(self.end_time)
-        new_segment.set_start_position(pos)
+        # rotation first, then translation!!
         new_segment.set_start_orientation_matrix(orientation_matrix)
+        new_segment.set_start_position(pos)
         self.segments.append(new_segment)
 
         if length != -1:
             self.end_time += length
+
+    def reset_to_origin(self):
+        """ Resets the segments transforms to be a connected curve with the first being x-axis aligned again """
+        if len(self.segments) == 0:
+            return
+        self.segments[0].reset_transforms()
+        if len(self.segments) > 1:
+            prev_pos = self.segments[0].point_at(self.segments[0].end_time)
+            prev_rot = self.segments[0].tangent_rotation_matrix_at(self.segments[0].end_time)
+            for segment in self.segments[1:-1]:
+                end_time = segment.end_time
+                if end_time == -1:
+                    # this should never arise since we chopped off the last segment in the loop
+                    # and only the last segment can be unbounded in a valid path
+                    raise Exception("Badly formatted piecewise path with unbounded length that isn't last segment")
+                segment.reset_transforms()
+                segment.set_start_orientation_matrix(prev_rot)
+                segment.set_start_position(prev_pos)
+
+                prev_pos = segment.point_at(end_time)
+                prev_rot = segment.tangent_rotation_matrix_at(end_time)
+
+            self.segments[-1].reset_transforms()
+            self.segments[-1].set_start_orientation_matrix(prev_rot)
+            self.segments[-1].set_start_position(prev_pos)
+
+
+            
 
 
     def set_start(self, orientation_rpy_deg, position, apply_orientation_first=True):
@@ -121,7 +151,6 @@ class Path(object):
                 return segment # unbounded length will catch all following times
             else:
                 time += segment.get_length()
-                print("Segment end time: {0}, seaching for: {1}".format(time, target_time))
                 if target_time <= time:
                     return segment
         # TODO deal with lapping/circuits
