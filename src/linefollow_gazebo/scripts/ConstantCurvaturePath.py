@@ -22,10 +22,21 @@ class ConstantCurvaturePath(object):
         if self.curvature > 0.0:
             self.r = np.abs(1/self.curvature)
 
+        # list to store sequence of transformations, rotations or translations in homogenous coordinates
+        # order matters - stored in reverse order for easy append
+        # reversed on concat
+        self.transformations = []   
+        self.rotations = []     # used for rotating tangents and normals that don't care about translations
+        # store composed transform
+        self.transform = None
+        self.inv_transform = None
+        self.rotation = None 
+
         # set up some defaults
         self.set_start_time()
         self.set_start_position()
-        self.set_start_orientation()
+        self.set_start_orientation_rpy()
+        
 
         self.length = length 
         self.speed = 1.0 # default to 1.0 m/s for parametrization 
@@ -59,7 +70,7 @@ class ConstantCurvaturePath(object):
 
         return tangent
 
-    def tangent_quat_at(self, t, return_type='numpy'):
+    def tangent_rotation_matrix_at(self, t, return_type='numpy'):
         tangent = self.tangent_at(t)
         normal = self.normal_at(t)
         z = np.cross(tangent, normal)
@@ -68,9 +79,11 @@ class ConstantCurvaturePath(object):
         # which is equivalent to the rotation matrix from 
         # standard coordinate system (XYZ aligned) to (tangent, normal, z)
 
-        basis = np.array([tangent, normal, z]) 
-
-        return rotation_to_quat(basis.T)
+        basis = np.array([tangent, normal, z]).T 
+        # extend for homogenous coords
+        rotation = np.vstack([basis, [0, 0, 0]])
+        rotation = np.hstack([rotation, np.array([0, 0, 0, 1]).reshape(-1, 1)])
+        return rotation
 
     def normal_at(self, t, speed=None, return_type='numpy'):
         if speed is None:
@@ -170,16 +183,25 @@ class ConstantCurvaturePath(object):
 
 
     def to_world_rotation(self, point):
-        return quat_mult_point(self.start_orientation, point)
+        # convert point to homogenous coords
+        point = np.append(point, [1.0])
+        rotated = np.matmul(self.rotation, point)
+        vector = rotated[:-1]/rotated[-1]   # convert to normal coordinates again
+        return vector
+       
 
     def to_world_coord(self, point):
-        p = quat_mult_point(self.start_orientation, point)
-        return p + self.start_pos
+        # point => homogenous
+        point = np.append(point, [1.0])
+        transformed = np.matmul(self.transform, point)
+        vector = transformed[:-1]/transformed[-1]
+        return vector
 
     def from_world_coord(self, point):
-        p = point - self.start_pos
-        return quat_mult_point(self.start_orientation_inv, point)
-
+        point = np.append(point, [1.0])
+        transformed = np.matmul(self.inv_transform, point)
+        vector = transformed[:-1]/transformed[-1]
+        return vector
 
     def closest_point_time(self, target_point, min_time=None, max_horizon=None):
         """ Compute the closest point's time in the curve parametrization
@@ -255,26 +277,77 @@ class ConstantCurvaturePath(object):
         if hasattr(self, 'end_time') and self.end_time != -1:
             self.end_time = self.start_time + self.duration
 
+    def reset_transforms(self):
+        self.transformations = []
+        self.rotations = []
+        self.transform = None
+        self.inv_transform = None
+        self.rotation = None 
+
     def set_start_position(self, pos=np.array([0.0, 0.0, 0.0])):
+        if len(self.transformations) > 1 or (len(self.transformations) == 1 and len(self.rotations) != 1):
+            raise Exception("Cannot set start position if more than 1 transform (ie. a rotation) exists. \
+                             Try add_translation instead or reset_transforms first")
 
         pos = get_as_numpy_position(pos)
-        self.start_pos = pos
 
-    def set_start_orientation(self, orientation=np.array([0, 0, 0, 1.0])):
+        translation_matrix = get_translation_matrix(pos)
+        self.transformations.append(translation_matrix)
         
-        orientation = get_as_numpy_quaternion(orientation)
-        self.start_orientation = orientation
-        self.start_orientation_inv = quat_inv(orientation)
+        if self.transform is None:
+            self.transform = translation_matrix
+        else:
+            # add this transform by left multiplying with existing transform
+            self.transform = np.matmul(translation_matrix, self.transform)
+        self.inv_transform = inv_transform(self.transform)
+
+    def set_start_orientation_rpy(self, orientation_rpy_deg=np.array([0, 0, 0.0])):
+        rotation_matrix = rpy_to_matrix(*orientation_rpy_deg)
+        self.set_start_orientation_matrix(rotation_matrix)
+
+
+    def set_start_orientation_matrix(self, rotation_matrix):
+        if len(self.transformations) > 1 or (len(self.transformations) == 1 and len(self.rotations) != 0):
+            raise Exception("Cannot set start orientation if more than 1 transform (ie. a translation) exists. \
+                             Try add_rotation instead or reset_transforms first")
+        
+        self.transformations.append(rotation_matrix)
+        self.rotations.append(rotation_matrix)
+
+        print("Rotation matrix: ", rotation_matrix, self.rotation)
+        self.transform = rotation_matrix if self.transform is None else np.matmul(rotation_matrix, self.transform)
+        self.rotation = rotation_matrix if self.rotation is None else np.matmul(rotation_matrix, self.rotation)
+        self.inv_transform = inv_transform(self.transform)
     
-    def move_start_position(self, vector):
+    def add_translation(self, vector):
+        if len(self.transformations) == 0 or (len(self.transformations) == 1 and len(self.rotations) == 1):
+            self.set_start_position(vector)
+            return
+
         vector = get_as_numpy_position(vector)
-        self.start_pos += vector
+        translation_matrix = get_translation_matrix(vector)
+        self.transformations.append(translation_matrix)
+        self.transform = np.matmul(translation_matrix, self.transform)
+        self.inv_transform = inv_transform(self.transform)
 
-    def modify_start_orientation(self, quaternion):
-        # compound a rotation with existing one
-        self.start_orientation = quat_mult_quat(quaternion, self.start_orientation)
-        start_orientation_inv = quat_inv(self.start_orientation)
 
+    def add_rotation_rpy(self, rotation_rpy_deg):
+        rotation_matrix = rpy_to_matrix(*rotation_rpy_deg)
+        self.add_rotation_matrix(rotation_matrix)
+
+    def add_rotation_matrix(self, rotation_matrix):
+        # check if it's the first rotation, if so go to the other code (avoids a bit of duplication)
+        if len(self.transformations) == 0 or (len(self.transformations) == 1 and len(self.rotations) == 0):
+            self.set_start_orientation_matrix(rotation_matrix)
+            return
+
+        self.transformations.append(rotation_matrix)
+        self.rotations.append(rotation_matrix)
+
+        self.transform = np.matmul(rotation_matrix, self.transform)
+        self.rotation = np.matmul(rotation_matrix, self.rotation)
+        
+        self.inv_transform = inv_transform(self.transform)
 
 # class ConstantCurvaturePath(object):
     # """

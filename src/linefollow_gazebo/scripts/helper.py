@@ -37,13 +37,6 @@ def quat_inv_mult(quat1, quat2):
     q = tf_conversions.transformations.quaternion_multiply(quat2, inv)
     return q 
 
-def rotation_to_quat(rotation):
-    if rotation.shape == (3,3):
-        # extend for homogenous coords
-        rotation = np.vstack([rotation, [0, 0, 0]])
-        rotation = np.hstack([rotation, np.array([0, 0, 0, 1]).reshape(-1, 1)])
-    return tf_conversions.transformations.quaternion_from_matrix(rotation)
-
 def quat_inv(quat):
     return tf_conversions.transformations.quaternion_inverse(quat)
 
@@ -51,6 +44,16 @@ def quat_inv(quat):
 def quat_from_rpy(r, p, y):
     rpy = np.deg2rad([r, p, y])
     return tf_conversions.transformations.quaternion_from_euler(*rpy)
+
+def rpy_to_matrix(r, p, y):
+    rpy = np.deg2rad([r, p, y])
+    return tf_conversions.transformations.euler_matrix(*rpy)
+
+def inv_transform(matrix):
+    return tf_conversions.transformations.inverse_matrix(matrix)
+
+def get_translation_matrix(vector):
+    return tf_conversions.transformations.translation_matrix(vector)
 
 def normalize(vec):
     return vec/np.linalg.norm(vec)

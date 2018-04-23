@@ -17,13 +17,13 @@ class Path(object):
     """ Class Representing a Path, componses of multiple curves. Defined from t = 0 onwards, parametrized at implicity speed 1 m/s so time == distance"""
 
 
-    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_quaternion=np.array([0.0, 0.0, 0.0, 1.0]), repeat=False):
+    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_rpy=np.array([0.0, 0.0, 0.0]), repeat=False):
         if len(curvatures) != len(lengths):
             raise Exception("Path creation must provide both curvatures and lengths for each segment")
 
         self.segments = []
         self.start_pos = start_pos
-        self.start_orientation = start_orientation_quaternion
+        self.start_orientation = start_orientation_rpy
         self.end_time = 0.0
         self.repeat = repeat
         
@@ -39,7 +39,7 @@ class Path(object):
             first_segment = ConstantCurvaturePath(curvatures[0], lengths[0])
             first_segment.set_start_time(0.0)
             first_segment.set_start_position(start_pos)
-            first_segment.set_start_orientation(start_orientation_quaternion)
+            first_segment.set_start_orientation(start_orientation_rpy)
             self.segments.append(first_segment)
             
             if lengths[0] != -1:
@@ -48,12 +48,12 @@ class Path(object):
             for curvature, length in zip(curvatures[1:], lengths[1:]):
                 
                 pos = self.segments[-1].point_at(self.end_time)
-                orientation_quat = self.segments[-1].tangent_quat_at(self.end_time)
+                orientation_matrix = self.segments[-1].tangent_rotation_matrix_at(self.end_time)
     
                 c = ConstantCurvaturePath(curvature, length)
                 c.set_start_time(self.end_time)
                 c.set_start_position(pos)
-                c.set_start_orientation(orientation_quat)
+                c.set_start_orientation_matrix(orientation_matrix)
                 self.segments.append(c)
                 if length != -1:
                     self.end_time += length
@@ -70,7 +70,7 @@ class Path(object):
                 raise UnboundedSegmentException("Last existing segment has unlimited length, cannot add another after!")
 
             pos = last_segment.point_at(self.end_time)
-            orientation_quat = last_segment.tangent_quat_at(self.end_time)
+            orientation_matrix = last_segment.tangent_rotation_matrix_at(self.end_time)
 
 
         else:
@@ -80,23 +80,27 @@ class Path(object):
         new_segment = ConstantCurvaturePath(curvature, length)
         new_segment.set_start_time(self.end_time)
         new_segment.set_start_position(pos)
-        new_segment.set_start_orientation(orientation_quat)
+        new_segment.set_start_orientation_matrix(orientation_matrix)
         self.segments.append(new_segment)
 
         if length != -1:
             self.end_time += length
 
 
-    def set_start(self, orientation, position):
-        # have to iterate through all existing segments and move by position
-
-        self.start_pos = position
-        self.start_orientation = orientation
+    def set_start(self, orientation_rpy_deg, position, apply_orientation_first=True):
+        
+        # these need to be handled as additional transformations
+        # rather than set_start otherwise all non-first segments
+        # will be reset to be transformed relative to the origin
+        # when we want to transform relative to whereever they were before
         for segment in self.segments:
-            # can't just set position - they need to be moved relative!
-            segment.modify_start_orientation(orientation)
-            segment.move_start_position(position)
-            
+            if apply_orientation_first:
+                segment.add_rotation_rpy(orientation_rpy_deg)
+                segment.add_translation(position)
+            else:
+                segment.add_translation(position)
+                segment.add_rotation_rpy(orientation_rpy_deg)
+
 
     def set_last_segment_length(self, length):
         """ Used to shorten last segment which may have infinite length """
@@ -113,12 +117,13 @@ class Path(object):
             target_time = target_time % self.end_time
         time = 0.0
         for segment in self.segments:
-            time += segment.get_length()
-            print("Segment end time: {0}, seaching for: {1}".format(time, target_time))
-            if target_time <= time:
-                print("FOUND")
-                return segment
-        print("NOT FOUND")
+            if segment.get_length() == -1:
+                return segment # unbounded length will catch all following times
+            else:
+                time += segment.get_length()
+                print("Segment end time: {0}, seaching for: {1}".format(time, target_time))
+                if target_time <= time:
+                    return segment
         # TODO deal with lapping/circuits
 
     def get_segment_after(self, target_segment):

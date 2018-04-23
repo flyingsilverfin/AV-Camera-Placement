@@ -122,7 +122,7 @@ class TestPath(unittest.TestCase):
         computed_points = [self.path.get_point_at(t) for t in times]
 
         for expected, got in zip(points, computed_points):
-            self.assertEqual(got, expected, "Expected {0} and got {1}".format(expected, got))
+            self.assertTrue(np.allclose(got, expected), "Expected {0} and got {1}".format(expected, got))
 
     def test_set_last_segment_length(self):
         self.addOneSegment(0.0, 10.0)
