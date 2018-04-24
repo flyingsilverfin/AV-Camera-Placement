@@ -10,12 +10,17 @@ class Road(object):
 
 
         self.path = path
+
+        # width on path
         self.width = width
+
+        # "pavement"
         self.side_offset = side_offset
 
 
 
-    def get_path_tracker(self):
-        """ Returns an encapsulated path that holds some state """
+
+
+
 
         

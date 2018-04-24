@@ -77,7 +77,7 @@ class Camera(object):
         self.setup()
 
 
-    def set_orientation(self, orientation_pitch_deg=0.0, orientation_pitch_yaw=0.0):
+    def set_orientation(self, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0):
 
         self.orientation_rpy = np.deg2rad(np.array([00.0, orientation_pitch_deg, orientation_yaw_deg]))
         self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
@@ -177,6 +177,7 @@ class Camera(object):
 
 
 
+        return point
 
 #    def _x_ray(self, x):
 #        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2.0*x/self.R_x)
@@ -209,7 +210,6 @@ class Camera(object):
 #        un_translated = target_plane_point + self.translation
 #        point = quat_mult_point(self.inv_rotation, un_translated)
 
-        return point
 
 
     def plane_area_of_pixel(self, x, y):

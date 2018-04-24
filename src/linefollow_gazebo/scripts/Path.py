@@ -170,6 +170,14 @@ class Path(object):
         segment = self.get_segment_for_time(t)
         return segment.point_at(t)
 
+    def get_tangent_at(self, t):
+        segment = self.get_segment_for_time(t)
+        return segment.tangent_at(t)
+
+    def get_normal_at(self, t):
+        segment = self.get_segment_for_time(t)
+        return segment.normal_at(t)
+
     def _in_segment(self, time, segment):
         return segment.start_time <= time and (time < segment.start_time + segment.get_length() or segment.get_length() == -1)
 

@@ -45,6 +45,9 @@ def quat_from_rpy(r, p, y):
     rpy = np.deg2rad([r, p, y])
     return tf_conversions.transformations.quaternion_from_euler(*rpy)
 
+def quat_to_rpy(quat):
+    return tf_conversions.transformations.euler_from_quaternion(quat)
+
 def rpy_to_matrix(r, p, y):
     rpy = np.deg2rad([r, p, y])
     return tf_conversions.transformations.euler_matrix(*rpy)
@@ -54,6 +57,9 @@ def inv_transform(matrix):
 
 def get_translation_matrix(vector):
     return tf_conversions.transformations.translation_matrix(vector)
+
+def quat_to_rotation_matrix(quat):
+    return tf_conversions.transformations.quaternion_matrix(quat)  
 
 def normalize(vec):
     return vec/np.linalg.norm(vec)
