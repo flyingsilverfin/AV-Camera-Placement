@@ -27,6 +27,7 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
   <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" />
+  <node pkg="linefollow_gazebo" type="FakeWheelOdometry.pg" name="FakeWheelOdometry" />
 
 
   <node pkg="robot_localization" type="ekf_localization_node" name="ekf" clear_params="true">
