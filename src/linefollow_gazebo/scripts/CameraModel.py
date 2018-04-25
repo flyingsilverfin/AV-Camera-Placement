@@ -22,17 +22,19 @@ def plot_points(axes, points, color='blue', size=2):
 # some traffic camera information
 # https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf
 class Camera(object):
-    def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0):
+    def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0, model='perspective'):
         
+        self.model = model 
+
         self.position = np.array(position)
-        self.orientation_rpy = np.deg2rad(np.array([00.0, orientation_pitch_deg, orientation_yaw_deg]))
+        self.orientation_rpy = np.deg2rad(np.array([-90.0, orientation_pitch_deg, orientation_yaw_deg]))
         self.orientation = transforms.quaternion_from_euler(*self.orientation_rpy)
         self.generate_transform()
 
         # initialize to some defaults
+        self.set_focal_length()
         self.set_fov()
         self.set_resolution()
-        self.set_focal_length()
         self.set_target_plane()
 
         self.original_plane = None
@@ -40,6 +42,7 @@ class Camera(object):
         self.setup()
 
     def setup(self):
+        self._compute_pixel_plane_boundaries()
         
         # focal-axis aligned vector
         self.orientation_vector = quat_mult_point(self.orientation, np.array([1.0, 0.0, 0.0]))
@@ -57,11 +60,17 @@ class Camera(object):
         self.transform_target_plane()
 
 
+    def _compute_pixel_plane_boundaries(self):
+        # pre-compute the x and y bounds of the scaled camera pixel plane
+        self.max_x_pixel_plane = self.r(self.w_fov/2.0)
+        self.max_y_pixel_plane = self.r(self.h_fov/2.0)
+
     def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0):
         # TODO these /2 are here because I dropped a /2 in the math somewhere...
 
         self.w_fov = np.deg2rad(horizontal_deg)
         self.h_fov = np.deg2rad(vertical_deg)
+        self._compute_pixel_plane_boundaries()
 
     def set_resolution(self, h=300, w=400):
         self.R_y = h
@@ -140,53 +149,69 @@ class Camera(object):
         }
 
 
-    def _x_ray(self, theta, phi):
-        t = theta# - self.orientation_rpy[1]
-        p = phi# - self.orientation_rpy[2]
 
-        return self.f * np.cos(t) * np.sin(p)
+    # subsume all previous approaches under one mathematically unified implementation
+
+    def r(self, theta):
+        if self.model == 'perspective':
+            if np.abs(theta) > np.pi/2:
+                print("WARNING: attempting to use perspective model for angles greater than 90 degrees!")
+            return self.f * np.tan(theta)
+        elif self.model == 'equidistance':
+            return self.f * theta
+        elif self.model == 'stereographic':
+            return 2*self.f*np.tan(theta/2.0)
+        elif self.model == 'equisolid':
+            return 2*self.f*np.sin(theta/2.0)
+        else:
+            raise Exception("Unknown camera model: {}".format(self.model))
+
+    def theta(self, r):
+        if self.model == 'perspective':
+            return np.arctan2(r, self.f)
+        elif self.model == 'equidistance':
+            return r / self.f
+        elif self.model == 'stereographic':
+            return 2*np.arctan2(r, 2*self.f)
+        elif self.model == 'equisolid':
+            return 2*np.arcsin(r/2.0*self.f)
+        else:
+            raise Exception("Unknown camera model: {}".format(self.model))
+
+
+    def _get_pixel_ray(self, x, y):
+        """
+        1. convert x,y into real pixel-plane coordinate using height and width of pixel plane
+        2. compute r = sqrt(x'**2 + y'**2)
+        3. compute phi = np.arctan2(y', x')
+        4. compute theta = self.theta(r)
+        5. at this point we have spherical angles about the Z axis, theta is from +Z axis, phi is from x=0
+        6. convert spherical angles into a ray
+        """
+        
+        # apply center shift
+        x_ctr, y_ctr = x - self.R_x/2.0, self.R_y/2.0 - y
+        # rescale based on pixels width in pixel plane
+        x_width, y_width = self.max_x_pixel_plane/(self.R_x/2.0), self.max_y_pixel_plane/(self.R_y/2.0)
+        x_scaled, y_scaled = x_ctr * x_width, y_ctr * y_width
+        # compute r, phi, theta
+        r = np.sqrt(x_scaled**2.0 + y_scaled**2.0)
+        phi = np.arctan2(y_scaled, x_scaled)
+        theta = self.theta(r) # outgoing angle depends on camera model
+
+        # phi, theta define spherical polar angles, theta is from +Z axis, phi is from x=0 CCW
+        x_ray, y_ray, z_ray = self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)
+        return normalize(np.array([x_ray, y_ray, z_ray]))
+
+    # theta is from +Z axis, phi is from +X axis CCW
+    def _x_ray(self, theta, phi):
+        return np.cos(phi) * np.sin(theta)
 
     def _y_ray(self, theta, phi):
-        t = theta# - self.orientation_rpy[1]
-        p = phi# - self.orientation_rpy[2]
-
-        return self.f * np.sin(t) * np.sin(p)
+        return np.sin(phi) * np.sin(theta)
 
     def _z_ray(self, theta, phi):
-        p = phi# - self.orientation_rpy[2]
-        return self.f * np.cos(p)
-    
-    def _get_pixel_ray(self, x, y):
-        theta = x * self.w_fov/self.R_x - self.w_fov/2
-        phi = self.h_fov/2 - y*self.h_fov/self.R_y
-
-        phi += np.pi/2 # need to do this x-axis aligned ie. such that pixel (0,0) is on x-axis
-
-        # In "Accuracy of fish-eye lens models" this corresponds to the 'equidistant' fish eye lens model
-        # NOTE: focal length doesn't affect anything here! Only scales the rays... 
-        # using a different fish eye lens model would bring focal length back into play
-
-
-        x_axis_aligned_ray = np.array([self._x_ray(theta, phi), self._y_ray(theta, phi), self._z_ray(theta, phi)])
-
-        # rotate it up about Y axis by 90 degrees to get to z-axis aligned as required
-
-        quat = transforms.quaternion_from_euler(0.0, -np.pi/2, 0.0)
-        rotated = quat_mult_point(quat, x_axis_aligned_ray)
-        return normalize(rotated)
-
-
-
-        return point
-
-#    def _x_ray(self, x):
-#        return np.tan(self.w_fov) * self.f * -1 * (-1 + 2.0*x/self.R_x)
-   
-#    def _y_ray(self, y):
-#        return np.tan(self.h_fov) * self.f * -1 * ( 1 - 2.0*y/self.R_y)
-
-#    def _get_pixel_ray(self, x, y):
-#        return normalize(np.array([ self._x_ray(x), self._y_ray(y), self.f ]))
+        return np.cos(theta)
 
     def pixel_to_plane(self, x, y, verbose=False):
         if (x < 0 or x >= self.R_x) and verbose:
@@ -209,6 +234,30 @@ class Camera(object):
         return self.transform_from_camera_space(target_plane_point)
 #        un_translated = target_plane_point + self.translation
 #        point = quat_mult_point(self.inv_rotation, un_translated)
+
+
+    def world_to_pixel(self, x, y, z):
+        """ Computes inverse of pixel_to_plane """
+        # get ray from camera origin to world coordinate
+        ray = normalize(self.transform_to_camera_space(np.array([x,y,z])))
+
+        # get angle to optical axis
+        theta = np.arccos(np.dot(np.array([0, 0, 1.0]), ray))
+        # get phi angle
+        phi = np.arctan2(ray[1], ray[0])
+        
+        # compute r, which combined with phi gives x,y on pixel coordinate plane
+        r = self.r(theta)
+        x, y = r * np.cos(phi), r * np.sin(phi)
+        
+        #scale these by pixel size to find incident pixel
+        x_pix, y_pix = x / (self.max_x_pixel_plane/(self.R_x/2.0)), y/(self.max_y_pixel_plane/(self.R_y/2.0))
+
+        # shift these different origin
+        x_pix = np.round(x_pix + self.R_x/2.0)
+        y_pix = np.round(self.R_y/2.0 - y_pix) 
+
+        return (x_pix, y_pix)
 
 
 
@@ -249,15 +298,17 @@ if __name__ == "__main__":
     VISUAL TESTS
     """
     
-    plot_pixel_areas = True #False
-
+    plot_pixel_areas = False
     # camera pointing down onto XY plane at Z=5
-    camera = Camera(position=np.array([0,0,1]), 
-                    orientation_pitch_deg=45.0,
-                    orientation_yaw_deg=45.0
+    camera = Camera(position=np.array([0,0,6]), 
+                    orientation_pitch_deg=90.0,
+                    orientation_yaw_deg=0.0, 
+                    model='perspective'
+                    #model='equidistance'
+                    #model='stereographic'
                    )
     camera.set_resolution(h=100,w=100)
-    camera.set_fov(horizontal_deg=85.0, vertical_deg=50.0)
+    camera.set_fov(horizontal_deg=80.0, vertical_deg=50.0)
     camera.set_focal_length(0.1)
 
 
@@ -267,14 +318,24 @@ if __name__ == "__main__":
                            )
 
 
+    # TEST: Pixel => Plane => Pixel ray trace should be very close to the same!!
+    corners = np.array([[0.0, 0], [0, camera.R_y], [camera.R_x, camera.R_y], [camera.R_x, 0], [camera.R_x/2.0, camera.R_y/2.0]])
+    print("\n\n Corners: {0}".format(corners))
+    plane_corners = np.array([camera.pixel_to_plane(*pix) for pix in corners])
+    print("Corners mapped to plane: {0}".format(plane_corners))
+    pixel_corners = np.array([camera.world_to_pixel(*coord) for coord in plane_corners])
+    print("Mapped back to pixels: {0}".format(pixel_corners))
+    print("All close: {0}\n\n".format(np.allclose(corners, pixel_corners)))
+
+
     corners = np.array(camera.get_corners())
 
     print(corners)
 
     corners = np.array([c for c in corners if c is not None])
 
-    others_x = np.arange(0, camera.R_x - 1, 2)
-    others_y = np.arange(0, camera.R_y - 1, 2)
+    others_x = np.arange(0, camera.R_x - 1, 5)
+    others_y = np.arange(0, camera.R_y - 1, 5)
     xs, ys = np.meshgrid(others_x, others_y)
     xs, ys = xs.ravel(), ys.ravel()
     pts = []
@@ -329,6 +390,11 @@ if __name__ == "__main__":
 #    plot_vector(ax, np.array([0,0,0]), pix_0_Ry_ray)
 #    plot_vector(ax, np.array([0,0,0]), pix_Rx_0_ray)
 #    plot_vector(ax, np.array([0,0,0]), pix_Rx_Ry_ray)
+
+    p_1 = quat_mult_point(camera.inv_rotation, camera._get_pixel_ray(0.0, camera.R_y/2))
+    p_2 = quat_mult_point(camera.inv_rotation, camera._get_pixel_ray(camera.R_x/2.0, 0.0))
+    p_3 = quat_mult_point(camera.inv_rotation, camera._get_pixel_ray(camera.R_x, camera.R_y/2.0))
+    p_4 = quat_mult_point(camera.inv_rotation, camera._get_pixel_ray(camera.R_x/2.0, camera.R_y))
    
     cam_sp_angle1 = np.dot(pix_0_0_ray, pix_Rx_0_ray)
     cam_sp_angle2 = np.dot(pix_0_0_ray, pix_0_Ry_ray)
@@ -346,9 +412,13 @@ if __name__ == "__main__":
     print("{0}, {1}, {2}, {3}".format(p_0_0, p_0_y, p_x_y, p_x_0))
     print("Angle (0,0) -> (Rx, 0): {0}, (0,0)->(0,Ry): {1}, (0, Ry)->(Rx, Ry): {2}".format(angle1, angle2, angle3))
     plot_vector(ax, pos, p_0_0)
-    plot_vector(ax, pos, p_0_y)
-    plot_vector(ax, pos, p_x_y)
-    plot_vector(ax, pos, p_x_0)
+    plot_vector(ax, pos, p_0_y*2)
+    plot_vector(ax, pos, p_x_y*3)
+    plot_vector(ax, pos, p_x_0*4)
+    plot_vector(ax, pos, p_1)
+    plot_vector(ax, pos, p_2)
+    plot_vector(ax, pos, p_3)
+    plot_vector(ax, pos, p_4)
 
 
 
@@ -376,7 +446,6 @@ if __name__ == "__main__":
             'pixels_to_area': {}
         }
     
-        print(pixels)
         for p in pixels:
             pix_str = str(list(p))
             area = camera.plane_area_of_pixel(*p)
@@ -384,10 +453,10 @@ if __name__ == "__main__":
         #    print(p)
             areas[p[1], p[0]] = area 
     
-        f = open('data/camera_pixel_areas.json','w')
-        j = json.dumps(data)
-        f.write(j)
-        f.close()
+        # f = open('data/camera_pixel_areas.json','w')
+        # j = json.dumps(data)
+        # f.write(j)
+        # f.close()
     
     #    print(areas)
     
