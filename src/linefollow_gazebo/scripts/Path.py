@@ -117,7 +117,7 @@ class Path(object):
             
 
 
-    def set_start(self, orientation_rpy_deg, position, apply_orientation_first=True):
+    def set_start(self, position, orientation_rpy_deg, apply_orientation_first=True):
         
         # these need to be handled as additional transformations
         # rather than set_start otherwise all non-first segments
@@ -160,10 +160,11 @@ class Path(object):
         last_index = len(self.segments) - 1
         if index == last_index:
             if self.repeat:
-                return 0 # reset to first segment
+                return self.segments[0] # reset to first segment
             else:
                 # TODO this might be better off with an Exception
-                return index
+                return target_segment #return same thing
+        return self.segments[index+1]
 
     def get_point_at(self, t):
         """ This costs a linear lookup in the number of paths - use for one offs """
@@ -221,7 +222,8 @@ class ForwardPathTracker(object):
         """
 
         self.path = path
-        
+        self.loop = path.repeat
+
         # everything is implicilty parametrized at speed = 1 m/s
         self.last_t = start_dist    # last 'time' on curve we tracked
 
@@ -234,27 +236,33 @@ class ForwardPathTracker(object):
         self._update_values()
 
     def _update_values(self):
-       
         current = self.active_segment
         next_segment = self.path.get_segment_after(current)
 
         closest_time = current.closest_point_time(self.current_position, self.last_t, self.max_horizon)
         closest_point = current.point_at(closest_time)
-        d = np.linalg.norm(self.current_position, closest_point)
+        d = np.linalg.norm(self.current_position - closest_point)
 
-        # NOTE since this could be a repetition, next_comp_closest_time could be less than closest time!
-        # this is actually what we want...
-        next_comp_closest_time = next_segment.closest_point_time(self.current_position, self.last_t, self.max_horizon)
-        next_comp_closest_point = next_segment.point_at(next_comp_closest_time)
-        d_next = np.linalg.norm(self.current_position, next_comp_closest_point)
-
-        if d_next < d:
-            # we have moved onto the next segment of the path
-            self.active_segment = next_segment
-            closest_time = next_comp_closest_time
-            closest_point = next_comp_closest_point
-            d = d_next
-      
+        if current != next_segment:
+            # NOTE since this could be a repetition, next_comp_closest_time could be less than closest time!
+            # this is actually what we want...
+            next_comp_closest_time = next_segment.closest_point_time(self.current_position, self.last_t, self.max_horizon)
+            next_comp_closest_point = next_segment.point_at(next_comp_closest_time)
+            d_next = np.linalg.norm(self.current_position - next_comp_closest_point)
+    
+            if d_next < d:
+                # we have moved onto the next segment of the path
+                self.active_segment = next_segment
+                closest_time = next_comp_closest_time
+                closest_point = next_comp_closest_point
+                d = d_next
+        else:
+            # looping is not automatically handled if only 1 segment
+            length = current.get_length()
+            if self.loop and length != -1 and closest_time > length:
+                print("Finished path - looping!")
+                closest_time = closest_time % length
+    
         self.last_t = closest_time 
         self.closest_point = closest_point
         self.closest_point_dist = d

@@ -61,17 +61,17 @@ class LineFollowController(object):
             return
 
         vel_linear = pose.twist.twist.linear
-        v_x, v_y, v_z = vel_linear.x, vel_linear.y, vel_linear.z
-        dv_x = v_x - self.previous_v_x
-        self.previous_v_x = v_x
+        vel = v_x, v_y, v_z = np.array([vel_linear.x, vel_linear.y, vel_linear.z])
+        speed = np.linalg.norm(vel)
+        speed_change = speed - self.previous_v_x
+        self.previous_speed = speed 
 
         # if change in velocity is less than tolerance, we've reached desired speed
 
         # check if have stopped accelerating and velocity has some magnitude
         # that means we've finished accelerating
-        if dv_x < accel_tolerance and np.abs(v_x) > 0.2:
-            self.avg_speed = np.sqrt(v_x**2 + v_y**2 + v_z**2) # save attained speed for later use    
-            self.timer.shutdown() # stop this update loop
+        if speed_change < accel_tolerance and speed > 0.2:
+            self.timer.shutdown()   # stop this update loop
             self.begin_track_path() # begin path tracking!
             return
 
@@ -92,12 +92,11 @@ class LineFollowController(object):
         
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
-        pos = current_pose.pose.pose.position
-        orientation = current_pose.pose.pose.orientation
-    
-        self.last_target_point = get_as_numpy_position(pos)
+        pos = get_as_numpy_position(current_pose.pose.pose.position)
+        orientation = get_as_numpy_quaternion(current_pose.pose.pose.orientation)
+        orientation_rpy = quat_to_rpy(orientation)
 
-        self.path.set_start(pos, orientation)
+        self.path.set_start(pos, np.rad2deg(orientation_rpy))
         self.path_tracker = self.path.get_tracker()
         self.path_tracker.update(pos)
 
@@ -132,7 +131,7 @@ class LineFollowController(object):
         
         closest_point = self.path_tracker.get_closest_point()
         closest_heading = self.path_tracker.get_closest_tangent()
-
+        rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
         if viz:
             self.visualize.draw_n_points([position, closest_point])
 
@@ -143,7 +142,7 @@ class LineFollowController(object):
             # if target is on LHS of heading negate
             crosstrack_dist *= -1
 
-        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=3.30)
+        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=1.0)
 
         # convert angle to command angle
         steer_command = new_wheel_angle/steering_angle_limit
@@ -215,10 +214,9 @@ if __name__ == "__main__":
 
     ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
     positioning = TruePositioning()
-    path = ConstantCurvaturePath(curvature=0.02) # turn radius limit around curvature=0.3
 
-    path = Path()
-    path.add_segment(curvature=0.02, length=-1)
+    path = Path(repeat=True)
+    path.add_segment(curvature=0.02, length=np.pi*2/0.02)
 
     line_follow = LineFollowController(path=path, positioning=positioning)
     line_follow.begin(throttle=0.2)

@@ -24,6 +24,9 @@ class Positioning(object):
     def get_odom(self):
         return self.last_odom 
 
+    def ready(self):
+        return self.last_odom is not None
+
 class TruePositioning(Positioning):
     def __init__(self):
         super(TruePositioning, self).__init__()

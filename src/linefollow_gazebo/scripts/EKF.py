@@ -1,12 +1,16 @@
+#!/usr/bin/python
+
 import abc
 import numpy as np
+from numpy import matmul
 import rospy
-from Positioning import TruePositioning
 
-from helper import quat_to_rpy, get_as_numpy_quaternion
+from Positioning import TruePositioning
+from helper import quat_to_rpy, get_as_numpy_quaternion, get_as_numpy_position, quat_from_rpy_rad
 
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Quaternion, Vector3
+from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
+
 
 class SensorSource(object):
     """ Superclass for sensor sources """
@@ -55,25 +59,121 @@ class OdometryEKF(object):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
-        self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
+        self.rate = rospy.get_param("~ekf_rate", 25.0)   
+        self.period = 1.0/self.rate
 
         self.true_positioning = TruePositioning()
-
-
         self.last_true_position, self.last_true_theta = None, None
 
+        # state: x, y, theta, x', y', theta'
+        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        self.cov = np.zeros((6,6))
+
+        # we can attach update sources here, conforming to SensorSource interface 
         self.sensing_sources = []
 
-    def get_real_delta():
+        # reusable matrices, save initization
+        self.I = np.diag(np.ones(6))
+
+        # publishing
+        self.publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
+        self.seq_num = 0
+       
+        self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
+
+    def publish_pose(self):
+        msg = PoseWithCovarianceStamped()
+
+        msg.header.seq = self.seq_num
+        self.seq_num += 1
+        msg.header.stamp = rospy.get_rostime().to_sec()
+        msg.header.frame_id = 'map'
+        
+        position = msg.pose.pose.position
+        position.x, position.y = self.state[0], self.state[1]
+        orientation = msg.pose.pose.orientation
+        quat = quat_from_rpy_rad(0.0, 0.0, self.state[2])
+        orientation.x, orientation.y, orientation.z, orientation.w = quat
+
+        # how the hell do I convert covariance between heading and other values
+        # to covariance between quaternion and other values??
+
+        # => don't actually care about covariance between anything other than x, y in my applcation
+        # so just set covariances for quaternion to 0?
+
+        cov = np.zeros((6,6))
+        cov[:3, :3] = self.cov[:3, :3]
+        msg.pose.covariance = list(cov)
+
+        self.publisher.publish(msg)
+
+
+    def step(self, event):
+        if not self.true_positioning.ready():
+            print("True positining not ready - not starting EKF")
+            return
+
+        dt = event.last_duration
+        if dt is None:
+            return
+
+        self.predict(dt)
+        print("State: {0}, Covariance: {1}".format(self.state, self.cov))
+
+        for source in self.sensing_sources:
+            if source.has_new_data():
+                self.update(source)
+
+    def predict(self, dt):
+
+        real_deltas = self.get_real_deltas()
+        sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)
+
+        # apply `f` ie. motion model
+        self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
+
+        # get jacobian
+        F_k = self.motion_model_jacobian(self.state, sampled_deltas, dt)
+        # compute update covariance
+        self.cov = matmul(F_k, matmul(self.cov, F_k.T)) + Q_k
+
+
+    
+    def update(self, sensor_source):
+        """ Following Wikipedia EKF notation """
+        sensor_values = sensor_source.consume_data()
+        h_t = sensor_source.evaluate(self.state)
+        # compute residual
+        y_t = sensor_values - h_t
+
+        # get jacobian
+        H_t = sensor_source.jacobian(self.state)
+
+        # get sensor source covariance
+        R_t = sensor_source.get_covariance()
+        
+        # residual covariance/innovation covariance
+        S_t = matmul(H_t, matmul(self.cov, H_t.T)) + R_t
+
+        # gain
+        K_t = matmul(self.cov, matmul(H_t, np.linalg.inv(S_t))) # this is the expensive step?
+
+        # update estimates
+        self.state = self.state + matmul(K_t, y_t)
+        self.cov = matmul((self.I - matmul(K_t, H_t)), self.cov)
+        
+    
+    def get_real_deltas(self):
         # get d_translation, rotation 1, rotation 2 from real simulation position
 
         odom = self.true_positioning.get_odom() # get the latest position... might need to interpolate a bit? #TODO
+        pose = odom.pose.pose
         position = get_as_numpy_position(pose.position)
         rpy = quat_to_rpy(get_as_numpy_quaternion(pose.orientation)) 
-        heading_angle = rpy[2] # yaw = heading
+        heading_angle = rpy[2] # yaw == heading
         dist, d_start_angle, d_end_angle = 0.0, 0.0, 0.0 
         if self.last_true_position is not None:
-            diff = position - self.last_position
+            diff = position - self.last_true_position
             angle = np.arctan2(diff[1], diff[0])
             dist = np.linalg.norm(diff)
             d_start_angle = angle - self.last_true_theta
@@ -84,30 +184,31 @@ class OdometryEKF(object):
 
         return [dist, d_start_angle, d_end_angle]
         
+    def sample_deltas(self, real_deltas):
+
+        dist, d_start_angle, d_end_angle = real_deltas
+        
+        diff, rotation_1, rotation_2 = real_deltas
+        alpha_1, alpha_2, alpha_3, alpha_4 = self.model_step_noise_coeffs
+
+        stddev_start_angle_noise = alpha_1 * np.abs(d_start_angle) + alpha_2 * diff
+        stddev_end_angle_noise = alpha_1 * np.abs(d_end_angle) + alpha_2 * dist
+        stddev_dist_noise = alpha_3 * dist + alpha_4 * np.abs(d_start_angle + d_end_angle)
+
+        error_start_angle = np.random.normal(0.0, stddev_start_angle_noise)
+        error_end_angle = np.random.normal(0.0, stddev_end_angle_noise)
+        error_dist = np.random.normal(0.0, stddev_dist_noise)
+
+        sampled_dist = dist + error_dist
+        sampled_start_angle = d_start_angle + error_start_angle
+        sampled_end_angle = d_end_angle + error_end_angle
+        
+        samples = (sampled_dist, sampled_start_angle, sampled_end_angle)
+        stddevs = (stddev_start_angle_noise, stddev_end_angle_noise, stddev_dist_noise)
+        return (samples, stddevs) 
 
 
-    def step(self, event):
-        dt = event.last_duration
-
-        self.predict(dt)
-
-        for source in self.sensing_sources:
-            if source.has_new_data():
-                self.update(source.consume_data())
-
-
-    def predict(self, dt):
-
-        real_deltas = self.get_real_deltas()
-        self.state, Q_k = self.step_motion_model(self.state, real_deltas, dt)
-
-
-    
-    def update(self, data):
-
-
-
-    def step_motion_model(self, state, real_deltas, dt):
+    def motion_model(self, state, sampled_deltas, sampled_stddevs, dt):
         """ Essentially computes f(state, change)
             Intuitively does the motion model prediction
             In this case using odometry plus some noise
@@ -122,33 +223,20 @@ class OdometryEKF(object):
                 
         position = state[:2]
         heading_angle = state[2]
-        dist, d_start_angle, d_end_angle = real_deltas
-        
-        diff, rotation_1, rotation_2 = real_deltas
-        alpha_1, alpha_2, alpha_3, alpha_4 = self.model_step_noise_coeffs
 
-        stddev_start_angle_noise = alpha_1 * np.abs(d_start_angle) + alpha_2 * diff
-        stddev_end_angle_noise = alpha_1 * np.abs(d_end_angle) + alpha_2 * dist
-        stddev_dist_noise = alpha_3 * dist + alpha_4 * np.abs(d_start_angle + d_end_angle)
-
-        error_start_angle = np.random.normal(0.0, stddev_start_angle_noise)
-        error_end_angle = np.random.normal(0.0, stddev_end_angle_noise)
-        error_dist = np.random.normal(0.0, stddev_dist_noise)
-
-        dist_with_error = dist + error_dist
-        d_start_angle_with_error = d_start_angle + error_start_angle
-        d_end_angle_with_error = d_end_angle + error_end_angle
+        sampled_dist, sampled_start_angle, sampled_end_angle = sampled_deltas
+        sampled_dist_stddev, sampled_start_angle_stddev, sampled_end_angle_stddev = sampled_stddevs
 
         # we are only going to update position and orientation
         # and not touch velocity components
         # note that we only save the angle here and convert it when
         # we want to export it!
 
-        dx = dist_with_error * np.cos(state[2] + d_start_angle_with_error)
+        dx = sampled_dist * np.cos(state[2] + sampled_start_angle)
         state[0] += dx
-        dy = dist_with_error * np.sin(state[2] + d_start_angle_with_error)
+        dy = sampled_dist * np.sin(state[2] + sampled_start_angle)
         state[1] += dy
-        dtheta = d_start_angle_with_error + d_end_angle_with_error
+        dtheta = sampled_start_angle + sampled_end_angle 
         state[2] += dtheta 
 
         state[3] = dx/dt
@@ -160,9 +248,37 @@ class OdometryEKF(object):
         # should be cross-correlations
         # and also just ignoring cos and sin effects on variance...
         Q = np.diag(np.tile([
-            stddev_dist_noise**2,
-            stddev_dist_noise**2, 
-            stddev_start_angle_noise**2 + stddev_end_angle_noise**2], 2))
+            sampled_dist_stddev**2,
+            sampled_dist_stddev**2,
+            sampled_start_angle_stddev**2 + sampled_end_angle_stddev**2], 2))
         
         return (state, Q)
 
+    def motion_model_jacobian(self, state, sampled_deltas, dt):
+        
+        sampled_dist, sampled_start_angle, sampled_end_angle = sampled_deltas
+
+        F = np.diag([1.0, 1, 1, 0, 0, 0])
+
+        # only the column corresponding to theta has cross-termed derivatives
+        a = -sampled_dist * np.sin(state[2] * sampled_start_angle)
+        b = sampled_dist * np.cos(state[2] * sampled_end_angle)
+        d_theta_column = np.array([a, b, 1.0, a/dt, b/dt, 0.0])
+
+        F[:, 2] = d_theta_column
+
+        return F
+
+
+
+if __name__ == "__main__":
+    rospy.init_node("ekf_positioning")
+
+
+    # wait until clock messages arrive
+    # and hence simulation is ready
+    while rospy.get_time() == 0:
+        rospy.sleep(1)
+
+    ekf = OdometryEKF() 
+    rospy.spin()

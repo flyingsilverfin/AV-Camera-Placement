@@ -22,17 +22,9 @@ class ConstantCurvaturePath(object):
         if np.abs(curvature) > 0.0:
             self.r = 1.0/self.curvature
 
-        # list to store sequence of transformations, rotations or translations in homogenous coordinates
-        # order matters - stored in reverse order for easy append
-        # reversed on concat
-        self.transformations = []   
-        self.rotations = []     # used for rotating tangents and normals that don't care about translations
-        # store composed transform
-        self.transform = None
-        self.inv_transform = None
-        self.rotation = None 
 
         # set up some defaults
+        self.reset_transforms()
         self.set_start_time()
 
         self.length = length 
@@ -117,7 +109,7 @@ class ConstantCurvaturePath(object):
             # => a = sqrt(speed) * curvature
             a = speed * self.curvature
             dx = self.r * np.cos(a * dt - np.pi/2) # subtract pi/2 to start at x = 0 and increasing
-            dy = self.r * np.sin(a * dt - np.pi/2) + self.r # add radius to offset to (x,y) = (0,0) and both increasing (if positive curvature)
+            dy = self.r * np.sin(a * dt - np.pi/2) 
             dz = 0.0
             pt = np.array([dx, dy, dz])
 
@@ -207,7 +199,7 @@ class ConstantCurvaturePath(object):
         vector = transformed[:-1]/transformed[-1]
         return vector
 
-    def closest_point_time(self, target_point, min_time=None, max_horizon=None):
+    def closest_point_time(self, target_point, min_time=0, max_horizon=None):
         """ Compute the closest point's time in the curve parametrization
 
         target_point: the point to find the closest point to
@@ -218,8 +210,7 @@ class ConstantCurvaturePath(object):
         # obtain target point in abstract frame
         point = self.from_world_coord(target_point)
 
-        if min_time is None:
-            min_time = self.start_time
+        min_time += self.start_time # make all computations relative to this curve's start time  
 
         if self.curvature == 0.0:
 
@@ -242,7 +233,13 @@ class ConstantCurvaturePath(object):
             x,y,z = point
             a = self.speed / self.r
             dtheta = np.arctan2(y, x)
-            dt /= a
+            if dtheta < 0:
+                # arctan2 gives in range [-pi,pi] while I want [0, 2pi] but flipped from the middle
+                dtheta = 2*np.pi + dtheta
+            
+            # need to add pi/2 since that's where my parametrization starts
+            dtheta += np.pi/2
+            dt = dtheta / a
     
         # now dt contains how far along this curve in time the point is
 
@@ -259,6 +256,8 @@ class ConstantCurvaturePath(object):
         else:
             # check if within max_horizon
             if dt + self.start_time > min_time + max_horizon/self.speed:
+                print("Point in local coords: {4}, Min time: {0}, start_time; {1}, dt: {2}, max_horizon/speed: {3}".format(min_time, self.start_time, dt, max_horizon/self.speed, point))
+                # ******** This is being hit every time - or not!? ******!!!!
                 return min_time + max_horizon/self.speed
             else:
                 # in valid range
@@ -282,15 +281,22 @@ class ConstantCurvaturePath(object):
             self.end_time = self.start_time + self.duration
 
     def reset_transforms(self):
-        self.transformations = []
+        # list to store sequence of transformations, rotations or translations in homogenous coordinates
+        # order matters - stored in reverse order for easy append
+        # reversed on concat
+        self.transformations = []   
+        self.rotations = []     # used for rotating tangents and normals that don't care about translations
+        # store composed transform
+        initial_offset = get_translation_matrix(np.array([0.0, self.r, 0.0]))
+        self.transformations = [initial_offset]
         self.rotations = []
-        self.transform = None
-        self.inv_transform = None
+        self.transform = initial_offset
+        self.inv_transform = inv_transform(initial_offset)
         self.rotation = None 
 
     def set_start_position(self, pos=np.array([0.0, 0.0, 0.0])):
-        # if there are any existing translations, cannot set a start translation
-        if len(self.transformations) != len(self.rotations):
+        # if there are any existing translations besides the initial one, cannot set a start translation
+        if len(self.transformations) - 1 != len(self.rotations):
             raise Exception("Cannot set start position if any translations already exist")
 
         pos = get_as_numpy_position(pos)
@@ -323,7 +329,7 @@ class ConstantCurvaturePath(object):
         self.inv_transform = inv_transform(self.transform)
     
     def add_translation(self, vector):
-        if len(self.transformations) == 0 or (len(self.transformations) == 1 and len(self.rotations) == 1):
+        if len(self.transformations) == 1 or (len(self.transformations) == 2 and len(self.rotations) == 1):
             self.set_start_position(vector)
             return
 
@@ -340,7 +346,7 @@ class ConstantCurvaturePath(object):
 
     def add_rotation_matrix(self, rotation_matrix):
         # check if it's the first rotation, if so go to the other code (avoids a bit of duplication)
-        if len(self.transformations) == 0 or (len(self.transformations) == 1 and len(self.rotations) == 0):
+        if len(self.transformations) == 1 or (len(self.transformations) == 2 and len(self.rotations) == 0):
             self.set_start_orientation_matrix(rotation_matrix)
             return
 
