@@ -189,6 +189,7 @@ class ConstantCurvaturePath(object):
 
     def to_world_coord(self, point):
         if self.transform is None:
+            print("WARN: no curve => world transform!")
             return point
         # point => homogenous
         point = np.append(point, [1.0])
@@ -198,6 +199,7 @@ class ConstantCurvaturePath(object):
 
     def from_world_coord(self, point):
         if self.inv_transform is None:
+            print("WARN: no world => curve transform!")
             return point
         # point => homogenous
         point = np.append(point, [1.0])
@@ -211,7 +213,13 @@ class ConstantCurvaturePath(object):
         target_point: the point to find the closest point to
         min_time: the time T found must be greater than this
         max_horizon: the time T found cannot be more than this many meters from min_time
+
+        #TODO this can be massively cleaned up and unified
+        probably written more elegantly considering mathematical underpinnings as well
         """
+
+        if min_time < self.start_time:
+            return self.start_time
 
         # obtain target point in abstract frame
         point = self.from_world_coord(target_point)
@@ -238,9 +246,12 @@ class ConstantCurvaturePath(object):
             # is just the angle drawn out by the ray going to the point from the origin
             # here also compensate for radius and speed
             x,y,z = point
-            a = self.speed / self.r
-            dtheta = np.arctan2(y, x)
-            dtheta += np.pi/2 # my parametrization starts at -pi/2
+            a = np.abs(self.speed / self.r)
+            # dtheta = np.arctan2(y, x)
+            # dtheta += np.sign(self.curvature)*np.pi/2 
+            # dtheta *= np.sign(self.curvature) # account for flipped direction for negative curvature
+
+            dtheta = np.sign(self.curvature)*(np.arctan2(y,x)) + np.pi/2 # same as above but in 1 line
             if dtheta < 0:
                 # arctan2 gives in range [-pi,pi] while I want [0, 2pi] but flipped from the middle
                 dtheta = 2*np.pi + dtheta
@@ -251,6 +262,8 @@ class ConstantCurvaturePath(object):
 
         # check if the point found is too early along the curve
         if dt + self.start_time < min_time:
+            print("Using min_time, dt: {0}, dt+start_time: {1}".format(dt, dt+self.start_time))
+            print("\tcurvature: {0}, target point: {1}, target_point in local coords: {2}".format(self.curvature, target_point, point))
             return min_time 
 
         if max_horizon is None:
@@ -260,14 +273,21 @@ class ConstantCurvaturePath(object):
                 # in valid range
                 return self.start_time + dt
         else:
+            # if beyond horizon return min time to solve jumping segments
+            if dt > self.duration:
+                print("Using end_time since dt > duration, dt: {0}, dt+start_time: {1}, min-time: {2}".format(dt, dt+self.start_time, min_time))
+                print("\tcurvature: {0}, target point: {1}, target_point in local coords: {2}".format(self.curvature, target_point, point))
+                return min_time
             # check if within max_horizon
             if dt + self.start_time > min_time + max_horizon/self.speed:
-                print("dt: {0}, point: {1}, min_time: {2}".format(dt, point, min_time))
+                print("Using min_time since dt+start_time > horizon, dt: {0}, dt+start_time: {1}, min_time: {2}".format(dt, dt+self.start_time, min_time))
+                print("\tcurvature: {0}, target point: {1}, target_point in local coords: {2}".format(self.curvature, target_point, point))
                 # NOTE if we are beyond our limit always pick the starting point in the valid range
                 # this solves the loop restart problem
                 return min_time 
             else:
-                print("Using dt: {0}".format(dt))
+                print("Using dt + start_time, dt: {0}, dt+start_time: {1}, min_time: {2}".format(dt, dt+self.start_time, min_time))
+                print("\tcurvature: {0}, target point: {1}, target_point in local coords: {2}".format(self.curvature, target_point, point))
                 # in valid range
                 return self.start_time + dt
 

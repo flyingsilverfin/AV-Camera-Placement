@@ -211,6 +211,12 @@ class Path(object):
 
         return self.end_time
 
+    def save_as_fig(self, path):
+        import matplotlib.pyplot as plt
+        pts = self.discretize_points()
+        plt.plot(pts[:, 0], pts[:, 1])
+        plt.savefig(path)
+
 
 class ForwardPathTracker(object):
     """ Wraps a Path object with some state that allows tracking it in a forward direction only (only allow forward progress) """
@@ -240,19 +246,22 @@ class ForwardPathTracker(object):
         current = self.active_segment
         next_segment = self.path.get_segment_after(current)
 
+        print("Current start_time: {0}, current end_time: {1}".format(current.start_time, current.end_time))
+        print("next start_time: {0}, current end_time: {1}".format(next_segment.start_time, next_segment.end_time))
+
 
         closest_time = current.closest_point_time(self.current_position, self.last_t, self.max_horizon)
         closest_point = current.point_at(closest_time)
         d = np.linalg.norm(self.current_position - closest_point)
 
         if current != next_segment:
-            # NOTE since this could be a repetition, next_comp_closest_time could be less than closest time!
-            # this is actually what we want...
             next_comp_closest_time = next_segment.closest_point_time(self.current_position, self.last_t, self.max_horizon)
             next_comp_closest_point = next_segment.point_at(next_comp_closest_time)
             d_next = np.linalg.norm(self.current_position - next_comp_closest_point)
 
             if d_next < d:
+                print("Swapping to next segment!")
+                print("Last segment time range: {0}-{1}, next segment: {2}-{3}".format(current.start_time, current.end_time, next_segment.start_time, next_segment.end_time))
                 # we have moved onto the next segment of the path
                 self.active_segment = next_segment
                 closest_time = next_comp_closest_time

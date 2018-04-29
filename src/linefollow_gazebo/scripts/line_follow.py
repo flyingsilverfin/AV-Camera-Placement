@@ -219,10 +219,11 @@ if __name__ == "__main__":
     path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
     path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
     path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
-    path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
     path.add_segment(curvature=0.0, length=50.0)
-    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=0.05/3, length=0.5*np.pi*2*3/0.05)
     path.add_segment(curvature=0.0, length=50.0)
+
+    path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
 
     line_follow = LineFollowController(path=path, positioning=positioning)
     line_follow.begin(throttle=0.1)
