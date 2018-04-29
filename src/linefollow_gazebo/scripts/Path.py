@@ -11,14 +11,14 @@ from helper import rpy_to_matrix
 
 # NEW
 # curves need start time, end time
-# possibly a loop signal (for repeated execution)
+# possibly a loop signal (for looped execution)
 
 
 class Path(object):
     """ Class Representing a Path, componses of multiple curves. Defined from t = 0 onwards, parametrized at implicity speed 1 m/s so time == distance"""
 
 
-    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_rpy_deg=np.array([0.0, 0.0, 0.0]), repeat=False):
+    def __init__(self, curvatures=[], lengths=[], start_pos=np.array([0.0, 0.0, 0.0]), start_orientation_rpy_deg=np.array([0.0, 0.0, 0.0]), loop=False):
         if len(curvatures) != len(lengths):
             raise Exception("Path creation must provide both curvatures and lengths for each segment")
 
@@ -26,13 +26,13 @@ class Path(object):
         self.start_pos = start_pos
         self.start_orientation_rpy = start_orientation_rpy_deg
         self.end_time = 0.0
-        self.repeat = repeat
+        self.loop = loop
         
         if len(curvatures) > 0:
 
             if -1 in lengths:
-                if self.repeat:
-                    raise Exception("Cannot have infinite length segment (= -1) and repeat path enabled: {0}".format(lengths))
+                if self.loop:
+                    raise Exception("Cannot have infinite length segment (= -1) and loop path enabled: {0}".format(lengths))
                 if lengths.index(-1) != len(lengths) - 1:
                     raise UnboundedSegmentException("Cannot have infinite length (=-1) segment that is not the last segment: {0}".format(lengths))
 
@@ -143,7 +143,7 @@ class Path(object):
 
 
     def get_segment_for_time(self, target_time):
-        if self.repeat:
+        if self.loop:
             target_time = target_time % self.end_time
         time = 0.0
         for segment in self.segments:
@@ -159,7 +159,7 @@ class Path(object):
         index = self.segments.index(target_segment)
         last_index = len(self.segments) - 1
         if index == last_index:
-            if self.repeat:
+            if self.loop:
                 return self.segments[0] # reset to first segment
             else:
                 # TODO this might be better off with an Exception
@@ -184,7 +184,7 @@ class Path(object):
 
 
     def discretize_points(self, resolution=0.5):
-        """ Discretizes entire curve at the given meter resolution. Useful for debugging/plotting. Repeat is ignored. """
+        """ Discretizes entire curve at the given meter resolution. Useful for debugging/plotting. loop is ignored. """
         if self.segments[-1].get_length() == -1:
             print("Give last segment a length before discretizing.")
             return None
@@ -207,7 +207,7 @@ class Path(object):
 
     def get_length(self):
         if self.segments[-1].get_length() == -1:
-            raise UnboundedSegmentException("Cannot get length when last segment has infinite length")
+            return -1
 
         return self.end_time
 
@@ -215,14 +215,15 @@ class Path(object):
 class ForwardPathTracker(object):
     """ Wraps a Path object with some state that allows tracking it in a forward direction only (only allow forward progress) """
 
-    def __init__(self, path, start_dist=0.0, max_horizon=5.0):
+    def __init__(self, path, start_dist=0.0, max_horizon=5.0, loop_restart_tolerance=5.0):
         """
         start_time: apply time shift to the path
         start_dist: distance in path to start tracking from
         """
 
         self.path = path
-        self.loop = path.repeat
+        self.loop = path.loop
+        self.loop_restart_tolerance = loop_restart_tolerance
 
         # everything is implicilty parametrized at speed = 1 m/s
         self.last_t = start_dist    # last 'time' on curve we tracked
@@ -239,6 +240,7 @@ class ForwardPathTracker(object):
         current = self.active_segment
         next_segment = self.path.get_segment_after(current)
 
+
         closest_time = current.closest_point_time(self.current_position, self.last_t, self.max_horizon)
         closest_point = current.point_at(closest_time)
         d = np.linalg.norm(self.current_position - closest_point)
@@ -249,24 +251,26 @@ class ForwardPathTracker(object):
             next_comp_closest_time = next_segment.closest_point_time(self.current_position, self.last_t, self.max_horizon)
             next_comp_closest_point = next_segment.point_at(next_comp_closest_time)
             d_next = np.linalg.norm(self.current_position - next_comp_closest_point)
-    
+
             if d_next < d:
                 # we have moved onto the next segment of the path
                 self.active_segment = next_segment
                 closest_time = next_comp_closest_time
                 closest_point = next_comp_closest_point
                 d = d_next
-        else:
-            # looping is not automatically handled if only 1 segment
-            length = current.get_length()
-            if self.loop and length != -1 and closest_time > length:
-                print("Finished path - looping!")
-                closest_time = closest_time % length
-    
+
         self.last_t = closest_time 
         self.closest_point = closest_point
         self.closest_point_dist = d
         self.closest_tangent = self.active_segment.tangent_at(closest_time)
+
+        # perform a loop if the current segment's end time is less than the last_t we search from
+        path_length = self.path.get_length()
+        if self.loop and path_length != -1:
+            if self.last_t + self.loop_restart_tolerance > path_length:
+                print("Restarting loop tracking!")
+                self.last_t = 0.0 # ie. reset to 0 distance
+
 
 
     def get_closest_point(self):

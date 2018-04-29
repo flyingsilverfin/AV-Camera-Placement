@@ -142,7 +142,7 @@ class LineFollowController(object):
             # if target is on LHS of heading negate
             crosstrack_dist *= -1
 
-        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=1.0)
+        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=3.0)
 
         # convert angle to command angle
         steer_command = new_wheel_angle/steering_angle_limit
@@ -215,11 +215,14 @@ if __name__ == "__main__":
     ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
     positioning = TruePositioning()
 
-    path = Path(repeat=True)
-    path.add_segment(curvature=0.02, length=np.pi*2/0.02)
+    path = Path(loop=True)
+    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=0.0, length=50.0)
+    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=0.0, length=50.0)
 
     line_follow = LineFollowController(path=path, positioning=positioning)
-    line_follow.begin(throttle=0.2)
+    line_follow.begin(throttle=0.1)
 
     Testing(true_positioning=positioning)
 
