@@ -61,17 +61,23 @@ class ConstantCurvaturePath(object):
 
     def tangent_rotation_matrix_at(self, t, return_type='numpy'):
         tangent = self.tangent_at(t)
-        normal = self.normal_at(t)
-        z = np.cross(tangent, normal)
+
+        z = np.array([0.0, 0.0, 1.0]) # always want Z UP otherwise get rotations about Z axis
+        normal = normalize(np.cross(z, tangent))
+
+        # normal = self.normal_at(t)
+        # z = np.cross(tangent, normal)
 
         # construct the change of basis matrix
         # which is equivalent to the rotation matrix from 
         # standard coordinate system (XYZ aligned) to (tangent, normal, z)
+        # note this can flip axes... so not just rotations
 
         basis = np.array([tangent, normal, z]).T 
         # extend for homogenous coords
         rotation = np.vstack([basis, [0, 0, 0]])
         rotation = np.hstack([rotation, np.array([0, 0, 0, 1]).reshape(-1, 1)])
+
         return rotation
 
     def normal_at(self, t, speed=None, return_type='numpy'):

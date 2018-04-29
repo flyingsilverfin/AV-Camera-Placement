@@ -217,6 +217,9 @@ if __name__ == "__main__":
 
     path = Path(loop=True)
     path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
     path.add_segment(curvature=0.0, length=50.0)
     path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
     path.add_segment(curvature=0.0, length=50.0)
