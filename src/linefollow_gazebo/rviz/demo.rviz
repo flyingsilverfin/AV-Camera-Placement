@@ -203,7 +203,7 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.0500000007
       Shape: Arrow
-      Topic: /pose_estimate
+      Topic: /ekf_pose
       Unreliable: false
       Value: true
   Enabled: true
@@ -229,25 +229,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 357.538513
+      Distance: 314.633881
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 77.8170547
-        Y: -15.8691902
-        Z: 30.8150673
+        X: 46.4952545
+        Y: 62.0479698
+        Z: 17.9205799
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.19539833
+      Pitch: 1.42539811
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.12358236
+      Yaw: 3.128582
     Saved: ~
 Window Geometry:
   Displays:

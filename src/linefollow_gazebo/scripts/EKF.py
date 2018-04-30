@@ -6,33 +6,61 @@ from numpy import matmul
 import rospy
 
 from Positioning import TruePositioning
-from helper import quat_to_rpy, get_as_numpy_quaternion, get_as_numpy_position, quat_from_rpy_rad
+from helper import quat_to_rpy, get_as_numpy_quaternion, get_as_numpy_position, quat_from_rpy_rad, get_as_numpy_velocity_vec
 
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
+from nav_msgs.msg import Odometry
 
 
 class SensorSource(object):
     """ Superclass for sensor sources """
-    def __init__(self, topic, msg_type):
+    def __init__(self, topic, msg_type, update_states, noise_matrix, update_period=5.0):
 
         subscriber = rospy.Subscriber(topic, msg_type, self.on_msg)
         self.consumed_last_msg = True
+        self.R_k = noise_matrix
+        self.update_states = update_states
+
+        # init some state
+        self.state_data = np.zeros_like(self.update_states)
+
+        # for regulating updates
+        self.last_update_consumed_time = 0.0
+        self.update_period = update_period
 
     def on_msg(self, msg):
         self.consumed_last_msg = False
         self.process_msg(msg)
 
-    def has_new_msg(self):
-        return self.consumed_last_msg
-
+    def has_new_data(self):
+        return rospy.get_rostime().to_sec() - self.last_update_consumed_time > self.update_period and not self.consumed_last_msg
+        
     @abc.abstractmethod
     def process_msg(self, msg):
         pass
 
+    def consume_state(self):
+        now = rospy.get_rostime().to_sec()
+        if now - self.last_update_consumed_time > self.update_period:
+            self.consumed_last_msg = True
+            self.last_update_consumed_time = now
+            return self.state_data
+
+    def calculate_expected_state(self, current_state):
+        # expected is h(state) ie. the measurement we should see using current estimate
+        expected = current_state * self.update_states # just pull out the states we want to update
+        return expected
+
     @abc.abstractmethod
-    def get_data(self):
+    def get_jacobian(self, state):
         pass
+
+    def get_noise_matrix(self):
+        return self.R_k
+
+    def get_updatable_states(self):
+        return self.update_states
 
 """
 "
@@ -53,9 +81,50 @@ class ImuSensorSource(SensorSource):
 "
 """
 
+class FakeOdomSensorSource(SensorSource):
+    """ 
+    SensorSource that takes some Odometry source (likely ground truth)
+    adds some noise, and returns it as a measurement (eg. imagine simulating GPS or something)
+    """
+
+    def __init__(self, topic, noise_variance=1e-2, update_period=5.0):
+        noise = np.diag(np.repeat([noise_variance], 6))
+        # update x,y, v_x, v_y positions
+        update_states = np.array([True, True, True, True, True, True])
+        super(FakeOdomSensorSource, self).__init__(topic, Odometry, update_states, noise, update_period)
+
+        self.static_jacobian = np.diag(np.ones(6)) * self.update_states
+
+    def process_msg(self, odom):
+        """ Converts Odometry message into a a state vector """
+
+        # most sensor-specific code goes here
+        # in effect converts specific message into data consumable by the EKF
+
+        # since this is face odom, we use the true state
+        # and add some noise
+        # and save that as R_k, sensor noise
+
+        position = get_as_numpy_position(odom.pose.pose.position)
+        orientation = quat_to_rpy(get_as_numpy_quaternion(odom.pose.pose.orientation))
+        linear_velocity = get_as_numpy_velocity_vec(odom.twist.twist.linear)
+        angular_velocity = get_as_numpy_velocity_vec(odom.twist.twist.angular)
+
+        # note: true data has no covariance, we will add diagonal cov later
+        x, y = position[:2]
+        heading = orientation[2]
+        vx, vy = linear_velocity[:2]
+        v_theta = angular_velocity[2]
+        
+        self.state_data = np.array([x, y, heading, vx, vy, v_theta]) * self.update_states 
+
+    def get_jacobian(self, state):
+        return self.static_jacobian 
+
+
 class OdometryEKF(object):
 
-    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.01):
+    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.001):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
@@ -73,7 +142,7 @@ class OdometryEKF(object):
         self.motion_model_threshold = motion_model_threshold
 
         # we can attach update sources here, conforming to SensorSource interface 
-        self.sensing_sources = []
+        self.sensors = []
 
         # reusable matrices, saves initization
         self.I = np.diag(np.ones(6))
@@ -126,9 +195,10 @@ class OdometryEKF(object):
         self.predict(dt)
         print("State: {0}, Covariance: {1}".format(self.state, self.cov))
 
-        for source in self.sensing_sources:
-            if source.has_new_data():
-                self.update(source)
+        for sensor_source in self.sensors:
+            print("Sensor has new data: {0}".format(sensor_source.has_new_data()))
+            if sensor_source.has_new_data():
+                self.update(sensor_source)
 
         self.publish_pose()
 
@@ -138,17 +208,17 @@ class OdometryEKF(object):
 
         real_deltas = self.get_real_deltas()
 
-        print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
+        # print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
         sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)
-        print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
+        # print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
 
         # apply `f` ie. motion model
         self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
-        print("\tstate: {0}".format(self.state))
+        # print("\tstate: {0}".format(self.state))
 
         # get jacobian
         F_k = self.motion_model_jacobian(self.state, sampled_deltas, dt)
-        print("--Covariances--\n Jacobian: \n {0} \n Current Covariance: \n {1} \n Q_k: \n {2}".format(F_k, self.cov, Q_k))
+        # print("--Covariances--\n Jacobian: \n {0} \n Current Covariance: \n {1} \n Q_k: \n {2}".format(F_k, self.cov, Q_k))
         # compute update covariance
         self.cov = matmul(F_k, matmul(self.cov, F_k.T)) + Q_k
 
@@ -156,15 +226,16 @@ class OdometryEKF(object):
     
     def update(self, sensor_source):
         """ Following Wikipedia EKF notation """
-        sensor_values = sensor_source.consume_data()
-        h_t = sensor_source.evaluate(self.state)
+        sensor_values = sensor_source.consume_state()
+        h_t = sensor_source.calculate_expected_state(self.state)
+
         # compute residual
         y_t = sensor_values - h_t
 
         # get jacobian
-        H_t = sensor_source.jacobian(self.state)
+        H_t = sensor_source.get_jacobian(self.state)
         # get sensor source covariance
-        R_t = sensor_source.get_covariance()
+        R_t = sensor_source.get_noise_matrix()
         
         # residual covariance/innovation covariance
         S_t = matmul(H_t, matmul(self.cov, H_t.T)) + R_t
@@ -175,6 +246,9 @@ class OdometryEKF(object):
         # update estimates
         self.state = self.state + matmul(K_t, y_t)
         self.cov = matmul((self.I - matmul(K_t, H_t)), self.cov)
+
+        print("Updated state!")
+        print("State: \n {0}, \n Covariance: \n {1}".format(self.state, self.cov))
         
     
     def get_real_deltas(self):
@@ -194,8 +268,8 @@ class OdometryEKF(object):
                 return [0.0, 0.0, 0.0]
             d_start_angle = angle - self.last_true_theta
             d_end_angle = heading_angle - angle
-            print("\t[real deltas] Position: {0}, last_position: {1}, movement last => now: {2}".format(position, self.last_true_position, diff))
-            print("\t[real deltas] angle of movement: {0}, distance: {1}, current rpy: {3}, last true angle: {2}".format(angle, dist, self.last_true_theta, rpy)) 
+            # print("\t[real deltas] Position: {0}, last_position: {1}, movement last => now: {2}".format(position, self.last_true_position, diff))
+            # print("\t[real deltas] angle of movement: {0}, distance: {1}, current rpy: {3}, last true angle: {2}".format(angle, dist, self.last_true_theta, rpy)) 
             # print("\t[real deltas] start angle to movement angle: {0}, end angle to movement angle {1}".format(d_start_angle, d_end_angle))
 
         self.last_true_position = position
@@ -287,6 +361,12 @@ class OdometryEKF(object):
 
         return F
 
+    def attach_sensor(self, sensor):
+        if not isinstance(sensor, SensorSource):
+            print("WARN: given sensor is not of type SensorSource, not adding to EKF")
+            return
+        self.sensors.append(sensor)
+
 
 
 if __name__ == "__main__":
@@ -299,4 +379,8 @@ if __name__ == "__main__":
         rospy.sleep(1)
 
     ekf = OdometryEKF() 
+
+    fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=1.0, update_period=15.0)
+    ekf.attach_sensor(fake_sensor) 
+
     rospy.spin()
