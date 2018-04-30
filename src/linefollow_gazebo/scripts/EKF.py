@@ -123,8 +123,9 @@ class FakeOdomSensorSource(SensorSource):
 
 
 class OdometryEKF(object):
+    """ EKF tracking, x, y, heading (theta), x', y', theta' """
 
-    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.001):
+    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.001, publish_rviz_pose=True):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
@@ -148,37 +149,54 @@ class OdometryEKF(object):
         self.I = np.diag(np.ones(6))
 
         # publishing
-        self.publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
+        self.publish_rviz_pose = publish_rviz_pose
+        self.odom_publisher = rospy.Publisher("/ekf_odom", Odometry, queue_size=3)
+        if publish_rviz_pose:
+            self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
         self.seq_num = 0
 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
 
     def publish_pose(self):
-        msg = PoseWithCovarianceStamped()
 
-        msg.header.seq = self.seq_num
+        odom = Odometry()
+
+        header = odom.header
+        header.seq = self.seq_num
         self.seq_num += 1
-        msg.header.stamp = rospy.get_rostime()
-        msg.header.frame_id = 'map'
+        header.stamp = rospy.get_rostime()
+        header.frame_id = 'map'
  
-        position = msg.pose.pose.position
+        position = odom.pose.pose.position
         position.x, position.y = self.state[0], self.state[1]
-        orientation = msg.pose.pose.orientation
+        orientation = odom.pose.pose.orientation
         quat = quat_from_rpy_rad(0.0, 0.0, self.state[2])
         orientation.x, orientation.y, orientation.z, orientation.w = quat
 
         # how the hell do I convert covariance between heading and other values
         # to covariance between quaternion and other values??
-
         # => don't actually care about covariance between anything other than x, y in my applcation
         # so just set covariances for quaternion to 0?
 
         cov = np.zeros((6,6))
         cov[:3, :3] = self.cov[:3, :3]
-        msg.pose.covariance = list(cov.ravel())
+        odom.pose.covariance = list(cov.ravel())
 
-        self.publisher.publish(msg)
+        # insert velocity information
+        linear_vel= odom.twist.twist.linear
+        linear_vel.x, linear_vel.y, linear_vel.z = self.state[3], self.state[4], 0.0
 
+        angular_vel = odom.twist.twist.angular
+        angular_vel.z = self.state[5] # TODO check this is right!
+        # don't bother setting covariance since I don't understand it for angular vel's and I don't actually use it
+
+        self.odom_publisher.publish(odom)
+
+        if self.publish_rviz_pose:
+            pose = PoseWithCovarianceStamped()
+            pose.header = header
+            pose.pose = odom.pose
+            self.pose_publisher.publish(pose)
 
     def step(self, event):
         if not self.true_positioning.ready():
@@ -372,7 +390,6 @@ class OdometryEKF(object):
 if __name__ == "__main__":
     rospy.init_node("ekf_positioning")
 
-
     # wait until clock messages arrive
     # and hence simulation is ready
     while rospy.get_time() == 0:
@@ -380,7 +397,7 @@ if __name__ == "__main__":
 
     ekf = OdometryEKF() 
 
-    fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=1.0, update_period=15.0)
+    fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=0.1, update_period=15.0)
     ekf.attach_sensor(fake_sensor) 
 
     rospy.spin()

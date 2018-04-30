@@ -51,6 +51,8 @@ class LineFollowController(object):
         # Wait until at speed to start tracking! 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
 
+        #self.begin_track_path()
+
     def wait_until_at_speed(self, event, accel_tolerance=0.5):
 
         pose = self.positioning.get_odom()
@@ -89,7 +91,7 @@ class LineFollowController(object):
 
         now = rospy.get_rostime()
         current_pose = self.positioning.get_odom()
-        
+ 
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
         pos = get_as_numpy_position(current_pose.pose.pose.position)
@@ -107,7 +109,7 @@ class LineFollowController(object):
 
     def track_path_update(self, event):
         if not self.tracking:
-            rospy.logerror("Path tracking updatecalled when not tracking, call begin_track_path_first!")
+            rospy.logerror("Path tracking update called when not tracking, call begin_track_path_first!")
             return
 
         now = rospy.get_rostime()
@@ -117,18 +119,19 @@ class LineFollowController(object):
         position = get_as_numpy_position(pose.pose.pose.position)
         heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear)
 
+        print("Position: \n\t {0}\n Velocity: \n\t {1}".format(position, vel))
+
         self.path_tracker.update(position)
 
         steer_angle = self.hoffman_control(position, heading, vel)
         rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
         prius_msg = self.prius_msg_generator.forward(self.throttle, steer_angle)
         self.prius_move.publish(prius_msg)
-       
+  
 
     def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
         """ Returns a steering command from -1.0 to 1.0 according to hoffman controller """
 
-        
         closest_point = self.path_tracker.get_closest_point()
         closest_heading = self.path_tracker.get_closest_tangent()
         rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
@@ -212,8 +215,8 @@ if __name__ == "__main__":
     rospy.sleep(2)
     rospy.loginfo("Clock is no longer zero")
 
-    ekf_positioning = EKFPositioning() # republishes odom as pose for display on RViz
-    positioning = TruePositioning()
+    # positioning = TruePositioning()
+    positioning = EKFPositioning()
 
     path = Path(loop=True)
     path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
@@ -231,5 +234,7 @@ if __name__ == "__main__":
     Testing(true_positioning=positioning)
 
 
+    # ground truth repbulishing for RVIZ
+    repubber = TruePositioning(repub=True)
 
     rospy.spin()
