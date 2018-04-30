@@ -54,31 +54,34 @@ class ImuSensorSource(SensorSource):
 """
 
 class OdometryEKF(object):
-    
-    def __init__(self, model_step_noise_coeffs=np.array([0.1, 0.1, 0.1, 0.1])):
+
+    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.01):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
-        self.rate = rospy.get_param("~ekf_rate", 25.0)   
+        self.rate = rospy.get_param("~ekf_rate", 15.0)   
         self.period = 1.0/self.rate
 
         self.true_positioning = TruePositioning()
         self.last_true_position, self.last_true_theta = None, None
+        self.last_true_position_time = None
+        self.last_true_position_time = None
 
         # state: x, y, theta, x', y', theta'
         self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.cov = np.zeros((6,6))
+        self.motion_model_threshold = motion_model_threshold
 
         # we can attach update sources here, conforming to SensorSource interface 
         self.sensing_sources = []
 
-        # reusable matrices, save initization
+        # reusable matrices, saves initization
         self.I = np.diag(np.ones(6))
 
         # publishing
         self.publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
         self.seq_num = 0
-       
+
         self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
 
     def publish_pose(self):
@@ -86,9 +89,9 @@ class OdometryEKF(object):
 
         msg.header.seq = self.seq_num
         self.seq_num += 1
-        msg.header.stamp = rospy.get_rostime().to_sec()
+        msg.header.stamp = rospy.get_rostime()
         msg.header.frame_id = 'map'
-        
+ 
         position = msg.pose.pose.position
         position.x, position.y = self.state[0], self.state[1]
         orientation = msg.pose.pose.orientation
@@ -103,7 +106,7 @@ class OdometryEKF(object):
 
         cov = np.zeros((6,6))
         cov[:3, :3] = self.cov[:3, :3]
-        msg.pose.covariance = list(cov)
+        msg.pose.covariance = list(cov.ravel())
 
         self.publisher.publish(msg)
 
@@ -112,9 +115,12 @@ class OdometryEKF(object):
         if not self.true_positioning.ready():
             print("True positining not ready - not starting EKF")
             return
+        if self.last_true_position_time is None:
+            self.last_true_position_time = self.true_positioning.get_odom_time()
 
-        dt = event.last_duration
-        if dt is None:
+        true_pos_time = self.true_positioning.get_odom_time()
+        dt = (true_pos_time - self.last_true_position_time).to_sec()
+        if dt == 0: # not received new true position, don't bother updating
             return
 
         self.predict(dt)
@@ -124,16 +130,25 @@ class OdometryEKF(object):
             if source.has_new_data():
                 self.update(source)
 
+        self.publish_pose()
+
+        self.last_true_position_time = true_pos_time
+
     def predict(self, dt):
 
         real_deltas = self.get_real_deltas()
+
+        print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
         sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)
+        print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
 
         # apply `f` ie. motion model
         self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
+        print("\tstate: {0}".format(self.state))
 
         # get jacobian
         F_k = self.motion_model_jacobian(self.state, sampled_deltas, dt)
+        print("--Covariances--\n Jacobian: \n {0} \n Current Covariance: \n {1} \n Q_k: \n {2}".format(F_k, self.cov, Q_k))
         # compute update covariance
         self.cov = matmul(F_k, matmul(self.cov, F_k.T)) + Q_k
 
@@ -148,7 +163,6 @@ class OdometryEKF(object):
 
         # get jacobian
         H_t = sensor_source.jacobian(self.state)
-
         # get sensor source covariance
         R_t = sensor_source.get_covariance()
         
@@ -176,8 +190,13 @@ class OdometryEKF(object):
             diff = position - self.last_true_position
             angle = np.arctan2(diff[1], diff[0])
             dist = np.linalg.norm(diff)
+            if dist < self.motion_model_threshold:
+                return [0.0, 0.0, 0.0]
             d_start_angle = angle - self.last_true_theta
-            d_end_angle = heading_angle - self.last_true_theta - d_start_angle
+            d_end_angle = heading_angle - angle
+            print("\t[real deltas] Position: {0}, last_position: {1}, movement last => now: {2}".format(position, self.last_true_position, diff))
+            print("\t[real deltas] angle of movement: {0}, distance: {1}, current rpy: {3}, last true angle: {2}".format(angle, dist, self.last_true_theta, rpy)) 
+            # print("\t[real deltas] start angle to movement angle: {0}, end angle to movement angle {1}".format(d_start_angle, d_end_angle))
 
         self.last_true_position = position
         self.last_true_theta = heading_angle
@@ -186,22 +205,21 @@ class OdometryEKF(object):
         
     def sample_deltas(self, real_deltas):
 
-        dist, d_start_angle, d_end_angle = real_deltas
         
-        diff, rotation_1, rotation_2 = real_deltas
+        dist, rotation_1, rotation_2 = real_deltas
         alpha_1, alpha_2, alpha_3, alpha_4 = self.model_step_noise_coeffs
 
-        stddev_start_angle_noise = alpha_1 * np.abs(d_start_angle) + alpha_2 * diff
-        stddev_end_angle_noise = alpha_1 * np.abs(d_end_angle) + alpha_2 * dist
-        stddev_dist_noise = alpha_3 * dist + alpha_4 * np.abs(d_start_angle + d_end_angle)
+        stddev_start_angle_noise = alpha_1 * np.abs(rotation_1) + alpha_2 * dist
+        stddev_end_angle_noise = alpha_1 * np.abs(rotation_2) + alpha_2 * dist
+        stddev_dist_noise = alpha_3 * dist + alpha_4 * np.abs(rotation_1 + rotation_2)
 
         error_start_angle = np.random.normal(0.0, stddev_start_angle_noise)
         error_end_angle = np.random.normal(0.0, stddev_end_angle_noise)
         error_dist = np.random.normal(0.0, stddev_dist_noise)
 
         sampled_dist = dist + error_dist
-        sampled_start_angle = d_start_angle + error_start_angle
-        sampled_end_angle = d_end_angle + error_end_angle
+        sampled_start_angle = rotation_1 + error_start_angle
+        sampled_end_angle = rotation_2 + error_end_angle
         
         samples = (sampled_dist, sampled_start_angle, sampled_end_angle)
         stddevs = (stddev_start_angle_noise, stddev_end_angle_noise, stddev_dist_noise)
@@ -220,7 +238,7 @@ class OdometryEKF(object):
 
             :param real_change: [translation distance, rotation 1, rotation 2]
             """
-                
+
         position = state[:2]
         heading_angle = state[2]
 
@@ -261,8 +279,8 @@ class OdometryEKF(object):
         F = np.diag([1.0, 1, 1, 0, 0, 0])
 
         # only the column corresponding to theta has cross-termed derivatives
-        a = -sampled_dist * np.sin(state[2] * sampled_start_angle)
-        b = sampled_dist * np.cos(state[2] * sampled_end_angle)
+        a = -sampled_dist * np.sin(state[2] +  sampled_start_angle)
+        b = sampled_dist * np.cos(state[2] + sampled_start_angle)
         d_theta_column = np.array([a, b, 1.0, a/dt, b/dt, 0.0])
 
         F[:, 2] = d_theta_column

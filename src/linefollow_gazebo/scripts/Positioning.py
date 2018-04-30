@@ -17,12 +17,17 @@ from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
 class Positioning(object):
     def __init__(self):
         self.last_odom = None
+        self.last_msg_time = None
 
     def on_update(self, msg):
         self.last_odom = msg
+        self.last_msg_time = msg.header.stamp 
 
     def get_odom(self):
         return self.last_odom 
+
+    def get_odom_time(self):
+        return self.last_msg_time
 
     def ready(self):
         return self.last_odom is not None
