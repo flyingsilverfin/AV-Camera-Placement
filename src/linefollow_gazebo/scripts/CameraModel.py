@@ -298,14 +298,14 @@ if __name__ == "__main__":
     VISUAL TESTS
     """
     
-    plot_pixel_areas = False
+    plot_pixel_areas = True
     # camera pointing down onto XY plane at Z=5
     camera = Camera(position=np.array([0,0,6]), 
                     orientation_pitch_deg=90.0,
                     orientation_yaw_deg=0.0, 
-                    model='perspective'
+                    #model='perspective'
                     #model='equidistance'
-                    #model='stereographic'
+                    model='stereographic'
                    )
     camera.set_resolution(h=100,w=100)
     camera.set_fov(horizontal_deg=80.0, vertical_deg=50.0)

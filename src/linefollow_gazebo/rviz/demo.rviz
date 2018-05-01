@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /Marker1
         - /PoseWithCovariance1
+        - /PoseWithCovariance2
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -206,6 +207,36 @@ Visualization Manager:
       Topic: /ekf_pose
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Axes Length: 5
+      Axes Radius: 0.5
+      Class: rviz/PoseWithCovariance
+      Color: 255; 25; 0
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.300000012
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Head Length: 0.300000012
+      Head Radius: 0.100000001
+      Name: PoseWithCovariance
+      Shaft Length: 1
+      Shaft Radius: 0.0500000007
+      Shape: Axes
+      Topic: /ground_truth_pose_msg
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -236,18 +267,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 46.4952545
-        Y: 62.0479698
-        Z: 17.9205799
+        X: -11.3638353
+        Y: 43.2461166
+        Z: 17.583271
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.42539811
+      Pitch: 1.56479633
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.128582
+      Yaw: 3.06358194
     Saved: ~
 Window Geometry:
   Displays:
