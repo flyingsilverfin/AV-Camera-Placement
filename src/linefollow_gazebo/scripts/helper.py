@@ -1,6 +1,5 @@
 
 import numpy as np
-import rospy
 import tf_conversions
 
 from geometry_msgs.msg import PointStamped, TransformStamped, Vector3
@@ -75,7 +74,7 @@ def get_as_numpy_position(p):
    elif type(p) == type(np.empty(3)):
        return p 
    else:
-       rospy.logerr("Can't handle position of type: " + str(type(p)))
+       print("Can't handle position of type: " + str(type(p)))
        raise Exception("Unknown position type: {}".format(type(p)))
 
 
@@ -88,7 +87,7 @@ def get_as_numpy_quaternion(quat):
     elif type(quat) == type(np.empty(4)) and quat.shape == (4,):
         pass
     else:
-        rospy.logerr("Quat provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
+        print("Quat provided is neither a orientation Quaternion msg nor a numpy 3-tuple representing a direction vector")
         raise Exception("Invalid quat type")
 
     return normalize(quat)

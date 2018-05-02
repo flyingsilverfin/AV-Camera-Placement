@@ -22,9 +22,10 @@ def plot_points(axes, points, color='blue', size=2):
 # some traffic camera information
 # https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf
 class Camera(object):
-    def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0, model='perspective'):
+    def __init__(self, position, orientation_pitch_deg=0.0, orientation_yaw_deg=0.0, model='perspective', verbose=False):
         
         self.model = model 
+        self.verbose = verbose
 
         self.position = np.array(position)
         self.orientation_rpy = np.deg2rad(np.array([-90.0, orientation_pitch_deg, orientation_yaw_deg]))
@@ -107,8 +108,8 @@ class Camera(object):
         #self.rotation = quat_inv_mult(target_quaternion, self.orientation) 
         self.rotation = quat_inv_mult(self.orientation, target_quaternion)
         self.inv_rotation =  transforms.quaternion_conjugate(self.rotation)
-        print("World -> camera rotation: {0}".format(self.rotation))
-        print("Camera -> world rotation: {0}".format(self.inv_rotation)) 
+        # print("World -> camera rotation: {0}".format(self.rotation))
+        # print("Camera -> world rotation: {0}".format(self.inv_rotation)) 
 
     def transform_to_camera_space(self, vector):
         v = vector + self.translation
@@ -153,8 +154,11 @@ class Camera(object):
     # subsume all previous approaches under one mathematically unified implementation
 
     def r(self, theta):
+        """ Theta = angle to optical axis. Converts this angle into a distance from optical axis in pixel plane
+        Different amounts of bend depending on camera model """
+
         if self.model == 'perspective':
-            if np.abs(theta) > np.pi/2:
+            if np.abs(theta) > np.pi/2 and self.verbose:
                 print("WARNING: attempting to use perspective model for angles greater than 90 degrees!")
             return self.f * np.tan(theta)
         elif self.model == 'equidistance':
@@ -289,6 +293,9 @@ class Camera(object):
         corners.append(self.pixel_to_plane(0, h))
 
         return corners
+
+    def get_height(self):
+        return self.position[2]
 
 
 if __name__ == "__main__":
