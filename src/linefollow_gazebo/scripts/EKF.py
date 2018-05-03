@@ -129,7 +129,7 @@ class OdometryEKF(object):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
-        self.rate = rospy.get_param("~ekf_rate", 15.0)   
+        self.rate = rospy.get_param("~ekf_rate", 30.0)   
         self.period = 1.0/self.rate
 
         self.true_positioning = TruePositioning()
@@ -395,9 +395,8 @@ if __name__ == "__main__":
     while rospy.get_time() == 0:
         rospy.sleep(1)
 
-    ekf = OdometryEKF() 
-
-    fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=0.1, update_period=15.0)
-    ekf.attach_sensor(fake_sensor) 
+    ekf = OdometryEKF(model_step_noise_coeffs=np.array([0.001, 0.001, 0.001, 0.001]), motion_model_threshold=0.001, publish_rviz_pose=True)
+    # fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=0.1, update_period=.0)
+    # ekf.attach_sensor(fake_sensor) 
 
     rospy.spin()

@@ -38,16 +38,27 @@ class PriusControlMsgGenerator(object):
     def forward(self, throttle, steer_angle):
         """forward generates a forward-moving Control msg with throttle and steering angle
 
-        :param throttle: throttle in range [0.0, 1.0]
+        :param throttle: throttle in range [-1.0, 1.0]
         :param steer_angle: steering angle in range [-1.0, 1.0]
+
+        if throttle < 0.0 then apply brakes
+
         """
-        assert throttle >= 0.0 and throttle <= 1.0, "Require throttle to be within range [0.0, 1.0]"
-        assert steer_angle >= -1.0 and steer_angle <= 1.0, "Require steer angle to be in range [-1.0, 1.0]"
+        assert steer_angle >= -1.0 and steer_angle <= 1.0, "Require steer angle to be in range [-1.0, 1.0]: {0}".format(steer_angle)
+        brake = 0.0
+        if throttle < 0.0:
+            brake = abs(throttle)
+            throttle = 0.0
+        assert brake >= 0.0 and brake <= 1.0, "Brake must be in range [0.0, 1.0]: {0}".format(brake)
+        assert throttle >= 0.0 and throttle <= 1.0, "Throttle must be in range [0.0, 1.0]: {0}".format(throttle)
         msg = Control()
         self.populate_header(msg)
+        
         msg.throttle = throttle	# throttle as given
         msg.steer = steer_angle	# steering angle as given
-        msg.brake = 0.0	    # no brake	
+        msg.brake = brake       # braking amount 
         msg.shift_gears = 2 # forward gearing
 
         return msg
+
+

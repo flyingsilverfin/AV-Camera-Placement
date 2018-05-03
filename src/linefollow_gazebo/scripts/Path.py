@@ -153,9 +153,9 @@ class Path(object):
                 time += segment.get_length()
                 if target_time <= time:
                     return segment
-        # TODO deal with lapping/circuits
 
     def get_segment_after(self, target_segment):
+        """ Basic implementation of this shouldn't be used much as it's a linear lookup each time."""
         index = self.segments.index(target_segment)
         last_index = len(self.segments) - 1
         if index == last_index:
@@ -182,6 +182,10 @@ class Path(object):
     def _in_segment(self, time, segment):
         return segment.start_time <= time and (time < segment.start_time + segment.get_length() or segment.get_length() == -1)
 
+    def get_curvature_at(self, time):
+        segment = self.get_segment_for_time(time)
+        return segment.curvature
+
 
     def discretize_points(self, resolution=0.5):
         """ Discretizes entire curve at the given meter resolution. Useful for debugging/plotting. loop is ignored. """
@@ -201,9 +205,15 @@ class Path(object):
         return np.array(points)
 
 
-    def get_tracker(self, start_dist=0.0, max_horizon=5.0):
+    def get_tracker(self, start_dist=0.0, max_horizon=10.0):
         return ForwardPathTracker(self, start_dist=start_dist, max_horizon=max_horizon)
 
+    def get_velocity_profile(self, 
+                             lookahead_time=3.0,
+                             lookahead_interval=0.5,
+                             straight_line_speed=20.0,
+                             radius_speed_multiplier=1.0):
+        return VelocityProfile(self, lookahead_time, lookahead_interval, straight_line_speed, radius_speed_multiplier)
 
     def get_length(self):
         if self.segments[-1].get_length() == -1:
@@ -214,14 +224,60 @@ class Path(object):
     def save_as_fig(self, path):
         import matplotlib.pyplot as plt
         pts = self.discretize_points()
+        if pts is None:
+            return
         plt.plot(pts[:, 0], pts[:, 1])
         plt.savefig(path)
 
 
+class VelocityProfile(object):
+    """ Calculates velocity profile for a given path """
+
+    def __init__(self, path,                  
+                 lookahead_time=3.0,
+                 lookahead_interval=0.5,
+                 straight_line_speed=20.0,
+                 radius_speed_multiplier=1.0):
+
+        self.path = path
+        self.lookahead_time = lookahead_time
+        self.lookahead_interval = lookahead_interval 
+        self.straight_line_speed = straight_line_speed
+        self.radius_speed_multiplier = radius_speed_multiplier
+
+
+    def get_target_speed(self, path_time, current_speed):
+        """ expected usage: input path_time corresponding to the path tracker's closest time
+            This is used to evaluate points on the curve """
+
+        # since the path_time is actually path distance
+        # need to convert lookead_time into lookahead_distance
+        lookahead_distance = current_speed * self.lookahead_time
+        time_step_size = current_speed * self.lookahead_interval
+        steps = np.arange(path_time, path_time + lookahead_distance, time_step_size)
+
+        # Calculate the average target speed over the lookead distance 
+        target_speed = 0 
+        for dist in steps:
+            # TODO this is going to be rather inefficient but 
+            # it is not totally trivial to make it faster
+            # TODO profile lookups
+            curvature = np.abs(self.path.get_curvature_at(dist)) # recall curvature is signed!
+            # convert curvature into target speed
+            speed = self.straight_line_speed if curvature == 0.0 else self.radius_speed_multiplier * 1.0/curvature
+            print("Curvature: {0}, Resulting target speed: {1}".format(curvature, speed))
+            target_speed += speed
+        
+        # average out 
+        target_speed *= (1.0/len(steps))
+
+        return min(self.straight_line_speed, target_speed)
+
 class ForwardPathTracker(object):
     """ Wraps a Path object with some state that allows tracking it in a forward direction only (only allow forward progress) """
 
-    def __init__(self, path, start_dist=0.0, max_horizon=5.0, loop_restart_tolerance=5.0):
+
+    def __init__(self, path, start_dist=0.0, max_horizon=5.0, loop_restart_tolerance=2.0):
         """
         start_time: apply time shift to the path
         start_dist: distance in path to start tracking from
@@ -290,6 +346,9 @@ class ForwardPathTracker(object):
 
     def get_closest_tangent(self):
         return self.closest_tangent
+    
+    def get_closest_point_time(self):
+        return self.last_t
 
 
 class UnboundedSegmentException(Exception):

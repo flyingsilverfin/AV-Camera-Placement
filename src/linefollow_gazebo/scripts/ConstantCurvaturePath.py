@@ -274,7 +274,7 @@ class ConstantCurvaturePath(object):
                 return self.start_time + dt
         else:
             # if beyond horizon return min time to solve jumping segments
-            if dt > self.duration:
+            if self.duration != -1 and dt > self.duration:
                 print("Using end_time since dt > duration, dt: {0}, dt+start_time: {1}, min-time: {2}".format(dt, dt+self.start_time, min_time))
                 print("\tcurvature: {0}, target point: {1}, target_point in local coords: {2}".format(self.curvature, target_point, point))
                 return min_time

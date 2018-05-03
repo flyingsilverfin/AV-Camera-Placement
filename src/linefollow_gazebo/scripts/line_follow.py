@@ -21,9 +21,10 @@ from ConstantCurvaturePath import ConstantCurvaturePath
 from VisualizeMarker import VisualizeMarker
 from helper import *
 from Path import Path, ForwardPathTracker
+from PID import PID
 
 class LineFollowController(object):
-    def __init__(self, path, positioning=None):
+    def __init__(self, path, straight_line_velocity=20.0, positioning=None):
         rospy.loginfo("Create LineFollowController object")
         self.rate = rospy.get_param("~rate", 50.0)   
         self.period = 1.0 / self.rate
@@ -31,7 +32,7 @@ class LineFollowController(object):
         self.positioning = positioning
         self.prius_msg_generator = PriusControlMsgGenerator()
         # topic to publish prius Control message
-        self.prius_move = rospy.Publisher("/prius", Control, queue_size=5)
+        self.prius_move = rospy.Publisher("/prius", Control, queue_size=3)
 
 
         self.path = path
@@ -99,8 +100,15 @@ class LineFollowController(object):
         orientation_rpy = quat_to_rpy(orientation)
 
         self.path.set_start(pos, np.rad2deg(orientation_rpy))
-        self.path_tracker = self.path.get_tracker()
+        max_horizon = 10.0 if len(self.path.segments) > 1 else 25.0
+        self.path_tracker = self.path.get_tracker(max_horizon=max_horizon)
         self.path_tracker.update(pos)
+
+        self.velocity_profile = self.path.get_velocity_profile(lookahead_time=5.0, 
+                                                               lookahead_interval=0.25,
+                                                               straight_line_speed=13.0, 
+                                                               radius_speed_multiplier=0.5) 
+        self.velocity_pid = PID()
 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
@@ -118,14 +126,19 @@ class LineFollowController(object):
         pose = self.positioning.get_odom()
         position = get_as_numpy_position(pose.pose.pose.position)
         heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear)
+        speed = np.linalg.norm(vel)
 
-        print("Position: \n\t {0}\n Velocity: \n\t {1}".format(position, vel))
+        target_speed = self.velocity_profile.get_target_speed(self.path_tracker.get_closest_point_time(), speed)
+
+        print("Position: \n\t {0}\n Velocity: \n\t {1}, Speed: \n\t {2}, Target Speed: {3}".format(position, vel, speed, target_speed))
 
         self.path_tracker.update(position)
 
         steer_angle = self.hoffman_control(position, heading, vel)
+        throttle = self.velocity_pid.update(secs, speed - target_speed)
         rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
-        prius_msg = self.prius_msg_generator.forward(self.throttle, steer_angle)
+        rospy.loginfo("New throttle (PID): {0}".format(throttle))
+        prius_msg = self.prius_msg_generator.forward(throttle, steer_angle)
         self.prius_move.publish(prius_msg)
   
 
@@ -136,7 +149,7 @@ class LineFollowController(object):
         closest_heading = self.path_tracker.get_closest_tangent()
         rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
         if viz:
-            self.visualize.draw_n_points([position, closest_point])
+            self.visualize.draw_n_points([position, closest_point], duration=60.0)
 
         diff = closest_point - position
         crosstrack_dist = np.linalg.norm(diff)
@@ -145,7 +158,7 @@ class LineFollowController(object):
             # if target is on LHS of heading negate
             crosstrack_dist *= -1
 
-        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=3.0)
+        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=1.5)
 
         # convert angle to command angle
         steer_command = new_wheel_angle/steering_angle_limit
@@ -218,13 +231,17 @@ if __name__ == "__main__":
     # positioning = TruePositioning()
     positioning = EKFPositioning()
 
+    # path = Path(loop=True)
+    # path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    # path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
+    # path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
+    # path.add_segment(curvature=0.0, length=50.0)
+    # path.add_segment(curvature=0.05/3, length=0.5*np.pi*2*3/0.05)
+    # path.add_segment(curvature=0.0, length=50.0)
+   
     path = Path(loop=True)
-    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
-    path.add_segment(curvature=-0.05, length=0.5*np.pi*2/0.05)
-    path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
-    path.add_segment(curvature=0.0, length=50.0)
-    path.add_segment(curvature=0.05/3, length=0.5*np.pi*2*3/0.05)
-    path.add_segment(curvature=0.0, length=50.0)
+    #path.add_segment(curvature=0.0, length=-1)
+    path.add_segment(curvature=0.01, length=2*np.pi/0.01)
 
     path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
 
