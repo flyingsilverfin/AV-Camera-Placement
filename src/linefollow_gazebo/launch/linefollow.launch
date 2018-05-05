@@ -2,14 +2,19 @@
 <launch>
   <arg name="model" default="$(find prius_description)/urdf/prius.urdf"/>
   <arg name="rvizconfig" default="$(find linefollow_gazebo)/rviz/demo.rviz" />
+  <arg name="rviz" default="true" />
+  <arg name="gazebo_gui" default="false" />
+
+  <!--<arg name="camera" default="$(find linefollow_gazebo)/urdf/single_camera.urdf" />-->
 
   <param name="robot_description" textfile="$(arg model)"/>
+  <!--<param name="camera_description" textfile="$(arg camera)" />-->
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find linefollow_gazebo)/worlds/linefollow.world"/>
     <arg name="use_sim_time" value="true"/>
-    <arg name="gui" value="false"/>
+    <arg name="gui" value="$(arg gazebo_gui)"/>
   </include>
 
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" >
@@ -23,10 +28,13 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="world_pos" args="0 0 0 0 0 0 map odom"/>
 
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0 -y 0 -z 0.0 -model prius"/>
- 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+  <!--<node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->
 
-  <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" />
+  <group if="$(arg rviz)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+  </group>
+
+  <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" required="true"/>
   <node pkg="linefollow_gazebo" type="EKF.py" name="ekf_positioning" />
 
 

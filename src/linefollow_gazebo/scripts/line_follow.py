@@ -15,6 +15,8 @@ from geometry_msgs.msg import Quaternion
 
 from std_msgs.msg import Float64, Bool
 
+from std_srvs.srv import Empty, SetBool
+
 from PriusControlMsgGenerator import PriusControlMsgGenerator
 from Positioning import TruePositioning, EKFPositioning
 from ConstantCurvaturePath import ConstantCurvaturePath
@@ -26,7 +28,7 @@ from PID import PID
 class LineFollowController(object):
     def __init__(self, path, straight_line_velocity=20.0, positioning=None):
         rospy.loginfo("Create LineFollowController object")
-        self.rate = rospy.get_param("~rate", 50.0)   
+        self.rate = rospy.get_param("/LineFollowController/track_path_update_rate", 50.0)   
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
@@ -34,11 +36,12 @@ class LineFollowController(object):
         # topic to publish prius Control message
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=3)
 
-
         self.path = path
+        self.path_tracker = None    # init to avoid undefined vars before path tracking starts
 
         self.previous_v_x = 0.0
         self.tracking = False
+        self.begin_finish = None
 
         self.visualize = VisualizeMarker(rate=4)
 
@@ -49,10 +52,13 @@ class LineFollowController(object):
         self.repeated_msg = self.prius_msg_generator.forward(self.throttle, 0.0) # get speed up until acceleration stops
         self.prius_move.publish(self.repeated_msg)
 
-        # Wait until at speed to start tracking! 
+
+        # NOTE perform a service call the EKF node to begin tracking
+        self.set_ekf_running = rospy.ServiceProxy('/ekf/set_running', SetBool)
+        self.set_ekf_running(True)
+
         self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
 
-        #self.begin_track_path()
 
     def wait_until_at_speed(self, event, accel_tolerance=0.5):
 
@@ -134,13 +140,26 @@ class LineFollowController(object):
 
         self.path_tracker.update(position)
 
+        if self.begin_finish is None and self.path_tracker.finished:
+            self.begin_finish = rospy.get_rostime().to_sec()
+            self.begin_finish_speed = speed
+
         steer_angle = self.hoffman_control(position, heading, vel)
         throttle = self.velocity_pid.update(secs, speed - target_speed)
         rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
         rospy.loginfo("New throttle (PID): {0}".format(throttle))
         prius_msg = self.prius_msg_generator.forward(throttle, steer_angle)
         self.prius_move.publish(prius_msg)
-  
+
+        # make sure we elapse the required overshoot distance
+        # because the path tracker could indicate 'finished' early!
+        if self.begin_finish is not None and \
+           rospy.get_rostime().to_sec() - self.begin_finish > self.path_tracker.finish_undershoot/self.begin_finish_speed:
+            self.tracking = False
+            self.timer.shutdown()
+            print("FINISHED tracking")
+            self.prius_move.publish(self.prius_msg_generator.forward(-1.0, 0.0))
+
 
     def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
         """ Returns a steering command from -1.0 to 1.0 according to hoffman controller """
@@ -191,6 +210,10 @@ class LineFollowController(object):
         self.timer.shutdown() 
 
 
+    def is_finished_tracking(self):
+        return not self.tracking and (self.path_tracker is not None and self.path_tracker.finished)
+
+
 
 # Occasionally publishes a true(er) position with some variance to a topic
 class Testing(object):
@@ -217,7 +240,7 @@ class Testing(object):
 
 
 if __name__ == "__main__":
-    rospy.init_node("line_follow_py")
+    rospy.init_node("line_follow_py", disable_signals=True)
 
 
     # wait until clock messages arrive
@@ -229,7 +252,7 @@ if __name__ == "__main__":
     rospy.loginfo("Clock is no longer zero")
 
     # positioning = TruePositioning()
-    positioning = EKFPositioning()
+    positioning = EKFPositioning() # just a subscriber to the EKF node that retains the last Odom message for querying
 
     # path = Path(loop=True)
     # path.add_segment(curvature=0.05, length=0.5*np.pi*2/0.05)
@@ -239,19 +262,31 @@ if __name__ == "__main__":
     # path.add_segment(curvature=0.05/3, length=0.5*np.pi*2*3/0.05)
     # path.add_segment(curvature=0.0, length=50.0)
    
-    path = Path(loop=True)
+    path = Path()   #loop=True)
     #path.add_segment(curvature=0.0, length=-1)
     path.add_segment(curvature=0.01, length=2*np.pi/0.01)
+# TODO pull path definition from parameter server
+# build the path accordingly here
 
+
+# TODO save path fig to current experiment folder from param server
     path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
 
     line_follow = LineFollowController(path=path, positioning=positioning)
-    line_follow.begin(throttle=0.1)
 
-    Testing(true_positioning=positioning)
+    def begin_tracking(msg):
+        """ Execute a path tracking, and quit automatically when finished """
+        line_follow.begin(throttle=0.2)
 
+        # TODO wrap this in a param get for RVIZ_visualization
+        # ground truth repbulishing for RVIZ
+        repubber = TruePositioning(repub=True)
 
-    # ground truth repbulishing for RVIZ
-    repubber = TruePositioning(repub=True)
+        while not line_follow.is_finished_tracking():
+            rospy.rostime.wallsleep(0.5) # this should allow stop_tracking() to be called externally as well
+        rospy.signal_shutdown("Done executing path") 
+    
+    rospy.Service('/VehicleController/begin_path_tracking', Empty, begin_tracking)
 
     rospy.spin()
+

@@ -11,7 +11,7 @@ from helper import quat_to_rpy, get_as_numpy_quaternion, get_as_numpy_position, 
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
-
+from std_srvs.srv import SetBool
 
 class SensorSource(object):
     """ Superclass for sensor sources """
@@ -129,8 +129,10 @@ class OdometryEKF(object):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
-        self.rate = rospy.get_param("~ekf_rate", 30.0)   
+        self.rate = rospy.get_param("/ekf_update_rate", 30.0)   
         self.period = 1.0/self.rate
+        print("EKF update rate: {0}".format(self.rate))
+        print("EKF namespace: {0}".format(rospy.get_namespace()))
 
         self.true_positioning = TruePositioning()
         self.last_true_position, self.last_true_theta = None, None
@@ -138,7 +140,7 @@ class OdometryEKF(object):
         self.last_true_position_time = None
 
         # state: x, y, theta, x', y', theta'
-        self.state = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        self.state = None # will use true state when first stepping #np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.cov = np.zeros((6,6))
         self.motion_model_threshold = motion_model_threshold
 
@@ -155,7 +157,34 @@ class OdometryEKF(object):
             self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
         self.seq_num = 0
 
-        self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
+        self.running = False
+
+    def set_running(self, msg):
+        """ Called by service to enable/disable EKF """
+        set_run = msg.data
+        if set_run:
+            return {"success": self.start(), "message": ""}
+        else:
+            return {"success" : self.stop(), "message": ""}
+
+    def start(self):
+        if self.running:
+            print("EKF already running")
+            return False
+        else:
+            self.running = True
+            self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
+            return True
+
+    def stop(self):
+        if not self.running:
+            print("EKF already running")
+            return False
+        else:
+            self.running = False
+            self.timer.shutdown()
+            return True
+        
 
     def publish_pose(self):
 
@@ -200,10 +229,16 @@ class OdometryEKF(object):
 
     def step(self, event):
         if not self.true_positioning.ready():
-            print("True positining not ready - not starting EKF")
+            print("True positioning not ready - not starting EKF")
             return
         if self.last_true_position_time is None:
             self.last_true_position_time = self.true_positioning.get_odom_time()
+        
+        if self.state is None:
+            odom = self.true_positioning.get_odom()
+            position = odom.pose.pose.position
+            orientation_rpy = quat_to_rpy(get_as_numpy_quaternion(odom.pose.pose.orientation)) # orientation quat => rpy
+            self.state = np.array([position.x, position.y, orientation_rpy[2], 0.0, 0.0, 0.0]) # just 0 velocity will be overriden next update step anyway
 
         true_pos_time = self.true_positioning.get_odom_time()
         dt = (true_pos_time - self.last_true_position_time).to_sec()
@@ -390,13 +425,15 @@ class OdometryEKF(object):
 if __name__ == "__main__":
     rospy.init_node("ekf_positioning")
 
+
     # wait until clock messages arrive
     # and hence simulation is ready
     while rospy.get_time() == 0:
         rospy.sleep(1)
 
     ekf = OdometryEKF(model_step_noise_coeffs=np.array([0.001, 0.001, 0.001, 0.001]), motion_model_threshold=0.001, publish_rviz_pose=True)
-    # fake_sensor = FakeOdomSensorSource("/base_pose_ground_truth", noise_variance=0.1, update_period=.0)
-    # ekf.attach_sensor(fake_sensor) 
+
+    # TODO query parameter server to add sensor sources etc
+    toggler = rospy.Service('/ekf/set_running', SetBool, ekf.set_running)
 
     rospy.spin()

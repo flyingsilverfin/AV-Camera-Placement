@@ -1,56 +1,16 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(linefollow_gazebo)
+project(custom_messages)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
-# add_definitions(-std=c++11)
+# add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-
-
-set (PRIUSCUP_MAJOR_VERSION 0)
-set (PRIUSCUP_MINOR_VERSION 1)
-set (PRIUSCUP_PATCH_VERSION 0)
-set (PRIUSCUP_VERSION_FULL ${PRIUSCUP_MAJOR_VERSION}.${PRIUSCUP_MINOR_VERSION}.${PRIUSCUP_PATCH_VERSION})
-
 find_package(catkin REQUIRED COMPONENTS
-  gazebo_ros
-  prius_msgs
-  rospy
-  logging_server
+    message_generation
+    std_msgs
 )
-
-find_package(gazebo 8 REQUIRED)
-find_package(ignition-msgs0 REQUIRED)
-
-catkin_package(
- # INCLUDE_DIRS include
- # LIBRARIES gazebo_radar_plugin
- CATKIN_DEPENDS gazebo_ros
-#  DEPENDS system_lib
-)
-
-include_directories(include ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${SDFormat_INCLUDE_DIRS})
-
-add_library(PriusHybridPlugin SHARED plugins/PriusHybridPlugin.cc)
-target_link_libraries(PriusHybridPlugin ${GAZEBO_LIBRARIES} ${IGNITION-MSGS_LIBRARIES})
-
-
-#catkin_install_python(PROGRAMS nodes/joystick_translator
-#                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
-install(TARGETS PriusHybridPlugin
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY models DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-
-
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -93,11 +53,10 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   LogNMessages.srv
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -107,10 +66,10 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -141,13 +100,12 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-
-#catkin_package(
+catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES linefollow_gazebo
-#  CATKIN_DEPENDS other_catkin_pkg
+#  LIBRARIES custom_messages_server
+  CATKIN_DEPENDS message_runtime std_msgs
 #  DEPENDS system_lib
-#)
+)
 
 ###########
 ## Build ##
@@ -155,15 +113,14 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-
-#include_directories(
+include_directories(
 # include
 # ${catkin_INCLUDE_DIRS}
-#)
+)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/linefollow_gazebo.cpp
+#   src/${PROJECT_NAME}/custom_messages_server.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -174,7 +131,7 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/linefollow_gazebo_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/custom_messages_server_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -231,7 +188,7 @@ install(DIRECTORY worlds DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_linefollow_gazebo.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_custom_messages_server.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

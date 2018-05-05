@@ -145,6 +145,11 @@ class Path(object):
     def get_segment_for_time(self, target_time):
         if self.loop:
             target_time = target_time % self.end_time
+       
+        # if querying beyond last segment, return last segment
+        if target_time > self.get_length():
+            return self.segments[-1]
+
         time = 0.0
         for segment in self.segments:
             if segment.get_length() == -1:
@@ -293,6 +298,9 @@ class ForwardPathTracker(object):
         self.active_segment = self.path.get_segment_for_time(self.last_t )
         self.max_horizon = max_horizon 
 
+        self.finished = False
+        self.finish_undershoot = 5.0
+
 
     def update(self, position):
         self.current_position = position
@@ -336,7 +344,8 @@ class ForwardPathTracker(object):
                 print("Restarting loop tracking!")
                 self.last_t = 0.0 # ie. reset to 0 distance
 
-
+        if not self.loop and path_length != -1 and self.last_t + self.finish_undershoot >= self.path.get_length(): # 1 second tolerance seems to make it work!
+            self.finished = True
 
     def get_closest_point(self):
         return self.closest_point
