@@ -40,6 +40,10 @@ class Runner(object):
         self.launch.start()
         # can shutdown with self.launch.shutdown()
 
+    def shutdown_nodes(self):
+        self.launch.shutdown()
+        time.sleep(1)
+
     def spin_for(self, t=1.0):
         start_time = time.time()
         while self.launch.runner.spin_once() and time.time() - start_time < t:
