@@ -5,10 +5,16 @@
   <arg name="rviz" default="true" />
   <arg name="gazebo_gui" default="false" />
 
+
+  <arg name="test_h_fov" default="1.047" />
+  <arg name="test_x_res" default="300" />
+  <arg name="test_y_res" default="300" />
+
   <!--<arg name="camera" default="$(find linefollow_gazebo)/urdf/single_camera.urdf" />-->
 
   <param name="robot_description" textfile="$(arg model)"/>
-  <!--<param name="camera_description" textfile="$(arg camera)" />-->
+
+  <param name="camera_description" command="xacro --inorder '$(find linefollow_gazebo)/urdf/single_camera.urdf.xacro' horizontal_fov:=$(arg test_h_fov) width_resolution:=$(arg test_x_res) height_resolution:=$(arg test_y_res)" />
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -28,7 +34,7 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="world_pos" args="0 0 0 0 0 0 map odom"/>
 
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0 -y 0 -z 0.0 -model prius"/>
-  <!--<node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->
+  <node name="spawn_urdf_camera" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
