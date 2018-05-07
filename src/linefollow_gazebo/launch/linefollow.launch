@@ -6,15 +6,17 @@
   <arg name="gazebo_gui" default="false" />
 
 
-  <arg name="test_h_fov" default="1.047" />
-  <arg name="test_x_res" default="300" />
-  <arg name="test_y_res" default="300" />
+  <!-- For spawning camera according to needed parameters that have to be set at launch time-->
+  <arg name="horizontal_fov" default="1.547" />
+  <arg name="width_resolution" default="300" />
+  <arg name="height_resolution" default="300" />
 
   <!--<arg name="camera" default="$(find linefollow_gazebo)/urdf/single_camera.urdf" />-->
 
   <param name="robot_description" textfile="$(arg model)"/>
 
-  <param name="camera_description" command="xacro --inorder '$(find linefollow_gazebo)/urdf/single_camera.urdf.xacro' horizontal_fov:=$(arg test_h_fov) width_resolution:=$(arg test_x_res) height_resolution:=$(arg test_y_res)" />
+  <!-- Generate URDF from Xacro-parametrized model -->
+  <param name="camera_description" command="xacro --inorder '$(find linefollow_gazebo)/urdf/single_camera.urdf.xacro' horizontal_fov:=$(arg horizontal_fov) width_resolution:=$(arg width_resolution) height_resolution:=$(arg height_resolution)" />
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
