@@ -33,12 +33,13 @@ class Camera(object):
         self.generate_transform()
 
         # initialize to some defaults
+        self.set_resolution(setup=False)
         self.set_focal_length()
         self.set_fov()
-        self.set_resolution()
         self.set_target_plane()
 
         self.original_plane = None
+
 
         self.setup()
 
@@ -64,11 +65,36 @@ class Camera(object):
         self.plane_camera_center = self.pixel_to_plane(self.R_x/2.0, self.R_y/2.0)
         self.plane_camera_center_right_edge = self.pixel_to_plane(self.R_x, self.R_y/2.0)
 
+        # one_up = self.pixel_to_plane(self.R_x/2.0, self.R_y/2.0 + 1)
+        # one_up_right = self.pixel_to_plane(self.R_x/2.0 + 1.0, self.R_y/2.0 + + 1)
+
+        # dx_lower = np.linalg.norm(self.plane_camera_center_right_edge - self.plane_camera_center) / (self.R_x/2.0)
+        # dx_higher = np.linalg.norm(one_up_right - one_up)
+        # self.dx_growth_per_y_pixel = dx_higher - dx_lower
+        # # self.dx_growth_per_y_pixel = np.linalg.norm(one_up_right - one_up) - np.linalg.norm(self.plane_camera_center_right_edge - self.plane_camera_center)/(self.R_x/2.0)
+
+        # self.plane_camera_bottom_middle = self.pixel_to_plane(self.R_x/2.0, 0)
+        # self.plane_camera_bottom_right = self.pixel_to_plane(self.R_x, 0)
+        
+        # # # used for perspective camera
+        # self.bottom_dx = np.linalg.norm(self.plane_camera_bottom_right - self.plane_camera_bottom_middle)/ ( self.R_x/2.0)
+        # middle_dx = np.linalg.norm(self.plane_camera_center_right_edge - self.plane_camera_center) / (self.R_x/2.0)
+        # #calculate increase in ground plane pixel width per increasing y pixel
+        # self.dx_growth_per_y_pixel = (middle_dx - self.bottom_dx)/(self.R_y/2.0)
+
+        self.pixel_plane_areas_cache = np.ones(shape=(self.R_y, self.R_x))*-1 
+
+    def _get_ground_plane_dx_at_y_pixel(self, y_pix):
+        p1, p2 = self.pixel_to_plane(0, y_pix), self.pixel_to_plane(1, y_pix)
+        return np.linalg.norm(p2 - p1)
+        # return y_pix * self.dx_growth_per_y_pixel + self.bottom_dx
+
 
     def _compute_pixel_plane_boundaries(self):
         # pre-compute the x and y bounds of the scaled camera pixel plane
         self.max_x_pixel_plane = self.r(self.w_fov/2.0)
         self.max_y_pixel_plane = self.r(self.h_fov/2.0)
+
 
     def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0):
         # TODO these /2 are here because I dropped a /2 in the math somewhere...
@@ -77,9 +103,12 @@ class Camera(object):
         self.h_fov = np.deg2rad(vertical_deg)
         self._compute_pixel_plane_boundaries()
 
-    def set_resolution(self, h=300, w=400):
+    def set_resolution(self, h=300, w=400, setup=True):
         self.R_y = h
         self.R_x = w
+
+        if setup:
+            self.setup()
 
     
     # 100mm focal length found online for a traffic camera somewhere
@@ -103,7 +132,8 @@ class Camera(object):
    
         target_position = np.array([0.0, 0.0, 0.0])
         self.translation = target_position - self.position
-        print("World -> camera translation: {0}".format(self.translation))
+        if self.verbose:
+            print("World -> camera translation: {0}".format(self.translation))
 
         # in camera space, we want everything z-axis aligned ie. rotated 1,0,0 -> 0,0,1
         target_quaternion = np.array([0.0, 1.0, 0.0, -1.0]) # needs to be normalized
@@ -283,7 +313,7 @@ class Camera(object):
         # get three ground points: (x,y), (x+1, y), (x, y+1) and compute difference vectors
         c = self.pixel_to_plane(x,y)
         dx = self.pixel_to_plane(x+1, y) 
-        dy = self.pixel_to_plane(x, y-1) 
+        dy = self.pixel_to_plane(x, y+1) 
         if c is None:
             return None
 
@@ -305,39 +335,72 @@ class Camera(object):
         For perspective cameras:
         We compute the length of the diagonal of a pixel area
         using only basic measures: ground distance, 
-        height of camera mount, and the angle corresponding to the diagonal
+        height of camera mount, and the change in angle corresponding to the diagonal of the pixel
         """
 
 
-        p = np.array([pixel_x, pixel_y])
+        p_centered = x_ctr, y_ctr = np.array([pixel_x - self.R_x/2.0, self.R_y/2.0 - pixel_y])
+        x_width, y_width = self.max_x_pixel_plane/(self.R_x/2.0), self.max_y_pixel_plane/(self.R_y/2.0)
+        p_scaled = x_scaled, y_scaled = np.array([x_ctr* x_width, y_ctr * y_width])
+
         camera_height = self.position[2]
 
+        # only handles cameras at 0,0,z right now! TODO
         plane_point = x, y, z = self.pixel_to_plane(pixel_x, pixel_y)
         ground_dist = np.linalg.norm([x,y])
+       
+        r1 = np.linalg.norm(p_scaled)
         
-        theta_1 = self.theta(r=np.linalg.norm(p))
-        theta_2 = self.theta(r=np.linalg.norm(p + np.array([1, 1])))
-        d_theta_diag = theta_2 - theta_1
-        tan_d_theta_diag = np.tan(d_theta_diag)
+        dr = np.linalg.norm([x_width, y_width])
+        r2 = r1 + dr
+        theta_1 = self.theta(r=r1)
+        theta_2 = self.theta(r=r2)
+        tan_d_theta_diag = np.tan(theta_2 - theta_1)
 
-        a = (camera_height**2) / (camera_height - ground_dist * tan_d_theta_diag)
-        b = (ground_dist/camera_height) + tan_d_theta_diag + tan_d_theta_dia * ground_dist**2 - camera_height * ground_dist
-        length_diagonal = a * b
+        tan_theta_vertical = ground_dist / camera_height
+        length_diagonal = camera_height * (tan_theta_vertical - tan_d_theta_diag) / (1 - tan_theta_vertical * tan_d_theta_diag)
+        length_diagonal -= ground_dist
+
+
+        # a = (camera_height**2) / (camera_height - ground_dist * tan_d_theta_diag)
+        # b = (ground_dist/camera_height) + tan_d_theta_diag + tan_d_theta_diag * ground_dist**2 - camera_height * ground_dist
+        # length_diagonal = a * b
 
         
         # also need the base length, which is constant across any given y pixel
         # depends only on the y pixel and camera position/parameters
-        dx = self.get_ground_width_at_y_pixel(pixel_y) #TODO
+
+        # length of  pixel on the ground plane is constant for a  given depth
+        # since we've disallowed ROLL
+        # so we're just looking at the width of any pixel, projected onto the plane
+
+        # pixel_width = self.pixel_plane_pixel_width
+        # camera_to_pixel = np.array([pixel_x, pixel_y, self.f])
+        # dist_to_pixel = np.linalg.norm(camera_to_pixel)
+        # camera_to_plane_point = self.position - plane_point
+        # dist_camera_to_plane_point = np.linalg.norm(camera_to_plane_point)
+        # pixel_width_on_plane = dist_camera_to_plane_point * pixel_width / dist_to_pixel # simple ratio to find plane width
+        # dx = pixel_width_on_plane
+        dx = self._get_ground_plane_dx_at_y_pixel(pixel_y)
 
         # lastly need the plane angle to the principal point on the plane (ie. intersection of center and plane to the plane point)
-        center = self.plane_camera_center
+        center = self.plane_camera_center # on-ground-plane position of principal vector intersection
         diff_vector = center - plane_point
         dist = np.linalg.norm(diff_vector)
         plane_horizontal_vector = self.plane_camera_center_right_edge - center
-        angle = np.dot(diff_vector, plane_horizontal_vector) / (dist * np.linalg.norm(plane_horizontal_vector))
+
+        if dist == 0: # we have the center pixel, in which case tha rea is a square with the diagonal given
+            print("Center pixel ground diagonal length: {0}".format(length_diagonal))
+            return length_diagonal**2 /2
+        print("Distance plane_point to center: {0}, plane horizontal vector from principal plane point: {1}".format(dist, plane_horizontal_vector))
+        dotprod = np.dot(diff_vector, plane_horizontal_vector) / (dist * np.linalg.norm(plane_horizontal_vector))
+        angle = np.arccos(np.abs(dotprod))
 
         # area of p-gram given base, diagonal, and angle between the two is
-        area = np.sin(angle) * length_diagonal * dx
+        print("Angle: {0}, diagonal length: {1}, pixel ground width: {2}".format(angle, length_diagonal, dx))
+        # area = abs(np.sin(angle) * length_diagonal * dx)
+        area = abs(length_diagonal*dx)
+
         return area
 
 
@@ -376,10 +439,10 @@ if __name__ == "__main__":
     VISUAL TESTS
     """
     
-    plot_pixel_areas = True
+    plot_pixel_areas = False
     # camera pointing down onto XY plane at Z=5
     camera = Camera(position=np.array([0,0,6]), 
-                    orientation_pitch_deg=45.0,
+                    orientation_pitch_deg=90.0,
                     orientation_yaw_deg=0.0, 
                     model='perspective'
                     #model='equidistance'
@@ -422,15 +485,15 @@ if __name__ == "__main__":
         if pt is not None:
             pts.append(pt)
 
-    camera.set_orientation(60.0)
+    # camera.set_orientation(60.0)
 
-    pts_2 = []
-    for (x,y) in zip(xs, ys):
-        pt = camera.pixel_to_plane(x,y)
-        if pt is not None:
-            pts_2.append(pt)
+    # pts_2 = []
+    # for (x,y) in zip(xs, ys):
+        # pt = camera.pixel_to_plane(x,y)
+        # if pt is not None:
+            # pts_2.append(pt)
 
-    camera.set_orientation(45.0)
+    # camera.set_orientation(45.0)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -438,9 +501,9 @@ if __name__ == "__main__":
     ax.set_xlim([-5, 5])
     ax.set_ylim([-5, 5])
     ax.set_zlim([-5, 5])
-    ax.set_xlabel('X axis')
-    ax.set_ylabel('Y axis')
-    ax.set_zlabel('Z axis')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
 
     pos = camera.position
@@ -449,13 +512,13 @@ if __name__ == "__main__":
     plot_points(ax, np.array([pos]))
     plot_vector(ax, pos, orientation)
 
-    plot_points(ax, np.array(pts_2))
+    # plot_points(ax, np.array(pts_2))
 
 
     camera_sp_orientation = camera.camera_sp_orientation_vector
     #plot_vector(ax, np.array([0,0,0]), camera_sp_orientation)
 
-    plot_points(ax, corners)
+    # plot_points(ax, corners)
     plot_points(ax, np.array(pts))
 
     a = camera.original_plane['a']
@@ -499,17 +562,18 @@ if __name__ == "__main__":
     print("{0}, {1}, {2}, {3}".format(p_0_0, p_0_y, p_x_y, p_x_0))
     print("Angle (0,0) -> (Rx, 0): {0}, (0,0)->(0,Ry): {1}, (0, Ry)->(Rx, Ry): {2}".format(angle1, angle2, angle3))
     plot_vector(ax, pos, p_0_0)
-    plot_vector(ax, pos, p_0_y*2)
-    plot_vector(ax, pos, p_x_y*3)
-    plot_vector(ax, pos, p_x_0*4)
-    plot_vector(ax, pos, p_1)
-    plot_vector(ax, pos, p_2)
-    plot_vector(ax, pos, p_3)
-    plot_vector(ax, pos, p_4)
+    plot_vector(ax, pos, p_0_y)
+    plot_vector(ax, pos, p_x_y)
+    plot_vector(ax, pos, p_x_0)
+    # plot_vector(ax, pos, p_1)
+    # plot_vector(ax, pos, p_2)
+    # plot_vector(ax, pos, p_3)
+    # plot_vector(ax, pos, p_4)
 
 
 
 #    plt.scatter(corners[:, 0], corners[:, 1])
+    plt.savefig('data/camera_{0}.eps'.format(camera.model))
     plt.show()
 
 
@@ -524,6 +588,8 @@ if __name__ == "__main__":
         xs_, ys_ = xs.ravel(), ys.ravel()
         print(xs_.shape, xs.shape)
         pixels = zip(xs_, ys_)
+
+        areas_2 = np.zeros_like(xs, dtype=np.float64)
     
         data = {
             'fov': "{0}, {1}".format(camera.h_fov, camera.w_fov),
@@ -539,6 +605,10 @@ if __name__ == "__main__":
             data['pixels_to_area'][pix_str] = area 
         #    print(p)
             areas[p[1], p[0]] = area 
+
+            area2 = camera.plane_area_of_pixel(*p, method='analytic')
+            print("Area of pixel {0}: {1}".format(p, area2))
+            areas_2[p[1], p[0]] = area2
     
         # f = open('data/camera_pixel_areas.json','w')
         # j = json.dumps(data)
@@ -551,22 +621,43 @@ if __name__ == "__main__":
         ax_areas = fig_areas.add_subplot('111', projection='3d')
         ax_areas.set_xlabel('X')
         ax_areas.set_ylabel('Y')
-        ax_areas.set_zlabel('Z (cm^2)')
+        ax_areas.set_zlabel('Z (m^2)')
     
         bottom = np.zeros_like(xs_)
         width = depth = 1
    
-        areas *= 10000 # convert to cm^2 from m^2
 
         camera_properties = np.array([camera.w_fov, camera.h_fov, camera.orientation_rpy[1], camera.orientation_rpy[2]])
         camera_properties = np.rad2deg(camera_properties)
 
         ax_areas.bar3d(xs_, ys_, bottom, width, depth, areas.ravel(), shade=True)
-        plt.savefig('data/camera_pixel_areas_fov-{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
+        plt.savefig('data/camera_pixel_areas_fov_crossprod-{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
+        plt.clf()
+        plt.cla()
+
+        fig_areas = plt.figure()
+        ax_areas = fig_areas.add_subplot('111', projection='3d')
+        ax_areas.set_xlabel('X')
+        ax_areas.set_ylabel('Y')
+        ax_areas.set_zlabel('Z (m^2)')
+        ax_areas.bar3d(xs_, ys_, bottom, width, depth, areas_2.ravel(), shade=True)
+        plt.savefig('data/camera_pixel_areas_fov_analytic-{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
         plt.clf()
         plt.cla()
         plt.close()
         #plt.show()
+
+        fig_areas = plt.figure()
+        ax_areas = fig_areas.add_subplot('111', projection='3d')
+        ax_areas.set_xlabel('X')
+        ax_areas.set_ylabel('Y')
+        ax_areas.set_zlabel('Z (m^2)')
+        residuals = areas_2 - areas
+        ax_areas.bar3d(xs_, ys_, bottom, width, depth, np.abs(residuals.ravel()), shade=True)
+        plt.savefig('data/camera_pixel_areas_fov_residuals{0:.1f}-{1:.1f}_pitch-{2:.1f}_yaw-{3:.1f}.eps'.format(*camera_properties))
+        plt.clf()
+        plt.cla()
+        plt.close()
    
         m, median = np.min(areas), np.median(areas)
         contour_steps = 3.0
