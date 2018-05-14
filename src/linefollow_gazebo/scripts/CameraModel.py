@@ -12,12 +12,12 @@ from mpl_toolkits.mplot3d import Axes3D
 def plot_vector(axes, start, direction, color='Blues'):
     X, Y, Z = start
     U, V, W =  direction
-    ax.quiver(X, Y, Z, U, V, W, cmap=color)
+    axes.quiver(X, Y, Z, U, V, W, cmap=color)
 
 def plot_points(axes, points, color='blue', size=2):
     if points.shape[0] == 0:
         return
-    ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, s=size) 
+    axes.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, s=size) 
 
 # some traffic camera information
 # https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf
@@ -41,6 +41,7 @@ class Camera(object):
         self.original_plane = None
         self.cached_plane_points = np.ones(shape=(self.R_y, self.R_x, 3))*-1
 
+        self.original_cylinder = None
 
         self.setup()
 
@@ -189,8 +190,70 @@ class Camera(object):
         }
 
 
+    def attach_cylinder(self, start_point, direction_vector, radius):
+        vec = normalize(direction_vector)
 
-    # subsume all previous approaches under one mathematically unified implementation
+        self.original_cylinder = {
+            'v_a': direction_vector,
+            'p_a': start_point,
+            'r': radius
+        }
+
+        self._transform_cylinder()
+
+    def _transform_cylinder(self):
+        if self.original_cylinder is None or self.rotation is None:
+            return
+
+        # need to transform start_point into camera coords, then rotate direction vec
+        p_a = self.transform_to_camera_space(self.original_cylinder['p_a'])
+        v_a = quat_mult_point(self.rotation, self.original_cylinder['v_a'])
+        self.target_cylinder = {
+            'v_a': v_a,
+            'p_a': p_a,
+            'r': self.original_cylinder['r']
+        }
+
+    def get_cylinder_intersection(self, ray):
+        """ Computes time of intersection from origin along `ray` to cylinder """
+        # reduces to quadratic equation
+        # At^2 + Bt + C = 0
+
+        v_a = self.target_cylinder['v_a'] # cylinder axis vector
+        p_a = -self.target_cylinder['p_a'] # cylinder start vector
+        r = self.target_cylinder['r']
+        q = ray
+
+        dp_va_q = np.dot(v_a, q)
+        dp_va_va = np.dot(v_a, v_a)
+        dp_va_pa = np.dot(v_a, p_a)
+
+        A = np.dot(q, q) - 2*dp_va_q**2 + dp_va_va*dp_va_q**2 
+        B = 2 * (-np.dot(q, p_a) + 2*dp_va_pa * dp_va_q - dp_va_pa*dp_va_q*dp_va_va)
+        C = np.dot(p_a, p_a) - 2*dp_va_pa**2 + dp_va_va*dp_va_pa**2 - r**2
+
+        radical = B**2 - 4*A*C
+        if radical < 0:
+            # imaginary, no solutions
+            return None
+
+        t0 = -B + np.sqrt(radical)
+        t0 /= (2*A*C)
+
+        t1 = -B - np.sqrt(radical)
+        t1 /= (2*A*C)
+
+        print (t0, t1)
+        # return lesser t
+        if t0 < 0 and t1 < 0:
+            return None
+        elif t0 < 0:
+            return t1
+        elif t1 < 0:
+            return t0
+        else:
+            return min(t0, t1) # first intersection is only one that interests us
+
 
     def r(self, theta):
         """ Theta = angle to optical axis. Converts this angle into a distance from optical axis in pixel plane
@@ -284,11 +347,22 @@ class Camera(object):
         # ray going from (0,0,0) through image plane pixel position of (x,y)
         ray_vec = self._get_pixel_ray(x, y)
 
+        # get intersection with pixel plane
         t = np.dot(self.target_plane['a'], self.target_plane['n'])
         t /= np.dot(self.target_plane['n'], ray_vec)
 
+
+
         if t < 0:
             return None
+
+        # get intersection with cylinder if there is one
+        if self.original_cylinder is not None:
+            t_cyl = self.get_cylinder_intersection(ray_vec)
+
+            if t_cyl is not None and t_cyl < t:
+                # if intersect cylinder, no intersection with plane possible!
+                return None
 
         target_plane_point = t * ray_vec
 
@@ -349,7 +423,7 @@ class Camera(object):
 
         if self.model != 'perspective':
             if self.verbose:
-                print "WARN: analytic does not work for non-perspective cameras"
+                print("WARN: analytic does not work for non-perspective cameras")
             return -1
 
         """
