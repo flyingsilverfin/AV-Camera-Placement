@@ -115,6 +115,8 @@ def get_as_numpy_velocity_vec(vel):
 
 
 def angle_from_to(from_, to):
+    """ WARNING I think the convention was accidentally flipped here
+    be careful with use """
     # we can get the angle without the sign using a.b = |a||b|cos(theta)
     dot = np.dot(from_, to)
     dot /= (np.linalg.norm(from_) * np.linalg.norm(to))

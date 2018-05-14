@@ -35,10 +35,11 @@ class Camera(object):
         # initialize to some defaults
         self.set_resolution(setup=False)
         self.set_focal_length()
-        self.set_fov()
+        self.set_fov(setup=False)
         self.set_target_plane()
 
         self.original_plane = None
+        self.cached_plane_points = np.ones(shape=(self.R_y, self.R_x, 3))*-1
 
 
         self.setup()
@@ -82,7 +83,8 @@ class Camera(object):
         # #calculate increase in ground plane pixel width per increasing y pixel
         # self.dx_growth_per_y_pixel = (middle_dx - self.bottom_dx)/(self.R_y/2.0)
 
-        self.pixel_plane_areas_cache = np.ones(shape=(self.R_y, self.R_x))*-1 
+        self.cached_plane_points = np.ones(shape=(self.R_y, self.R_x, 3))*-1
+
 
     def _get_ground_plane_dx_at_y_pixel(self, y_pix):
         p1, p2 = self.pixel_to_plane(0, y_pix), self.pixel_to_plane(1, y_pix)
@@ -96,12 +98,15 @@ class Camera(object):
         self.max_y_pixel_plane = self.r(self.h_fov/2.0)
 
 
-    def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0):
+    def set_fov(self, horizontal_deg=45.0, vertical_deg=45.0, setup=True):
         # TODO these /2 are here because I dropped a /2 in the math somewhere...
 
         self.w_fov = np.deg2rad(horizontal_deg)
         self.h_fov = np.deg2rad(vertical_deg)
         self._compute_pixel_plane_boundaries()
+
+        if setup:
+            self.setup()
 
     def set_resolution(self, h=300, w=400, setup=True):
         self.R_y = h
@@ -268,6 +273,14 @@ class Camera(object):
         if (y < 0 or y >= self.R_y) and verbose:
             print("WARN: y pixel {0} is out of pixel space of [0, {1})".format(y, self.R_y))
 
+        # NOTE the cache is stored y,x matching pixel coordinate conventions
+        if type(x) == int and type(y) == int \
+                and x >= 0 and x < self.R_x \
+                and y >= 0 and y < self.R_y and \
+                not np.array_equal(self.cached_plane_points[y, x], np.array([-1, -1, -1])): 
+            # save recomputing loads of the same values
+            return self.cached_plane_points[y,x]
+
         # ray going from (0,0,0) through image plane pixel position of (x,y)
         ray_vec = self._get_pixel_ray(x, y)
 
@@ -280,7 +293,15 @@ class Camera(object):
         target_plane_point = t * ray_vec
 
         # apply inverse transforms
-        return self.transform_from_camera_space(target_plane_point)
+
+        point = self.transform_from_camera_space(target_plane_point) 
+       
+        if type(x) == int and type(y) == int \
+                and x >= 0 and x < self.R_x \
+                and y >= 0 and y < self.R_y: 
+            self.cached_plane_points[y, x] = point
+
+        return point 
 #        un_translated = target_plane_point + self.translation
 #        point = quat_mult_point(self.inv_rotation, un_translated)
 
@@ -314,7 +335,7 @@ class Camera(object):
         c = self.pixel_to_plane(x,y)
         dx = self.pixel_to_plane(x+1, y) 
         dy = self.pixel_to_plane(x, y+1) 
-        if c is None:
+        if c is None or dx is None or dy is None:
             return None
 
         dx -= c
@@ -432,6 +453,23 @@ class Camera(object):
         return self.position[2]
 
 
+    # ------ for evaluation ------
+
+
+    def get_pixel_probabilities_for_road(self, road):
+        
+        pixel_probabilities = np.zeros(shape=(self.R_y, self.R_x))
+
+        for (y,x),_ in np.ndenumerate(pixel_probabilities):
+            ground_point = self.pixel_to_plane(x, y)
+            if ground_point is None:
+                pixel_probabilities[y,x] = 0
+            else:   
+                pixel_probabilities[y,x] = road.get_probability(ground_point)
+        return pixel_probabilities
+
+    
+
 if __name__ == "__main__":
 
 
@@ -439,10 +477,10 @@ if __name__ == "__main__":
     VISUAL TESTS
     """
     
-    plot_pixel_areas = False
+    plot_pixel_areas = True 
     # camera pointing down onto XY plane at Z=5
     camera = Camera(position=np.array([0,0,6]), 
-                    orientation_pitch_deg=90.0,
+                    orientation_pitch_deg=45.0,
                     orientation_yaw_deg=0.0, 
                     model='perspective'
                     #model='equidistance'
