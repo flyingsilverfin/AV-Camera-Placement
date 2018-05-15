@@ -171,6 +171,7 @@ class Path(object):
                 return target_segment #return same thing
         return self.segments[index+1]
 
+
     def get_point_at(self, t):
         """ This costs a linear lookup in the number of paths - use for one offs """
         segment = self.get_segment_for_time(t)

@@ -12,6 +12,9 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from std_srvs.srv import SetBool
+from custom_messages.msg import CameraUpdate
+
+from CameraModel import Camera
 
 class SensorSource(object):
     """ Superclass for sensor sources """
@@ -80,6 +83,26 @@ class ImuSensorSource(SensorSource):
 
 "
 """
+class CameraSensorSource(SensorSource):
+
+    def __init__(self, topic):
+        update_states = np.array([True, True, False, False, False, False])
+        super(CameraSensorSource, self).__init__(topic, CameraUpdate, update_states, None, 0)
+
+        self.static_jacobian = np.diag(np.ones(6) * self.update_states)
+
+    def process_msg(self, camera_upate):
+        pos = camera_update.position
+        cov = np.array(camera_update.covariance).reshape(6,6)
+        
+        self.state_data = np.array([pos.x, pos.y, 0, 0, 0, 0, 0])
+
+        self.R_k = np.zeros(shape=(6,6))
+        self.R_k[:2, :2] = cov[:2, :2] 
+        
+    
+    def get_jacobian(self):
+        return self.static_jacobian
 
 class FakeOdomSensorSource(SensorSource):
     """ 
@@ -93,7 +116,7 @@ class FakeOdomSensorSource(SensorSource):
         update_states = np.array([True, True, True, True, True, True])
         super(FakeOdomSensorSource, self).__init__(topic, Odometry, update_states, noise, update_period)
 
-        self.static_jacobian = np.diag(np.ones(6)) * self.update_states
+        self.static_jacobian = np.diag(np.ones(6) * self.update_states)
 
     def process_msg(self, odom):
         """ Converts Odometry message into a a state vector """
@@ -125,14 +148,13 @@ class FakeOdomSensorSource(SensorSource):
 class OdometryEKF(object):
     """ EKF tracking, x, y, heading (theta), x', y', theta' """
 
-    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.001, publish_rviz_pose=True):
+    def __init__(self, model_step_noise_coeffs=np.array([0.01, 0.01, 0.01, 0.01]), motion_model_threshold=0.001, update_rate=25.0, initial_cov_diag=np.array([0.0,0,0,0,0,0]), publish_rviz_pose=True):
 
         self.model_step_noise_coeffs = model_step_noise_coeffs
 
-        self.rate = rospy.get_param("/ekf_update_rate", 30.0)   
+        self.rate = update_rate 
         self.period = 1.0/self.rate
         print("EKF update rate: {0}".format(self.rate))
-        print("EKF namespace: {0}".format(rospy.get_namespace()))
 
         self.true_positioning = TruePositioning()
         self.last_true_position, self.last_true_theta = None, None
@@ -141,7 +163,7 @@ class OdometryEKF(object):
 
         # state: x, y, theta, x', y', theta'
         self.state = None # will use true state when first stepping #np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        self.cov = np.zeros((6,6))
+        self.cov = np.diag(initial_cov_diag)
         self.motion_model_threshold = motion_model_threshold
 
         # we can attach update sources here, conforming to SensorSource interface 
@@ -246,10 +268,8 @@ class OdometryEKF(object):
             return
 
         self.predict(dt)
-        print("State: {0}, Covariance: {1}".format(self.state, self.cov))
 
         for sensor_source in self.sensors:
-            print("Sensor has new data: {0}".format(sensor_source.has_new_data()))
             if sensor_source.has_new_data():
                 self.update(sensor_source)
 
@@ -294,7 +314,7 @@ class OdometryEKF(object):
         S_t = matmul(H_t, matmul(self.cov, H_t.T)) + R_t
 
         # gain
-        K_t = matmul(self.cov, matmul(H_t, np.linalg.inv(S_t))) # this is the expensive step?
+        K_t = matmul(self.cov, matmul(H_t.T, np.linalg.inv(S_t))) # this is the expensive step
 
         # update estimates
         self.state = self.state + matmul(K_t, y_t)
@@ -426,12 +446,29 @@ if __name__ == "__main__":
     rospy.init_node("ekf_positioning")
 
 
+    ekf_params = rospy.get_params('/_ekf')
+    ekf_update_rate = ekf_params['update_rate']
+    ekf_cov_diag = np.array(ekf_params['initial_cov_diagonal'])
+    ekf_model_step_noise = np.array(ekf_params['model_step_noise'])
+    ekf_model_thresh = ekf_params['motion_model_threshold']
+
+    rviz = rospy.get_param('/rviz')
+
+
+    # get and setup cameras!
+    cameras_config = rospy.get_param('/_cameras')
+
+    cameras = []
+    for conf in cameras_config:
+
+
+
     # wait until clock messages arrive
     # and hence simulation is ready
     while rospy.get_time() == 0:
         rospy.sleep(1)
 
-    ekf = OdometryEKF(model_step_noise_coeffs=np.array([0.001, 0.001, 0.001, 0.001]), motion_model_threshold=0.001, publish_rviz_pose=True)
+    ekf = OdometryEKF(model_step_noise_coeffs=ekf_model_step_noise, motion_model_threshold=ekf_model_thresh, update_rate=update_rate, initial_cov_diag=ekf_cov_diag, publish_rviz_pose=rviz)
 
     # TODO query parameter server to add sensor sources etc
     toggler = rospy.Service('/ekf/set_running', SetBool, ekf.set_running)

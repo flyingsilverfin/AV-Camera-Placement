@@ -3,7 +3,7 @@ import scipy.stats as st
 
 class Road(object):
 
-    def __init__(self, path, probability_distribution, width=3.0, side_offset=1.5):
+    def __init__(self, path, probability_distribution=None, width=3.0, side_offset=1.5):
         """ Define a road with a width, wide of road offset etc.
         
         Default to road width of 3m - common in cities

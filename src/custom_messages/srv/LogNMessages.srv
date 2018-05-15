@@ -1,0 +1,5 @@
+string topic
+string save_dir
+uint32 n
+---
+string message

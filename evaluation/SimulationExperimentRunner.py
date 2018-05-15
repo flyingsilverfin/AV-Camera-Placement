@@ -14,13 +14,15 @@ from std_msgs.msg import Header
 class Runner(object):
     """ The main interface for running experiments using the Gazebo/ROS simulation """
 
-    def __init__(self):
+    def __init__(self, port):
         self.set_model_state_proxy = rospy.ServiceProxy("/gazebo/set_model_state", SetModelState)
         self.launch = None
 
+        self.port = port
+
     def launch_core(self):
         print("Lauching core")
-        self.roscore = subprocess.Popen('roscore')
+        self.roscore = subprocess.Popen('roscore --port={0}'.format(self.port))
         time.sleep(2)
 
     def shutdown_core(self):

@@ -207,7 +207,7 @@ class Camera(object):
 
         # need to transform start_point into camera coords, then rotate direction vec
         p_a = self.transform_to_camera_space(self.original_cylinder['p_a'])
-        v_a = quat_mult_point(self.rotation, self.original_cylinder['v_a'])
+        v_a = normalize(quat_mult_point(self.rotation, self.original_cylinder['v_a']))
         self.target_cylinder = {
             'v_a': v_a,
             'p_a': p_a,
@@ -238,12 +238,11 @@ class Camera(object):
             return None
 
         t0 = -B + np.sqrt(radical)
-        t0 /= (2*A*C)
+        t0 /= -(2*A)
 
         t1 = -B - np.sqrt(radical)
-        t1 /= (2*A*C)
+        t1 /= -(2*A)
 
-        print (t0, t1)
         # return lesser t
         if t0 < 0 and t1 < 0:
             return None
@@ -532,7 +531,7 @@ class Camera(object):
 
     def get_pixel_probabilities_for_road(self, road):
         
-        pixel_probabilities = np.zeros(shape=(self.R_y, self.R_x))
+        pixel_probabilities = np.zeros(shape=(self.R_y, self.R_x+1)) # for this the asymmetry actually matters!
 
         for (y,x),_ in np.ndenumerate(pixel_probabilities):
             ground_point = self.pixel_to_plane(x, y)
@@ -542,6 +541,18 @@ class Camera(object):
                 pixel_probabilities[y,x] = road.get_probability(ground_point)
         return pixel_probabilities
 
+    # debugging only
+    def cylinder_times_to_image(self):
+        vals = np.zeros(shape=(self.R_y, self.R_x))
+        for (y,x),_ in np.ndenumerate(vals):
+            ray_vec = self._get_pixel_ray(x, y)
+            # t = np.dot(self.target_plane['a'], self.target_plane['n'])
+            # t /= np.dot(self.target_plane['n'], ray_vec)
+            t_cyl = self.get_cylinder_intersection(normalize(ray_vec))
+            if t_cyl is not None:
+                vals[y,x] = t_cyl
+        return vals
+    
     
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ from PID import PID
 class LineFollowController(object):
     def __init__(self, path, straight_line_velocity=20.0, positioning=None):
         rospy.loginfo("Create LineFollowController object")
-        self.rate = rospy.get_param("/LineFollowController/track_path_update_rate", 50.0)   
+        self.rate = rospy.get_param("/controller/update_rate", 50.0)   
         self.period = 1.0 / self.rate
 
         self.positioning = positioning
@@ -101,24 +101,43 @@ class LineFollowController(object):
  
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
+
+        # set up path, and get a path tracker
         pos = get_as_numpy_position(current_pose.pose.pose.position)
         orientation = get_as_numpy_quaternion(current_pose.pose.pose.orientation)
         orientation_rpy = quat_to_rpy(orientation)
 
         self.path.set_start(pos, np.rad2deg(orientation_rpy))
         max_horizon = 10.0 if len(self.path.segments) > 1 else 25.0
+        max_horizon = rospy.get_param('/controller/path_tracking/max_horizon', default=10.0)
+        max_horizon = max_horizon if len(self.path.segments) > 1 else max(25.0, 2*max_horizon)
         self.path_tracker = self.path.get_tracker(max_horizon=max_horizon)
         self.path_tracker.update(pos)
 
-        self.velocity_profile = self.path.get_velocity_profile(lookahead_time=5.0, 
-                                                               lookahead_interval=0.25,
-                                                               straight_line_speed=13.0, 
-                                                               radius_speed_multiplier=0.5) 
-        self.velocity_pid = PID()
+
+        # configure and start a velocity controller
+        vel_controller_params = rospy.get_param('/controller/_velocity_controller')
+        
+        lookahead_time = vel_controller_params['lookahead_time']
+        lookahead_interval = vel_controller_params['lookahead_interval']
+        straight_speed = vel_controller_params['straight_speed']
+        radius_mult = vel_controller_params['radius_speed_mult']
+
+        self.velocity_profile = self.path.get_velocity_profile(lookahead_time=lookahead_time, 
+                                                               lookahead_interval=lookahead_interval,
+                                                               straight_line_speed=straight_speed, 
+                                                               radius_speed_multiplier=radius_mult) 
+
+        p,i,d = vel_controller_params['pid']
+        self.velocity_pid = PID(kp=p, ki=i, kd=d)
 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
         self.tracking = True
+
+
+        # hoffman steering
+        self.k = rospy.get_param('/controller/hoffman_steering/distance_multiplier', default=1.5)
 
 
     def track_path_update(self, event):
@@ -177,7 +196,7 @@ class LineFollowController(object):
             # if target is on LHS of heading negate
             crosstrack_dist *= -1
 
-        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading, k=1.5)
+        new_wheel_angle = self.hoffman_steer_angle(crosstrack_dist, vel, closest_heading)
 
         # convert angle to command angle
         steer_command = new_wheel_angle/steering_angle_limit
@@ -190,7 +209,7 @@ class LineFollowController(object):
 
     
     
-    def hoffman_steer_angle(self, signed_crosstrack_distance, velocity, target_heading, k=1.0):
+    def hoffman_steer_angle(self, signed_crosstrack_distance, velocity, target_heading):
         """ Calculates steering angle directly (no feedback) using basic Stanley 2006 line tracking function (Hoffman et al)
         """
         
@@ -200,7 +219,7 @@ class LineFollowController(object):
         angle = angle_from_to(target_heading, heading)
         rospy.loginfo("Angle Phi heading->target_heading: {0}, signed_crosstrack_dist: {1}, speed: {2}".format(angle, signed_crosstrack_distance, speed))
 
-        new_steering_angle = angle + np.arctan2(k*signed_crosstrack_distance, speed)
+        new_steering_angle = angle + np.arctan2(self.k*signed_crosstrack_distance, speed)
 
         return new_steering_angle
         
@@ -261,16 +280,16 @@ if __name__ == "__main__":
     # path.add_segment(curvature=0.0, length=50.0)
     # path.add_segment(curvature=0.05/3, length=0.5*np.pi*2*3/0.05)
     # path.add_segment(curvature=0.0, length=50.0)
-   
-    path = Path()   #loop=True)
-    #path.add_segment(curvature=0.0, length=-1)
-    path.add_segment(curvature=0.01, length=2*np.pi/0.01)
-# TODO pull path definition from parameter server
-# build the path accordingly here
+
+    looping = rospy.get_param('/road/path/loop', default=False)
+    segments = rospy.get_param('/road/path/_segments')
+
+    path = Path(loop=looping)
+    for segment in segments:
+        path.add_segment(curvature=segment["curvature"], length=segment["length"])
 
 
-# TODO save path fig to current experiment folder from param server
-    path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
+    # path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
 
     line_follow = LineFollowController(path=path, positioning=positioning)
 
