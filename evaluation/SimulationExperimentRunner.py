@@ -3,7 +3,7 @@ import roslaunch
 import subprocess
 import numpy as np
 import time
-
+import signal
 import sys
 sys.path.append("/home/joshua/Documents/Uni/Year4/dissertation/catkin_ws/src/linefollow_gazebo/scripts")
 
@@ -22,11 +22,14 @@ class Runner(object):
 
     def launch_core(self):
         print("Lauching core")
-        self.roscore = subprocess.Popen('roscore --port={0}'.format(self.port))
-        time.sleep(2)
+        self.roscore = subprocess.Popen(["roscore", "--port", str(self.port)])
+        time.sleep(1)
 
     def shutdown_core(self):
-        self.roscore.terminate()
+        # need to SIGINT not SIGKILL otherwise it doesn't kill master with it!
+        self.roscore.send_signal(signal.SIGINT)
+        print("Interrupted roscore")
+        self.roscore.wait()
     
     def set_param(self, name, value):
         rospy.set_param(name, value)
@@ -51,6 +54,9 @@ class Runner(object):
         while self.launch.runner.spin_once() and time.time() - start_time < t:
             continue
 
+    def spin_until_finished(self):
+        self.launch.spin()
+
     def do_service_call(self, service_point, msg):
         service = rospy.ServiceProxy(service_point, type(msg)) 
         service(msg)
@@ -59,9 +65,8 @@ class Runner(object):
         start_track = rospy.ServiceProxy('/VehicleController/begin_path_tracking', Empty)
         try:
             start_track()
-        except Exception:
-            # Means connection error => nodes have exited since finished!
-            return
+        except Exception as e:
+            print(e)
    
     def set_model_state(self, model_state_msg):
         if type(model_state_msg) != SetModelStateRequest:

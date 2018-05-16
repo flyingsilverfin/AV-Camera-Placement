@@ -18,6 +18,7 @@ class Logger(object):
         self.img_bridge = CvBridge()
 
     def log_n_messages(self, topic, save_dir, num_msgs, callback):
+        # num_msgs == -1 is a signal to log ALL messages
 
         if topic in self.active_logs:
             data = self.active_logs[topic]
@@ -58,7 +59,7 @@ class Logger(object):
 
     def msg_received(self, msg, source_topic):
         logger = self.active_logs[source_topic]
-        if logger['msgs_to_save'] == 0:
+        if logger['msgs_to_save'] == 0: # < 0 is store everything
             return
 
 
@@ -73,13 +74,13 @@ class Logger(object):
             cv2.imwrite(filename, cv_image)
 
         else:
-            print("Unknown message type: {0}".format(type(msg)))
-            return
-
+            pass 
+            
 
         logger['callback'](msg)  # pass control back to caller to do aggregate statistics etc if wanted
         logger['counter'] += 1
-        logger['msgs_to_save'] -= 1
+        if logger['msgs_to_save'] > 0:
+            logger['msgs_to_save'] -= 1
 
     def finished_awaiting_msgs(self, topic):
         if topic in self.active_logs:

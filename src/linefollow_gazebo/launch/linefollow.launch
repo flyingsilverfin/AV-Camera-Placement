@@ -44,6 +44,7 @@
 
   <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" required="true"/>
   <node pkg="linefollow_gazebo" type="EKF.py" name="ekf_positioning" />
+  <node pkg="linefollow_gazebo" type="CameraNetwork.py" name="camera_network" />
 
 
 </launch>

@@ -12,7 +12,7 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from std_srvs.srv import SetBool
-from custom_messages.msg import CameraUpdate
+from custom_messages.msg import CameraUpdate, SimulationDataMsg
 
 from CameraModel import Camera
 
@@ -25,8 +25,10 @@ class SensorSource(object):
         self.R_k = noise_matrix
         self.update_states = update_states
 
+        self.n_states = np.count_nonzero(update_states)
+
         # init some state
-        self.state_data = np.zeros_like(self.update_states)
+        self.state_data = np.zeros_like(self.n_states)
 
         # for regulating updates
         self.last_update_consumed_time = 0.0
@@ -37,7 +39,7 @@ class SensorSource(object):
         self.process_msg(msg)
 
     def has_new_data(self):
-        return rospy.get_rostime().to_sec() - self.last_update_consumed_time > self.update_period and not self.consumed_last_msg
+        return not self.consumed_last_msg and rospy.get_rostime().to_sec() - self.last_update_consumed_time > self.update_period
         
     @abc.abstractmethod
     def process_msg(self, msg):
@@ -51,9 +53,11 @@ class SensorSource(object):
             return self.state_data
 
     def calculate_expected_state(self, current_state):
-        # expected is h(state) ie. the measurement we should see using current estimate
-        expected = current_state * self.update_states # just pull out the states we want to update
-        return expected
+        # I just return the relevant current_states!
+
+        #resize expected down to those elements just containing values we track (valid state)
+        valid = self.update_states == True 
+        return current_state[valid]
 
     @abc.abstractmethod
     def get_jacobian(self, state):
@@ -62,8 +66,6 @@ class SensorSource(object):
     def get_noise_matrix(self):
         return self.R_k
 
-    def get_updatable_states(self):
-        return self.update_states
 
 """
 "
@@ -87,21 +89,24 @@ class CameraSensorSource(SensorSource):
 
     def __init__(self, topic):
         update_states = np.array([True, True, False, False, False, False])
+
         super(CameraSensorSource, self).__init__(topic, CameraUpdate, update_states, None, 0)
 
-        self.static_jacobian = np.diag(np.ones(6) * self.update_states)
+        # nx6 array, with ones in first diagonal
+        self.static_jacobian = np.zeros(shape=(self.n_states, 6))
+        self.static_jacobian[0,0] = 1
+        self.static_jacobian[1,1] = 1
 
-    def process_msg(self, camera_upate):
+
+    def process_msg(self, camera_update):
         pos = camera_update.position
-        cov = np.array(camera_update.covariance).reshape(6,6)
+        self.R_k = np.array(camera_update.covariance).reshape(2,2)
+        # only care about top left 2x2
         
-        self.state_data = np.array([pos.x, pos.y, 0, 0, 0, 0, 0])
-
-        self.R_k = np.zeros(shape=(6,6))
-        self.R_k[:2, :2] = cov[:2, :2] 
+        self.state_data = np.array([pos.x, pos.y])
         
     
-    def get_jacobian(self):
+    def get_jacobian(self, ekf_state):
         return self.static_jacobian
 
 class FakeOdomSensorSource(SensorSource):
@@ -177,6 +182,9 @@ class OdometryEKF(object):
         self.odom_publisher = rospy.Publisher("/ekf_odom", Odometry, queue_size=3)
         if publish_rviz_pose:
             self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
+
+        self.sim_data_publisher = rospy.Publisher("/simulation_data", SimulationDataMsg, queue_size=3)
+
         self.seq_num = 0
 
         self.running = False
@@ -248,6 +256,21 @@ class OdometryEKF(object):
             pose.header = header
             pose.pose = odom.pose
             self.pose_publisher.publish(pose)
+
+        # --- also publish simulation data ---
+        # NOTE this gets published only as often as EKF updates!
+        sim_data = SimulationDataMsg()
+        sim_data.header.stamp = rospy.get_rostime()
+        sim_data.header.seq = self.seq_num - 1 # incremented earlier already
+        sim_data.header.frame_id = 'map'
+
+        sim_data.ekf_state = self.state.astype(np.float64).tolist()
+        sim_data.ekf_cov = self.cov.ravel().astype(np.float64).tolist()
+        # need true position data
+        odom = self.true_positioning.get_odom() # this updates at 100hz so much faster than the EKF!
+        sim_data.true_odom = odom
+        self.sim_data_publisher.publish(sim_data)
+
 
     def step(self, event):
         if not self.true_positioning.ready():
@@ -446,7 +469,7 @@ if __name__ == "__main__":
     rospy.init_node("ekf_positioning")
 
 
-    ekf_params = rospy.get_params('/_ekf')
+    ekf_params = rospy.get_param('/ekf')
     ekf_update_rate = ekf_params['update_rate']
     ekf_cov_diag = np.array(ekf_params['initial_cov_diagonal'])
     ekf_model_step_noise = np.array(ekf_params['model_step_noise'])
@@ -455,12 +478,6 @@ if __name__ == "__main__":
     rviz = rospy.get_param('/rviz')
 
 
-    # get and setup cameras!
-    cameras_config = rospy.get_param('/_cameras')
-
-    cameras = []
-    for conf in cameras_config:
-
 
 
     # wait until clock messages arrive
@@ -468,7 +485,12 @@ if __name__ == "__main__":
     while rospy.get_time() == 0:
         rospy.sleep(1)
 
-    ekf = OdometryEKF(model_step_noise_coeffs=ekf_model_step_noise, motion_model_threshold=ekf_model_thresh, update_rate=update_rate, initial_cov_diag=ekf_cov_diag, publish_rviz_pose=rviz)
+
+    ekf = OdometryEKF(model_step_noise_coeffs=ekf_model_step_noise, motion_model_threshold=ekf_model_thresh, update_rate=ekf_update_rate, initial_cov_diag=ekf_cov_diag, publish_rviz_pose=rviz)
+
+    camera_update_source = CameraSensorSource('/camera_update')
+    ekf.attach_sensor(camera_update_source)
+
 
     # TODO query parameter server to add sensor sources etc
     toggler = rospy.Service('/ekf/set_running', SetBool, ekf.set_running)

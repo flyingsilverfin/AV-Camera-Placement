@@ -2,6 +2,7 @@
 
 import numpy as np
 import rospy
+import os
 
 from sensor_msgs.msg import Imu
 from prius_msgs.msg import Control
@@ -26,7 +27,7 @@ from Path import Path, ForwardPathTracker
 from PID import PID
 
 class LineFollowController(object):
-    def __init__(self, path, straight_line_velocity=20.0, positioning=None):
+    def __init__(self, path, straight_line_velocity=20.0, positioning=None, rviz=True):
         rospy.loginfo("Create LineFollowController object")
         self.rate = rospy.get_param("/controller/update_rate", 50.0)   
         self.period = 1.0 / self.rate
@@ -43,7 +44,12 @@ class LineFollowController(object):
         self.tracking = False
         self.begin_finish = None
 
-        self.visualize = VisualizeMarker(rate=4)
+        if rviz:
+            self.visualize = VisualizeMarker(rate=4)
+        self.rviz = rviz
+
+        self.k = rospy.get_param('/controller/hoffman_steering/distance_multiplier')
+
 
     def begin(self, throttle):
         self.throttle = throttle 
@@ -79,7 +85,7 @@ class LineFollowController(object):
 
         # check if have stopped accelerating and velocity has some magnitude
         # that means we've finished accelerating
-        if speed_change < accel_tolerance and speed > 0.2:
+        if speed > 0.2:
             self.timer.shutdown()   # stop this update loop
             self.begin_track_path() # begin path tracking!
             return
@@ -107,7 +113,7 @@ class LineFollowController(object):
         orientation = get_as_numpy_quaternion(current_pose.pose.pose.orientation)
         orientation_rpy = quat_to_rpy(orientation)
 
-        self.path.set_start(pos, np.rad2deg(orientation_rpy))
+        # self.path.set_start(pos, np.rad2deg(orientation_rpy)) # see if we can get away this right now, so don't have to move cameras too
         max_horizon = 10.0 if len(self.path.segments) > 1 else 25.0
         max_horizon = rospy.get_param('/controller/path_tracking/max_horizon', default=10.0)
         max_horizon = max_horizon if len(self.path.segments) > 1 else max(25.0, 2*max_horizon)
@@ -116,7 +122,7 @@ class LineFollowController(object):
 
 
         # configure and start a velocity controller
-        vel_controller_params = rospy.get_param('/controller/_velocity_controller')
+        vel_controller_params = rospy.get_param('/controller/velocity_controller')
         
         lookahead_time = vel_controller_params['lookahead_time']
         lookahead_interval = vel_controller_params['lookahead_interval']
@@ -134,11 +140,6 @@ class LineFollowController(object):
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
         self.tracking = True
-
-
-        # hoffman steering
-        self.k = rospy.get_param('/controller/hoffman_steering/distance_multiplier', default=1.5)
-
 
     def track_path_update(self, event):
         if not self.tracking:
@@ -180,13 +181,13 @@ class LineFollowController(object):
             self.prius_move.publish(self.prius_msg_generator.forward(-1.0, 0.0))
 
 
-    def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727, viz=True): # pull angle limit from URDF
+    def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727): # pull angle limit from URDF
         """ Returns a steering command from -1.0 to 1.0 according to hoffman controller """
 
         closest_point = self.path_tracker.get_closest_point()
         closest_heading = self.path_tracker.get_closest_tangent()
         rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
-        if viz:
+        if self.rviz:
             self.visualize.draw_n_points([position, closest_point], duration=60.0)
 
         diff = closest_point - position
@@ -282,29 +283,36 @@ if __name__ == "__main__":
     # path.add_segment(curvature=0.0, length=50.0)
 
     looping = rospy.get_param('/road/path/loop', default=False)
-    segments = rospy.get_param('/road/path/_segments')
+    segments = rospy.get_param('/road/path/segments')
 
     path = Path(loop=looping)
     for segment in segments:
         path.add_segment(curvature=segment["curvature"], length=segment["length"])
 
-
-    # path.save_as_fig('/media/data/Uni/Year4/Dissertation/results/path_tracking/path.png')
+    
+    save_dir = rospy.get_param('/results_dir')
+    path.save_as_fig(save_dir + '/path.png')
 
     line_follow = LineFollowController(path=path, positioning=positioning)
 
+    rviz = rospy.get_param('/rviz')
+
     def begin_tracking(msg):
         """ Execute a path tracking, and quit automatically when finished """
-        line_follow.begin(throttle=0.2)
+        print("Received begin_path_tracking service call!")
+        line_follow.begin(throttle=1.0)
 
         # TODO wrap this in a param get for RVIZ_visualization
         # ground truth repbulishing for RVIZ
-        repubber = TruePositioning(repub=True)
+        if rviz:
+            repubber = TruePositioning(repub=True)
 
         while not line_follow.is_finished_tracking():
             rospy.rostime.wallsleep(0.5) # this should allow stop_tracking() to be called externally as well
         rospy.signal_shutdown("Done executing path") 
-    
+   
+    print("Ready for begin_path_tracking service call")
+    # wait for external signal to start tracking
     rospy.Service('/VehicleController/begin_path_tracking', Empty, begin_tracking)
 
     rospy.spin()
