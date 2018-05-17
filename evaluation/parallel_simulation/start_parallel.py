@@ -3,6 +3,7 @@ import multiprocessing
 import subprocess
 import argparse
 import os
+import json
 from ..LoggingServer import Logger 
 from ..SimulationExperimentRunner import Runner 
 
@@ -28,14 +29,37 @@ if __name__ == "__main__":
 
     parser.add_argument("--config", required=True, help="Config file (or folder if implemented) that defines experiment to launch")
     parser.add_argument("--nparallel", type=int, help="Number of instances to launch in parallel (defaults to cores/2)")
-    parser.add_argument("--repeats", type=int, help="Number of times to perform the experiment", required=True)
+    parser.add_argument("--repeats", type=int, help="Number of times to perform the experiment, defaults to specification in config file or 1000")
     parser.add_argument("--out", required=True, help="Root Directory to save simulation results/data to")
+    parser.add_argument("--rviz", type=bool, help="Override experiment definition 'rviz' parameter")
 
     args = parser.parse_args()
 
     config = args.config
     config_name = config.split('/')[-1].split('.')[0]
 
+    with open(config) as f:
+        blob = json.load(f)
+
+
+    if args.repeats is None:
+        if "repeats" in blob:
+            total_runs = int(blob["repeats"])
+        else:
+            total_runs = 1000
+    else:
+        total_runs = args.repeats
+
+    if args.rviz is None:
+        if 'rviz' in blob:
+            rviz = blob['rviz']
+        else:
+            rviz = False
+    else:
+        rviz = args.rviz
+
+    rviz_string = "--rviz" if rviz else "--no-rviz"
+    print("RVIZ: {0}".format(blob['rviz']))
 
     if args.nparallel is None:
         n = int(multiprocessing.cpu_count()/2)
@@ -44,8 +68,8 @@ if __name__ == "__main__":
 
     
 
-    repeats = args.repeats/n # deal with rounding, last one will do fewer experiments
-    last_exec_repeats = args.repeats - (repeats-1)*n 
+    runs_per_instance = total_runs/n # deal with rounding, last one will do fewer experiments
+    last_instance_runs = total_runs - runs_per_instance*(n-1) 
     save_dir = os.path.join(args.out, config_name) 
 
     try:
@@ -54,22 +78,25 @@ if __name__ == "__main__":
         print(e)
 
 
-    base_port = 11311 
+    base_ros_port = 11000
+    base_gazebo_port=13000
     runners = []
     for i in range(n-1):
 
-        port = base_port + i
+        ros_port = base_ros_port + i
+        gazebo_port = base_gazebo_port + i
         out_dir = os.path.join(save_dir, "runner_{}".format(i))
-        s = "export ROS_MASTER_URI=http://localhost:{0}/; python -m {4}.start_single --port={0} --repeats={1} --config={2} --out={3}".format(port, repeats, config, out_dir, __package__, i)
+        s = 'export ROS_MASTER_URI=http://localhost:{0}/; export GAZEBO_MASTER_URI=${{GAZEBO_MASTER_URI:-"http://localhost:{6}"}}; python -m {4}.start_single --port={0} --repeats={1} --config={2} --out={3} {5}'.format(ros_port, runs_per_instance, config, out_dir, __package__, rviz_string, gazebo_port)
         print("Launching with: " + s)
         proc = subprocess.Popen([s], shell=True)
         runners.append(proc)
 
     # last one may do fewer repeats
-    port = base_port + n - 1
-    out_dir = os.path.join(save_dir, "runner_{}".format(n))
+    ros_port = base_ros_port + n - 1
+    gazebo_port = base_gazebo_port + n - 1
+    out_dir = os.path.join(save_dir, "runner_{}".format(n-1))
 
-    s = "export ROS_MASTER_URI=http://localhost:{0}/; python -m {4}.start_single --port={0} --repeats={1} --config={2} --out={3}".format(port, last_exec_repeats, config, out_dir, __package__, n-1)
+    s = 'export ROS_MASTER_URI=http://localhost:{0}/; export GAZEBO_MASTER_URI=${{GAZEBO_MASTER_URI:-"http://localhost:{6}"}}; python -m {4}.start_single --port={0} --repeats={1} --config={2} --out={3} {5}'.format(ros_port, last_instance_runs, config, out_dir, __package__, rviz_string, gazebo_port)
     print("Launching with: " + s)
     proc = subprocess.Popen([s], shell=True)
     runners.append(proc)

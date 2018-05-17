@@ -96,12 +96,13 @@ def run_n_times(runner, repeats, save_dir, rviz):
         
         rviz_string = "true" if rviz else "false"
         runner.launch_nodes({'rviz': rviz_string}) 
+        print("rviz string: " + rviz_string)
 
         logger = Logger()
         # attach two listeners
         # tbh could just init this as a node but probably cleaner this way
         
-        time.sleep(12) # sleep seconds to wait for nodes to launch
+        time.sleep(25) # sleep seconds to wait for nodes to launch
         logger.log_n_messages('/simulation_data', this_save_dir, -1, receive_sim_data)
         logger.log_n_messages('/camera_update', this_save_dir, -1, receive_camera_update)
         runner.start_track_path()
@@ -128,6 +129,9 @@ if __name__ == "__main__":
     parser.add_argument("--config", required=True, help="Config file (or folder if implemented) that defines experiment to launch")
     parser.add_argument("--repeats", type=int, help="Number of times to perform the experiment", required=True)
     parser.add_argument("--out", required=True, help="Directory to save simulation results/data to")
+    parser.add_argument('--rviz', dest='rviz', action='store_true')
+    parser.add_argument('--no-rviz', dest='rviz', action='store_false')
+    parser.set_defaults(rviz=True)
 
     args = parser.parse_args()
     
@@ -145,6 +149,8 @@ if __name__ == "__main__":
     except OSError as e:
         print(e)
 
+    config['rviz'] = args.rviz
+    print("Single runner RVIZ: {0}".format(config['rviz']))
 
     # instantiate a simulation runner
     sim_runner = Runner(port=port)
