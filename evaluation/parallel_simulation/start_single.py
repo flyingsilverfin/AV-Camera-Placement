@@ -38,7 +38,7 @@ def init_params(config, simulation_runner):
     for key in config:
         simulation_runner.set_param(key, config[key]) # addressable as /.../... by default! yay ROS
 
-def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120):
+def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=True):
 
     # def receive_sim_data(msg):
         # time = msg.header.stamp.to_sec()
@@ -80,11 +80,20 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120):
 
 
     count = 0
+    last_num = 0
+    if continue_exec:
+        # get the last number already executed in `this_save_dir`
+        dirs = os.listdir(save_dir)
+        dirs.sort()
+        if len(dirs) > 0:
+            last_dir = dirs[-1]
+            last_num = int(last_dir.split('_')[-1]) +1
+
     while count < repeats:
         sim_data_log = []
         camera_updates_log = []
 
-        this_save_dir = os.path.join(save_dir, "run_{0}".format(count))
+        this_save_dir = os.path.join(save_dir, "run_{0}".format(count + last_num))
         try:
             os.makedirs(this_save_dir)
         except OSError as e:
@@ -116,7 +125,8 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120):
             logger.close_rosbag('/simulation_data')
             runner.shutdown_nodes()
             continue
-
+        
+        logger.close_rosbag('/simulation_data')
         # should finish and shutdown nodes automatically
         # and go onto next loop!
 
@@ -136,7 +146,11 @@ if __name__ == "__main__":
     parser.add_argument("--out", required=True, help="Directory to save simulation results/data to")
     parser.add_argument('--rviz', dest='rviz', action='store_true')
     parser.add_argument('--no-rviz', dest='rviz', action='store_false')
+    parser.add_argument('--continue', dest='continue_exec', action='store_true')
+    parser.add_argument('--restart', dest='continue_exec', action='store_false')
+
     parser.set_defaults(rviz=True)
+    parser.set_defaults(continue_exec=True) # by default, don't overwrite existing runs
 
     args = parser.parse_args()
     
@@ -166,7 +180,7 @@ if __name__ == "__main__":
     sim_runner = Runner(port=port)
     sim_runner.launch_core()
     init_params(config, sim_runner)
-    run_n_times(sim_runner, repeats, save_dir, rviz=config['rviz'], max_timeout=timeout)
+    run_n_times(sim_runner, repeats, save_dir, rviz=config['rviz'], max_timeout=timeout, continue_exec=args.continue_exec)
 
     sim_runner.shutdown_core()
 

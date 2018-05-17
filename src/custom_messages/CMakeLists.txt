@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
     message_generation
     std_msgs
     geometry_msgs
+    nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -50,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    CameraUpdate.msg 
+   SimulationDataMsg.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -71,6 +73,7 @@ find_package(catkin REQUIRED COMPONENTS
    DEPENDENCIES
    std_msgs  # Or other packages containing msgs
    geometry_msgs
+   nav_msgs
  )
 
 ################################################
@@ -105,8 +108,8 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES custom_messages_server
-  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs
-#  DEPENDS system_lib
+  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs nav_msgs
+  #  DEPENDS system_lib
 )
 
 ###########

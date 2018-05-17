@@ -54,12 +54,14 @@ class Runner(object):
         running = True
         while running:
             # split this into two loops so don't spend too much time in loop header (premature opt)
-            for i in range(10):
-                running = self.launch.runner.spin_once()
-                if not running:
-                    return False
+            # for i in range(10):
+                # running = self.launch.runner.spin_once()
+                # if not running:
+                    # return False
+            running = self.launch.runner.spin_once()
             if time.time() - start_time > t:
                 return running
+            time.sleep(0.2) # otherwise the launcher will take up wayy to much CPU..
 
         return running
 

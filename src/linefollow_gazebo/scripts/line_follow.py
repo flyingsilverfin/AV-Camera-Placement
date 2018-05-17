@@ -217,8 +217,11 @@ class LineFollowController(object):
         """ Calculates steering angle directly (no feedback) using basic Stanley 2006 line tracking function (Hoffman et al)
         """
         
-        heading = normalize(velocity)
         speed = np.linalg.norm(velocity)
+        if speed == 0.0:
+            heading = np.array([1.0, 0, 0]) # should be a very rare case but just assume on X axis if not moving (likely not started yet)
+        else:
+            heading = normalize(velocity)
         #angle = angle_from_to(heading, target_heading)
         angle = angle_from_to(target_heading, heading)
         rospy.loginfo("Angle Phi heading->target_heading: {0}, signed_crosstrack_dist: {1}, speed: {2}".format(angle, signed_crosstrack_distance, speed))
