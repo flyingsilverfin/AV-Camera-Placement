@@ -8,7 +8,7 @@ import sys
 sys.path.append("/home/joshua/Documents/Uni/Year4/dissertation/catkin_ws/src/linefollow_gazebo/scripts")
 
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, SetBool
 from std_msgs.msg import Header
 
 class Runner(object):
@@ -51,22 +51,39 @@ class Runner(object):
 
     def spin_for(self, t=1.0):
         start_time = time.time()
-        while self.launch.runner.spin_once() and time.time() - start_time < t:
-            continue
+        running = True
+        while running:
+            # split this into two loops so don't spend too much time in loop header (premature opt)
+            for i in range(10):
+                running = self.launch.runner.spin_once()
+                if not running:
+                    return False
+            if time.time() - start_time > t:
+                return running
 
-    def spin_until_finished(self):
-        self.launch.spin()
+        return running
+
+    def spin_until_finished(self, max_timeout):
+        start_time = time.time()
+        
+        still_running = self.spin_for(max_timeout)
+        if still_running:
+            raise Exception("Launch not finished executing after {0} seconds".format(max_timeout))
+
 
     def do_service_call(self, service_point, msg):
         service = rospy.ServiceProxy(service_point, type(msg)) 
         service(msg)
 
     def start_track_path(self):
-        start_track = rospy.ServiceProxy('/VehicleController/begin_path_tracking', Empty)
+        start_track = rospy.ServiceProxy('/VehicleController/begin_path_tracking', SetBool)
         try:
-            start_track()
+            response = start_track(True)
+            print(response)
+            return True
         except Exception as e:
             print(e)
+            return False
    
     def set_model_state(self, model_state_msg):
         if type(model_state_msg) != SetModelStateRequest:

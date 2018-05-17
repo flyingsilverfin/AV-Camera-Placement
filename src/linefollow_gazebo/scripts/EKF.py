@@ -183,8 +183,6 @@ class OdometryEKF(object):
         if publish_rviz_pose:
             self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
 
-        self.sim_data_publisher = rospy.Publisher("/simulation_data", SimulationDataMsg, queue_size=3)
-
         self.seq_num = 0
 
         self.running = False
@@ -256,20 +254,6 @@ class OdometryEKF(object):
             pose.header = header
             pose.pose = odom.pose
             self.pose_publisher.publish(pose)
-
-        # --- also publish simulation data ---
-        # NOTE this gets published only as often as EKF updates!
-        sim_data = SimulationDataMsg()
-        sim_data.header.stamp = rospy.get_rostime()
-        sim_data.header.seq = self.seq_num - 1 # incremented earlier already
-        sim_data.header.frame_id = 'map'
-
-        sim_data.ekf_state = self.state.astype(np.float64).tolist()
-        sim_data.ekf_cov = self.cov.ravel().astype(np.float64).tolist()
-        # need true position data
-        odom = self.true_positioning.get_odom() # this updates at 100hz so much faster than the EKF!
-        sim_data.true_odom = odom
-        self.sim_data_publisher.publish(sim_data)
 
 
     def step(self, event):

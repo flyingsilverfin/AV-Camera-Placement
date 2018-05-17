@@ -16,7 +16,7 @@ from geometry_msgs.msg import Quaternion
 
 from std_msgs.msg import Float64, Bool
 
-from std_srvs.srv import Empty, SetBool
+from std_srvs.srv import Empty, SetBool, SetBoolResponse
 
 from PriusControlMsgGenerator import PriusControlMsgGenerator
 from Positioning import TruePositioning, EKFPositioning
@@ -99,7 +99,7 @@ class LineFollowController(object):
         # don't attempt to re-initalize tracking if it's running
         # messes with pubs/subs
         if self.tracking:
-            rospy.logerror("Already tracking path!")
+            rospy.logerr("Already tracking path!")
             return
 
         now = rospy.get_rostime()
@@ -143,7 +143,7 @@ class LineFollowController(object):
 
     def track_path_update(self, event):
         if not self.tracking:
-            rospy.logerror("Path tracking update called when not tracking, call begin_track_path_first!")
+            rospy.logerr("Path tracking update called when not tracking, call begin_track_path_first!")
             return
 
         now = rospy.get_rostime()
@@ -153,6 +153,7 @@ class LineFollowController(object):
         position = get_as_numpy_position(pose.pose.pose.position)
         heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear)
         speed = np.linalg.norm(vel)
+        speed = max(0.01, speed) # 0 speed => errors!
 
         target_speed = self.velocity_profile.get_target_speed(self.path_tracker.get_closest_point_time(), speed)
 
@@ -179,6 +180,8 @@ class LineFollowController(object):
             self.timer.shutdown()
             print("FINISHED tracking")
             self.prius_move.publish(self.prius_msg_generator.forward(-1.0, 0.0))
+            # shutdown this node => kills all others
+            rospy.signal_shutdown("Done executing path") 
 
 
     def hoffman_control(self, position, heading, vel, steering_angle_limit=0.8727): # pull angle limit from URDF
@@ -306,14 +309,13 @@ if __name__ == "__main__":
         # ground truth repbulishing for RVIZ
         if rviz:
             repubber = TruePositioning(repub=True)
+        
+        return SetBoolResponse(True, "Started Tracking")
 
-        while not line_follow.is_finished_tracking():
-            rospy.rostime.wallsleep(0.5) # this should allow stop_tracking() to be called externally as well
-        rospy.signal_shutdown("Done executing path") 
    
     print("Ready for begin_path_tracking service call")
     # wait for external signal to start tracking
-    rospy.Service('/VehicleController/begin_path_tracking', Empty, begin_tracking)
+    rospy.Service('/VehicleController/begin_path_tracking', SetBool, begin_tracking)
 
     rospy.spin()
 

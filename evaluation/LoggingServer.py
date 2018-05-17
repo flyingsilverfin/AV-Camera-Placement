@@ -1,5 +1,6 @@
 import os
 import rospy
+import rosbag
 import rostopic
 import numpy as np
 from PIL import Image
@@ -16,6 +17,29 @@ class Logger(object):
         self.active_logs = {}
         rospy.init_node("Logger")
         self.img_bridge = CvBridge()
+
+        # new approach: use rosbag, much more sensible!!
+        self.rosbags = {}
+
+    def rosbag_topic(self, topic, save_path):
+        if topic in self.rosbags:
+            print("Already bagging: {0}".format(topic))
+            return
+        rb = rosbag.Bag(save_path, 'w')
+        self.rosbags[topic] = rb
+    
+    def receive_msg_to_rosbag(self, msg, topic):
+        rb = self.rosbags[topic]
+        try:
+            rb.write(msg)
+        except Exception as e:
+            print(e)
+    
+    def close_rosbag(self, topic):
+        rb = self.rosbags[topic]
+        rb.close()
+
+    # ------- old methods -------
 
     def log_n_messages(self, topic, save_dir, num_msgs, callback):
         # num_msgs == -1 is a signal to log ALL messages
