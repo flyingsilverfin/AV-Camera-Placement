@@ -15,8 +15,8 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
 from std_msgs.msg import Float64, Bool
-
 from std_srvs.srv import Empty, SetBool, SetBoolResponse
+from custom_messages.msg import PathUpdate
 
 from PriusControlMsgGenerator import PriusControlMsgGenerator
 from Positioning import TruePositioning, EKFPositioning
@@ -91,7 +91,7 @@ class LineFollowController(object):
             return
 
         self.prius_msg_generator.update_msg(self.repeated_msg) #update seq number
-        rospy.loginfo("Sending Prius Control msg: {}".format(self.repeated_msg))
+        # rospy.loginfo("Sending Prius Control msg: {}".format(self.repeated_msg))
         self.prius_move.publish(self.repeated_msg)
 
     def begin_track_path(self):
@@ -137,6 +137,9 @@ class LineFollowController(object):
         p,i,d = vel_controller_params['pid']
         self.velocity_pid = PID(kp=p, ki=i, kd=d)
 
+        # publisher for path/tracking info to log
+        self.path_update_pub = rospy.Publisher('/path_update', PathUpdate, queue_size=3)
+
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
         self.tracking = True
@@ -155,9 +158,8 @@ class LineFollowController(object):
         speed = np.linalg.norm(vel)
         speed = max(0.01, speed) # 0 speed => errors!
 
-        target_speed = self.velocity_profile.get_target_speed(self.path_tracker.get_closest_point_time(), speed)
 
-        print("Position: \n\t {0}\n Velocity: \n\t {1}, Speed: \n\t {2}, Target Speed: {3}".format(position, vel, speed, target_speed))
+        # print("Position: \n\t {0}\n Velocity: \n\t {1}, Speed: \n\t {2}, Target Speed: {3}".format(position, vel, speed, target_speed))
 
         self.path_tracker.update(position)
 
@@ -165,12 +167,28 @@ class LineFollowController(object):
             self.begin_finish = rospy.get_rostime().to_sec()
             self.begin_finish_speed = speed
 
+
+        target_speed = self.velocity_profile.get_target_speed(self.path_tracker.get_closest_point_time(), speed)
+
         steer_angle = self.hoffman_control(position, heading, vel)
         throttle = self.velocity_pid.update(secs, speed - target_speed)
-        rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
-        rospy.loginfo("New throttle (PID): {0}".format(throttle))
+        # rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
+        # rospy.loginfo("New throttle (PID): {0}".format(throttle))
         prius_msg = self.prius_msg_generator.forward(throttle, steer_angle)
         self.prius_move.publish(prius_msg)
+
+
+        # send path update 
+        msg = PathUpdate()
+        target_pt = msg.target_point
+        target_pt.x, target_pt.y, target_pt.z = self.path_tracker.get_closest_point()
+        target_heading = msg.target_heading
+        target_heading.x, target_heading.y, target_heading.z = self.path_tracker.get_closest_tangent()
+        target_normal = msg.path_normal
+        target_normal.x, target_normal.y, target_normal.z = self.path_tracker.get_closest_normal()
+        msg.velocity_controller_target = target_speed 
+        msg.path_curvature = self.path_tracker.active_segment.curvature 
+        self.path_update_pub.publish(msg)
 
         # make sure we elapse the required overshoot distance
         # because the path tracker could indicate 'finished' early!
@@ -189,7 +207,7 @@ class LineFollowController(object):
 
         closest_point = self.path_tracker.get_closest_point()
         closest_heading = self.path_tracker.get_closest_tangent()
-        rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
+        # rospy.loginfo("Closest target point: {0}, current position: {1}".format(closest_point, position))
         if self.rviz:
             self.visualize.draw_n_points([position, closest_point], duration=60.0)
 
@@ -224,7 +242,7 @@ class LineFollowController(object):
             heading = normalize(velocity)
         #angle = angle_from_to(heading, target_heading)
         angle = angle_from_to(target_heading, heading)
-        rospy.loginfo("Angle Phi heading->target_heading: {0}, signed_crosstrack_dist: {1}, speed: {2}".format(angle, signed_crosstrack_distance, speed))
+        # rospy.loginfo("Angle Phi heading->target_heading: {0}, signed_crosstrack_dist: {1}, speed: {2}".format(angle, signed_crosstrack_distance, speed))
 
         new_steering_angle = angle + np.arctan2(self.k*signed_crosstrack_distance, speed)
 
@@ -312,6 +330,7 @@ if __name__ == "__main__":
         # ground truth repbulishing for RVIZ
         if rviz:
             repubber = TruePositioning(repub=True)
+            print("True position at start line tracking: {0}".format(repubber.get_odom()))
         
         return SetBoolResponse(True, "Started Tracking")
 

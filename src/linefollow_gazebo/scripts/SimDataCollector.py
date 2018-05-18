@@ -5,7 +5,7 @@ import rospy
 
 from geometry_msgs.msg import Quaternion, Vector3, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
-from custom_messages.msg import CameraUpdate, SimulationDataMsg
+from custom_messages.msg import CameraUpdate, SimulationDataMsg, PathUpdate
 from prius_msgs.msg import Control
 
 
@@ -23,6 +23,7 @@ class SimDataAggregator(object):
         self.camera_sub = rospy.Subscriber("/camera_updates", CameraUpdate, self.receive_camera_update)
         self.ekf_sub = rospy.Subscriber('/ekf_odom', Odometry, self.receive_ekf_odom) 
         self.controller_sub = rospy.Subscriber("/prius", Control, self.receive_prius_control_msg)
+        self.path_update_sub = rospy.Subscriber('/path_update', PathUpdate, self.receive_path_update)
 
         self.prius_steer_limits = rospy.get_param("/prius/steer_limit", default=0.872)
 
@@ -32,9 +33,10 @@ class SimDataAggregator(object):
         self.last_ekf = None
         self.last_prius = None
         self.last_camera = None
+        self.last_path_msg = None
 
         # publishing sim data summaries
-        self.pub = rospy.Publisher("/sim_data", SimulationDataMsg, queue_size=3)
+        self.pub = rospy.Publisher("/simulation_data", SimulationDataMsg, queue_size=3)
         self.seq = 0
 
     def receive_prius_control_msg(self, control_msg):
@@ -52,6 +54,9 @@ class SimDataAggregator(object):
     def receive_ground_truth(self, odom_msg):
         self.last_true_odom = odom_msg
 
+    def receive_path_update(self, path_msg):
+        self.last_path_msg = path_msg
+
 
     def publish_sim_data(self):
 
@@ -61,6 +66,11 @@ class SimDataAggregator(object):
         header.seq = self.seq
         self.seq += 1
         header.frame_id = "map"
+
+        if self.last_true_odom is None or self.last_prius is None or self.last_path_msg is None:
+            return
+        
+        assert self.last_ekf is not None, "Last EKF is None, should never happen!"
 
         # transmit true data
         msg.true_odom = self.last_true_odom
@@ -86,12 +96,16 @@ class SimDataAggregator(object):
 
         msg.prius_steer_angle = steer_angle
         msg.prius_throttle_percent = throttle
-        self.last_prius = None
+        # self.last_prius = None # don't consume prius messages so always retain the last command until changed
     
         # transmit EKF
         msg.ekf_odom = self.last_ekf
         self.last_ekf = None
-        
+       
+        # transmit path data
+        msg.path_update = self.last_path_msg
+        self.last_path_msg = None
+
         self.pub.publish(msg)
 
 

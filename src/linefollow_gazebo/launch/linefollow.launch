@@ -35,7 +35,7 @@
   <!-- this is just to satisfy my curiosity. Problem solved by setting odom equal to map coordinates in the first place -->:
   <node pkg="tf2_ros" type="static_transform_publisher" name="world_pos" args="0 0 0 0 0 0 map odom"/>
 
-  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0 -y 0 -z 0.0 -model prius"/>
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0.0 -y 0.0 -z 0.0 -R 0.0 -P 0.0 -Y 0.0 -model prius"/>
   <node name="spawn_urdf_camera" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->
 
   <group if="$(arg rviz)">
@@ -45,6 +45,7 @@
   <node pkg="linefollow_gazebo" type="line_follow.py" name="line_follow_py" required="true"/>
   <node pkg="linefollow_gazebo" type="EKF.py" name="ekf_positioning" />
   <node pkg="linefollow_gazebo" type="CameraNetwork.py" name="camera_network" />
+  <node pkg="linefollow_gazebo" type="SimDataCollector.py" name="sim_data_collector" />
 
 
 </launch>

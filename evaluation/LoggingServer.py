@@ -21,23 +21,30 @@ class Logger(object):
         # new approach: use rosbag, much more sensible!!
         self.rosbags = {}
 
-    def rosbag_topic(self, topic, save_path):
+    def rosbag_topic(self, topic, save_path, msg_type):
         if topic in self.rosbags:
             print("Already bagging: {0}".format(topic))
             return
         rb = rosbag.Bag(save_path, 'w')
-        self.rosbags[topic] = rb
+        sub = rospy.Subscriber(topic, msg_type, self.receive_msg_to_rosbag, callback_args=(topic))
+        self.rosbags[topic] = {
+            'bag': rb,
+            'subscriber': sub
+        }
+        
     
     def receive_msg_to_rosbag(self, msg, topic):
-        rb = self.rosbags[topic]
+        rb = self.rosbags[topic]['bag']
         try:
-            rb.write(msg)
+            rb.write(topic, msg)
         except Exception as e:
-            print(e)
+            print("\n\nROSBAG exception: \n\n{0}\n\n".format(e))
     
     def close_rosbag(self, topic):
-        rb = self.rosbags[topic]
+        rb = self.rosbags[topic]['bag']
         rb.close()
+        sub = self.rosbags[topic]['subscriber']
+        sub.unregister()
 
     # ------- old methods -------
 

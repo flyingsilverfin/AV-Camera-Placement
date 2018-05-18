@@ -48,9 +48,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
+# note -- order matters!
  add_message_files(
    FILES
    CameraUpdate.msg 
+   PathUpdate.msg
    SimulationDataMsg.msg
  )
 

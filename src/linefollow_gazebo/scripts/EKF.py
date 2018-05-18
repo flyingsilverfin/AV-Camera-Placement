@@ -85,6 +85,7 @@ class ImuSensorSource(SensorSource):
 
 "
 """
+
 class CameraSensorSource(SensorSource):
 
     def __init__(self, topic):
@@ -288,9 +289,9 @@ class OdometryEKF(object):
 
         real_deltas = self.get_real_deltas()
 
-        # print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
+        print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
         sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)
-        # print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
+        print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
 
         # apply `f` ie. motion model
         self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
@@ -329,8 +330,8 @@ class OdometryEKF(object):
 
         print("Updated state!")
         print("State: \n {0}, \n Covariance: \n {1}".format(self.state, self.cov))
-        
-    
+ 
+
     def get_real_deltas(self):
         # get d_translation, rotation 1, rotation 2 from real simulation position
 
@@ -351,6 +352,9 @@ class OdometryEKF(object):
             # print("\t[real deltas] Position: {0}, last_position: {1}, movement last => now: {2}".format(position, self.last_true_position, diff))
             # print("\t[real deltas] angle of movement: {0}, distance: {1}, current rpy: {3}, last true angle: {2}".format(angle, dist, self.last_true_theta, rpy)) 
             # print("\t[real deltas] start angle to movement angle: {0}, end angle to movement angle {1}".format(d_start_angle, d_end_angle))
+
+
+            print("Current position: {0}, last positiong: {1}, Movement angle: {2}, initial angle error: {3}, finish angle error: {4}".format(position, self.last_true_position, angle, d_start_angle, d_end_angle))
 
         self.last_true_position = position
         self.last_true_theta = heading_angle

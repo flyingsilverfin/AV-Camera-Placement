@@ -1,0 +1,5 @@
+geometry_msgs/Point target_point
+geometry_msgs/Vector3 target_heading
+geometry_msgs/Vector3 path_normal
+float64 velocity_controller_target 
+float64 path_curvature

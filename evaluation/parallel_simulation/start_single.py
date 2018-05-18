@@ -84,10 +84,10 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=
     if continue_exec:
         # get the last number already executed in `this_save_dir`
         dirs = os.listdir(save_dir)
-        dirs.sort()
-        if len(dirs) > 0:
-            last_dir = dirs[-1]
-            last_num = int(last_dir.split('_')[-1]) +1
+        nums = [int(x.split("_")[-1]) for x in dirs]
+        nums.sort()
+        if len(nums) > 0:
+            last_num = nums[-1]+1
 
     while count < repeats:
         sim_data_log = []
@@ -113,10 +113,14 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=
         
         # keep trying to start the path tracking, minimized wait time
         start_time = time.time()
+        time.sleep(5)
+        runner.set_a_model_state('prius', np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0, 1.0]), reference_frame='map')
+
         while not runner.start_track_path():
             time.sleep(0.5)
 
-        logger.rosbag_topic('/simulation_data', os.path.join(this_save_dir, "sim_data.bag"))
+        rosbag_file_path = os.path.join(this_save_dir, "sim_data.bag")
+        logger.rosbag_topic('/simulation_data', rosbag_file_path, msg_type=SimulationDataMsg)
         try:
             runner.spin_until_finished(max_timeout=max_timeout)
         except Exception as e:
@@ -130,7 +134,7 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=
         # should finish and shutdown nodes automatically
         # and go onto next loop!
 
-        print("Finished execution run {0} and writing bagfile")
+        print("Finished execution run {0} and writing bagfile to {1}".format(count, rosbag_file_path))
         count += 1
          
 

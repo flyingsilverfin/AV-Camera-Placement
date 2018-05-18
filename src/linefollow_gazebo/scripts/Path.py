@@ -264,16 +264,26 @@ class VelocityProfile(object):
 
         # Calculate the average target speed over the lookead distance 
         target_speed = 0 
+        smallest_speed = 0 
+        largest_curvature = 0
         for dist in steps:
             # TODO this is going to be rather inefficient but 
             # it is not totally trivial to make it faster
             # TODO profile lookups
             curvature = np.abs(self.path.get_curvature_at(dist)) # recall curvature is signed!
             # convert curvature into target speed
-            speed = self.straight_line_speed if curvature == 0.0 else self.radius_speed_multiplier * 1.0/curvature
-            print("Curvature: {0}, Resulting target speed: {1}".format(curvature, speed))
-            target_speed += speed
-        
+            speed = self.straight_line_speed if curvature == 0.0 else self.radius_speed_multiplier * 1.0/curvature 
+
+            # don't want to accelerate until leave a curve
+            if curvature < largest_curvature:
+                target_speed += smallest_speed
+            else:
+                target_speed += speed
+            
+            if curvature >= largest_curvature:
+                largest_curvature = curvature
+                smallest_speed = speed
+
         # average out 
         target_speed *= (1.0/len(steps))
 
@@ -311,8 +321,8 @@ class ForwardPathTracker(object):
         current = self.active_segment
         next_segment = self.path.get_segment_after(current)
 
-        print("Current start_time: {0}, current end_time: {1}".format(current.start_time, current.end_time))
-        print("next start_time: {0}, current end_time: {1}".format(next_segment.start_time, next_segment.end_time))
+        # print("Current start_time: {0}, current end_time: {1}".format(current.start_time, current.end_time))
+        # print("next start_time: {0}, current end_time: {1}".format(next_segment.start_time, next_segment.end_time))
 
 
         closest_time = current.closest_point_time(self.current_position, self.last_t, self.max_horizon)
@@ -337,6 +347,7 @@ class ForwardPathTracker(object):
         self.closest_point = closest_point
         self.closest_point_dist = d
         self.closest_tangent = self.active_segment.tangent_at(closest_time)
+        self.closest_normal = self.active_segment.normal_at(closest_time)
 
         # perform a loop if the current segment's end time is less than the last_t we search from
         path_length = self.path.get_length()
@@ -359,6 +370,9 @@ class ForwardPathTracker(object):
     
     def get_closest_point_time(self):
         return self.last_t
+
+    def get_closest_normal(self):
+        return self.closest_normal
 
 
 class UnboundedSegmentException(Exception):
