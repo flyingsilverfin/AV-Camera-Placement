@@ -291,27 +291,24 @@ if __name__ == "__main__":
     def draw_line(img, start, end, color=(0,0,0), thickness=1):
         height = img.shape[0]
         start = np.round(start).astype(np.int64).tolist()
-        start += ctr
         start[0] = height - start[0]
         end = np.round(end).astype(np.int64).tolist()
-        end += ctr
         end[0] = height - end[0]
         cv2.line(img, tuple(start), tuple(end), color=color, thickness=thickness)
 
     def draw_circle(img, center, radius, thickness=3, color=(0,0,0)):
         height = img.shape[0]
         center = np.round(center).astype(np.int64).tolist()
-        center += ctr
         center[0] = height - center[0]
         cv2.circle(img, tuple(center), int(radius), thickness=thickness, color=color)
 
     resolution = 5 # pixels per meter
     height, width = 200, 200
     image = blank_image = np.ones((height*resolution,width*resolution,3), np.uint8)*255
-    ctr = ctr_y, ctr_x = np.array([0,0]) #resolution*height/2.0, resolution*width/2.0]).astype(np.int64)
+    ctr = ctr_y, ctr_x = np.array([resolution*height/2.0, resolution*width/2.0]).astype(np.int64)
     blue, green, red, black = (255,0,0), (0,255,0), (0,0,255), (0,0,0)
     # draw some axes for reference
-    draw_line(image, [0, -ctr_y], [0, height*resolution], color=black, thickness=2)
+    draw_line(image, [0, ctr_y], [height*resolution, ctr_y], color=black, thickness=2)
     draw_line(image, [-ctr_x, 0], [width*resolution, 0], color=black, thickness=2)
 
     #TODO come back to this to create graphics!!

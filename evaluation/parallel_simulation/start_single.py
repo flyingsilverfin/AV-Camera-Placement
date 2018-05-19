@@ -114,25 +114,26 @@ def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=
         # keep trying to start the path tracking, minimized wait time
         start_time = time.time()
         time.sleep(5)
-        runner.set_a_model_state('prius', np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0, 1.0]), reference_frame='map')
-
-        while not runner.start_track_path():
-            time.sleep(0.5)
-
-        rosbag_file_path = os.path.join(this_save_dir, "sim_data.bag")
-        logger.rosbag_topic('/simulation_data', rosbag_file_path, msg_type=SimulationDataMsg)
         try:
+            runner.set_a_model_state('prius', np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0, 1.0]), reference_frame='map')
+
+            while not runner.start_track_path():
+                time.sleep(0.5)
+
+            rosbag_file_path = os.path.join(this_save_dir, "sim_data.bag")
+            logger.rosbag_topic('/simulation_data', rosbag_file_path, msg_type=SimulationDataMsg)
             runner.spin_until_finished(max_timeout=max_timeout)
-        except Exception as e:
-            # retry the loop if an exception is raised
-            print("Retrying loop, exception raised:\n{0}".format(e))
-            logger.close_rosbag('/simulation_data')
+        except Exception as e: # some other error...
+            # also retry the loop
+            print("Retrying loop: exception raised: {0}".format(e))
+            if '/simulation_data' in logger.active_logs:
+                logger.close_rosbag('/simulation_data')
             runner.shutdown_nodes()
             continue
-        
-        logger.close_rosbag('/simulation_data')
+
         # should finish and shutdown nodes automatically
         # and go onto next loop!
+        logger.close_rosbag('/simulation_data')
 
         print("Finished execution run {0} and writing bagfile to {1}".format(count, rosbag_file_path))
         count += 1

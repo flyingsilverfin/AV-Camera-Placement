@@ -91,7 +91,7 @@ shifting the sensing task from the individual user to the infrastructure.
 \section{Motivation}
 
 The core task of an autonomous vehicle is to navigate correctly and safely from a start
-to a destination. This process can be split into a variety of subtasks consisting
+to a destination. This process can be split into major subtasks consisting
 of path planning, localization, and safe navigation.
 
 Current autonomous vehicle projects use a large set of sensors, combined with
@@ -106,13 +106,13 @@ and implies only large platforms can be used.
 I propose moving the localization and navigation sensing tasks
 from vehicles to the infrastructure, which is particularly applicable in urban environments.
 I examine a static environment containing a single vehicle, with dynamic components
-as a future research possibility.
+as a future research avenue.
 
-The basis of most localization techniques are global navigation satellite systems,
+Most current localization approaches utilize global satellite navigations systems,
 such as GPS and its augmentations like real time kinematic (RTK)~\cite{scherzinger2000precise}.
 The US government reports a global 95\% accuracy of 0.715 meters~\cite{USGPSPerformance}. 
 However, GPS errors are introduced in urban environments -- according to~\citeauthor{miura2015gps}, even with the
-authors' proposed correction steps, the mean localization error was around 5.2 meters. 
+authors' proposed correction steps, the mean localization error was around 5.2 meters in urban canyons. 
 In contrast, most authors agree autonomous vehicles can tolerate 0.2 to 0.35 meters lateral error
 ~\cite{vivacqua2017low}\cite{ziegler2014video}\cite{mattern2010high}.
 
@@ -140,10 +140,10 @@ The practical questions answered by this work are the following:
 \end{enumerate}
 
 The first question relates to feasibility of camera-based localization,
-and is addressed in Chapter~\ref{chap:cameramodel}.
+and is addressed at the end of Chapter~\ref{chap:cameramodel}.
 
 The second and third questions examine the optimal camera placement task 
-for localization and navigational performance. This is related to past work 
+for localization and navigation performance. This is related to past work 
 on landmark placement for robotic navigation, where the robots observe landmarks fixed to the environment. 
 Here, the use case is inverted to observe the robots as they move through the environment. 
 Thus, it is also closely related to previous work on surveillance networks.
@@ -177,137 +177,80 @@ localization, landmark placement, and surveillance. Chapter~\ref{chap:impl} disc
 used for analysis. 
 
 Chapter \ref{chap:cameramodel} develops the error model for cameras
-used in simulation, and examines the feasibility of the proposed approach,
-while~\ref{chap:cameraplacement} optimizes single and multiple camera placements
-in various environments. This is followed by concluding remarks.
+used in simulation, and examines the feasibility of using cameras in the infrastructure for localization.
+Chapter ~\ref{chap:cameraplacement} optimizes single and multiple camera placements
+in various environments and using different objective functions. This is followed by concluding remarks.
 
 
 \chapter{Related Work} 
 \label{chap:relatedwork}
 
 * Talk about past work with other sensor types, good/bad
+talk about possible sensor types. camera, why it's useful
+camera versus passive tags versus tech like UWB, pros/cons.
 
 This dissertation touches on a large body of literature ranging from 
 control theory to surveillance optimisation. I focus on past work
 in surveillance, and... 
 
+
+\section{External Camera-based Localisation}
+
+There is quite a lot of literature here...
+
+\section{Camera and Landmark Placement}
+
+* Beinhofer
+* surveillance papers
+* camera orientation on vehicles (entropy based paper)
+
+\citeauthor{bodor2007optimal} optimize the surveillance of an area by considering
+line segments, representing piecewise paths, on the ground plane from a fixed
+height above the ground. The authors consider one variable - pitch,
+and during the formulation of their
+objective function consider the number of pixels $r$ filled by the target.
+This is approximated using the distance to the target and its angle relative 
+to the camera (imagine a car rotating in place, shrinking the number
+of pixels it takes up).... 
+
 \chapter{Design and Implementation}
 \label{chap:impl}
 
+This section outlines the work completed during the development
+of this dissertation, and provides mathematical background
+referenced to throughout the report.
+
 \section{Approach}
 
-% TODO maybe discuss that making a good model in simulation
-% means the chances of making the jump to the real world is
-% higher
+The basis of this work is a simulation developed using industry-standard tools.
+The Gazebo REF TODO robotics simulator is used in conjunction with ROS,
+the Robot Operating System, to model a non-holonomic Ackermann drive vehicle
+following predefined paths. A camera is modeled using standard formulations
+discussed in~\ref{impl:sensors}.
 
--- TODO --
-rewrite block of text below these section headings into subsections
-Also touch the items outlined below
+**Todo figure of ackermann drive**
 
-\subsection{Sensors}
+An expensive, high fidelity simulation was used instead of a real hardware
+implementation. Simulation also allows quickly modifying the environment
+and models to examine a greater range of tasks.
 
-talk about possible sensor types. camera, why it's useful
-camera versus passive tags versus tech like UWB, pros/cons.
+
+
+\section{Sensors}
+\label{impl:sensors}
+
+talk about camera model (perspective & co)
+
 
 Here only focus on x,y updates from camera. Pose is possible, cite literature on pose estimation
 on a variety of tasks. 
-
-\subsection{Vehicle Model and Navigation}
-
-* Planar Z = 0 assumption, restrction to x,y,theta
-* Kalman Filter
-* odometry model, non-holonomic vehicles
-* influence of vehicle and noise model on results TODO (=> discussion/conclusion?)
-
-\subsection{Objective Functions}
-
-* Localization versus Navigation
-* Objection functions used in the past (=> related work? Or into camera placement chapter?) 
-
-\subsection{Implementation Overview}
-
-* simulation -- why
-
-* Gaezebo, ROS
-
-* Quality of simulation (+ use of gazebo/ros)
-
-* Quality of results dependent on camera model, error bounds, 
-
-* Camera model and relation to kalman filter and navigation
-
-* Parameters optimized for at different points and how this answers
- the above questions
- 
-* TODO decide if totally dropping bits on camera model
-
-
-
-
-
-
-The experimentation carried out is performed in simulation. 
-This is partly because of the difficulty of using a real vehicle and a test track, but
-also since simulation allows quickly evaluating different road curvatures, camera parameters,
-and camera placements.
-
-In this dissertation, an Ackermann vehicle **TODO CITATION** model in Gazebo **TODO CITATION**
-was used. The Robotics Operating System (ROS) was used for all control and navigation tasks,
-while cameras are modelled as separate modules.
-
-Since the results discussed in SECTION TODO depend strongly on the quality of simulation,
-effort is put into accurate models. Most of the robotic stack developed is based on
-industry standard tools (\eg Gazebo and ROS), using realistic control and localization
-algorithms, though some simplifications are discussed in SECTION TODO.
-
-* TODO
-  * discuss mathematical model of inaccuracy versus real simulated results
-  * impact of lens model
-
-Evaluation of camera parameters is also strongly dependent on the realism of
-the camera model. Notably, when examining wide field-of-view cameras, the standard
-pinhole perspective camera can break down. TODO analyses a variety
-of camera models that can extend all the way to fisheye lenses, 
-
-This dissertation fixes camera focal length and resolution, but allows the horizontal
-and vertical field of view to vary. Additionally, in any individual scenario
-camera placement is fixed at a certain height, as well as locations along
-the edge of roads. Camera roll (rotation about the optical axis) is now allowed to vary,
-while the yaw (rotation about the Z ``up'' axis) and pitch (tilt) can be adjusted.
-
-
-
-
-*** ROLL this into implementation! ***
-\chapter{Background} 
-\label{chap:background}
 
 **** talk about coorindate systems somewhere
 * Roll, pitch yaw
 * how rotations were implemented (quaternions or matrices)
 
+\section{Curve Representations}
 
-\section{Robotics Operating System and Gazebo Simulator}
-* brief!
-
-\section{Camera Models}
-* Discussed further 
-
-* TODO skip?
-
-\section{Extended Kalman Filter}
-* be sure to write out maths
-
-* discuss use of covariance matrix (x, y, theta) as error function
-
-
-\subsection{Model}
-
-* discuss alternative (velocity) models
-
-\section{Navigation and Controls}
-
-\subsection{Curve Representations}
 * discuss various ways of representing curves
 
 * eg spline, linear approximations, dubins (what I've done), euler
@@ -326,13 +269,41 @@ while the yaw (rotation about the Z ``up'' axis) and pitch (tilt) can be adjuste
 
 * unit testing for correctness - 3D geometry easy to mess up
 
-\subsection{Controllers}
+\section{Vehicle Model and Navigation}
+
+* Planar Z = 0 assumption, restrction to x,y,theta
+* Kalman Filter
+* odometry model, non-holonomic vehicles
+* influence of vehicle and noise model on results TODO (=> discussion/conclusion?)
+
 * PID, advantages and disadvantages
 
 * Alternative controllers -- use of Stanford's steering controller and homebrew velocity controller.
 
+\section{Objective Functions and Optimization}
+
+* Localization versus Navigation
+* Objection functions used in the past (=> related work? Or into camera placement chapter?) 
+
+* grid search, hillclimbing..
+
 \section{Submodularity}
 * TODO -- leave to end to see if have time to explore this
+
+\section{Mutual Information}
+
+
+ 
+
+
+
+
+
+
+
+
+
+
 
 
 \chapter{Camera Model}
@@ -795,23 +766,6 @@ so we are just about ok if the pitch isn't too flat... But if the pitch IS low
 the error bound will still be small toward the bottom of the pixel plane
 =>>> discuss general feasibility of cameras and installation constraints!
 
-
-
-\section{Prior Work}
-
-*** Is this needed? ***
-
-I relate the derivation above to some of the literature which focuses on
-landmark placement or camera optimization for surveillance.
-
-\citeauthor{bodor2007optimal} optimize the surveillance of an area by considering
-line segments, representing piecewise paths, on the ground plane from a fixed
-height above the ground. The authors consider one variable - pitch,
-and during the formulation of their
-objective function consider the number of pixels $r$ filled by the target.
-This is approximated using the distance to the target and its angle relative 
-to the camera (imagine a car rotating in place, shrinking the number
-of pixels it takes up).... 
 
 
 

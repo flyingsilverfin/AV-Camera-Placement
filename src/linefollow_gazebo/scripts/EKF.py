@@ -165,7 +165,6 @@ class OdometryEKF(object):
         self.true_positioning = TruePositioning()
         self.last_true_position, self.last_true_theta = None, None
         self.last_true_position_time = None
-        self.last_true_position_time = None
 
         # state: x, y, theta, x', y', theta'
         self.state = None # will use true state when first stepping #np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -180,13 +179,17 @@ class OdometryEKF(object):
 
         # publishing
         self.publish_rviz_pose = publish_rviz_pose
-        self.odom_publisher = rospy.Publisher("/ekf_odom", Odometry, queue_size=3)
+        self.odom_publisher = rospy.Publisher("/ekf_odom", Odometry, queue_size=25)
         if publish_rviz_pose:
-            self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=3)
+            self.pose_publisher = rospy.Publisher("/ekf_pose", PoseWithCovarianceStamped, queue_size=25)
 
         self.seq_num = 0
 
         self.running = False
+
+
+        # for transmitting odoms to sim data collector
+        self.to_sim_data_collector = rospy.Publisher("/ekf_to_simcollector", SimulationDataMsg, queue_size=25)
 
     def set_running(self, msg):
         """ Called by service to enable/disable EKF """
@@ -215,7 +218,7 @@ class OdometryEKF(object):
             return True
         
 
-    def publish_pose(self):
+    def publish_pose(self, last_ekf_state, last_true_position, last_true_theta, current_true_odom):
 
         odom = Odometry()
 
@@ -256,6 +259,18 @@ class OdometryEKF(object):
             pose.pose = odom.pose
             self.pose_publisher.publish(pose)
 
+        # publish a SimDataMessage for the sim data collector to deal with
+        if last_true_position is None:
+            return
+        msg = SimulationDataMsg()
+        msg.true_odom = current_true_odom
+        msg.ekf_odom = odom
+        p = msg.last_true_pos
+        p.x, p.y, p.z = last_true_position
+        msg.last_true_heading = last_true_theta
+        msg.last_ekf_state = last_ekf_state.tolist()
+        self.to_sim_data_collector.publish(msg)
+
 
     def step(self, event):
         if not self.true_positioning.ready():
@@ -275,13 +290,24 @@ class OdometryEKF(object):
         if dt == 0: # not received new true position, don't bother updating
             return
 
+        # HACK retain these for publishing later
+        if self.last_true_position is not None:
+            last_true_pos = self.last_true_position.copy()
+            last_true_heading = self.last_true_theta
+        else:
+            last_true_pos = np.array([self.state[0], self.state[1], 0.0])
+            last_true_heading = 0.0
+
+        current_true_odom = self.true_positioning.get_odom()
+        last_ekf_state = self.state.copy()
+
         self.predict(dt)
 
         for sensor_source in self.sensors:
             if sensor_source.has_new_data():
                 self.update(sensor_source)
 
-        self.publish_pose()
+        self.publish_pose(last_ekf_state, last_true_pos, last_true_heading, current_true_odom)
 
         self.last_true_position_time = true_pos_time
 
@@ -295,7 +321,7 @@ class OdometryEKF(object):
 
         # apply `f` ie. motion model
         self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
-        # print("\tstate: {0}".format(self.state))
+        print("\tstate: {0}".format(self.state))
 
         # get jacobian
         F_k = self.motion_model_jacobian(self.state, sampled_deltas, dt)
@@ -347,14 +373,29 @@ class OdometryEKF(object):
             dist = np.linalg.norm(diff)
             if dist < self.motion_model_threshold:
                 return [0.0, 0.0, 0.0]
-            d_start_angle = angle - self.last_true_theta
+            # shift the deltas around into non-rollover zones!!
+            # shift angles into 0 - 6.28
+            if angle < 0 :
+                angle += 2*np.pi
+            last_true_theta = self.last_true_theta
+            if last_true_theta < 0:
+                last_true_theta += 2*np.pi
+            if heading_angle < 0:
+                heading_angle += 2*np.pi
+            # now shift danger areas away!
+            # if angle > 5 or angle < 1 or last_true_theta > 5 or last_true_theta < 1 or heading_angle > 5 or heading_angle < 1:
+                # angle = (angle + np.pi) % (2*np.pi)
+                # last_true_theta = (last_true_theta + np.pi)%(2*np.pi)
+                # heading_angle = (heading_angle + np.pi)%(2*np.pi)
+            # now safely calculate deltas
+            d_start_angle = angle - last_true_theta
             d_end_angle = heading_angle - angle
             # print("\t[real deltas] Position: {0}, last_position: {1}, movement last => now: {2}".format(position, self.last_true_position, diff))
             # print("\t[real deltas] angle of movement: {0}, distance: {1}, current rpy: {3}, last true angle: {2}".format(angle, dist, self.last_true_theta, rpy)) 
             # print("\t[real deltas] start angle to movement angle: {0}, end angle to movement angle {1}".format(d_start_angle, d_end_angle))
 
 
-            print("Current position: {0}, last positiong: {1}, Movement angle: {2}, initial angle error: {3}, finish angle error: {4}".format(position, self.last_true_position, angle, d_start_angle, d_end_angle))
+            print("Current position: {0}, last positiong: {1}, start_angle: {4}, end_angle: {5}, Movement angle: {2}, initial angle error: {3}, finish angle error: {4}".format(position, self.last_true_position, angle, d_start_angle, self.last_true_theta, heading_angle))
 
         self.last_true_position = position
         self.last_true_theta = heading_angle
@@ -369,7 +410,7 @@ class OdometryEKF(object):
 
         stddev_start_angle_noise = alpha_1 * np.abs(rotation_1) + alpha_2 * dist
         stddev_end_angle_noise = alpha_1 * np.abs(rotation_2) + alpha_2 * dist
-        stddev_dist_noise = alpha_3 * dist + alpha_4 * np.abs(rotation_1 + rotation_2)
+        stddev_dist_noise = alpha_3 * dist + alpha_4 * (np.abs(rotation_1) + np.abs(rotation_2))
 
         error_start_angle = np.random.normal(0.0, stddev_start_angle_noise)
         error_end_angle = np.random.normal(0.0, stddev_end_angle_noise)

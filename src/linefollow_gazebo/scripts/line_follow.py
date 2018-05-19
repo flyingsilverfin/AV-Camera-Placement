@@ -35,10 +35,13 @@ class LineFollowController(object):
         self.positioning = positioning
         self.prius_msg_generator = PriusControlMsgGenerator()
         # topic to publish prius Control message
-        self.prius_move = rospy.Publisher("/prius", Control, queue_size=3)
+        self.prius_move = rospy.Publisher("/prius", Control, queue_size=25)
 
         self.path = path
         self.path_tracker = None    # init to avoid undefined vars before path tracking starts
+
+
+        self.last_steer_angle = None
 
         self.previous_v_x = 0.0
         self.tracking = False
@@ -138,7 +141,7 @@ class LineFollowController(object):
         self.velocity_pid = PID(kp=p, ki=i, kd=d)
 
         # publisher for path/tracking info to log
-        self.path_update_pub = rospy.Publisher('/path_update', PathUpdate, queue_size=3)
+        self.path_update_pub = rospy.Publisher('/path_update', PathUpdate, queue_size=25)
 
         self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
 
@@ -171,6 +174,7 @@ class LineFollowController(object):
         target_speed = self.velocity_profile.get_target_speed(self.path_tracker.get_closest_point_time(), speed)
 
         steer_angle = self.hoffman_control(position, heading, vel)
+        self.last_steer_angle = steer_angle
         throttle = self.velocity_pid.update(secs, speed - target_speed)
         # rospy.loginfo("New steering angle (hoffman): {0}".format(steer_angle))
         # rospy.loginfo("New throttle (PID): {0}".format(throttle))
@@ -228,6 +232,9 @@ class LineFollowController(object):
             return -1.0
         elif steer_command > 1.0:
             return 1.0
+        
+        if np.isnan(steer_command):
+            return self.last_steer_angle
 
         return steer_command
 
@@ -266,7 +273,7 @@ class Testing(object):
     def __init__(self, true_positioning, update_period=2.0, variance=1.0):
         rospy.loginfo("Create Testing object")
         self.true_pos = true_positioning 
-        self.pub = rospy.Publisher("/testing/occasional_odom", Odometry, queue_size=5)
+        self.pub = rospy.Publisher("/testing/occasional_odom", Odometry, queue_size=25)
         self.variance = variance
         
         self.timer = rospy.Timer(rospy.Duration(update_period), self.update)
