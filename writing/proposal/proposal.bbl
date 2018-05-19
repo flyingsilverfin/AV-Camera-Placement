@@ -1,0 +1,196 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 2.8 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \sortlist[entry]{nty/global/}
+    \entry{allen2014range}{inproceedings}{}
+      \name{author}{6}{}{%
+        {{hash=30f41c9baa216ec4c21d7b215acc332b}{%
+           family={Allen},
+           familyi={A\bibinitperiod},
+           given={River},
+           giveni={R\bibinitperiod}}}%
+        {{hash=1928ce3cda7055440ba73e7e26abe221}{%
+           family={MacMillan},
+           familyi={M\bibinitperiod},
+           given={Neil},
+           giveni={N\bibinitperiod}}}%
+        {{hash=a26b7b4d18094509e0c91e313537b571}{%
+           family={Marinakis},
+           familyi={M\bibinitperiod},
+           given={Dimitri},
+           giveni={D\bibinitperiod}}}%
+        {{hash=4508e5f2d128f962d522355433b77234}{%
+           family={Nishat},
+           familyi={N\bibinitperiod},
+           given={Rahnuma\bibnamedelima Islam},
+           giveni={R\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+        {{hash=45be3d7568e30210c08f2e649c605be1}{%
+           family={Rahman},
+           familyi={R\bibinitperiod},
+           given={Rayhan},
+           giveni={R\bibinitperiod}}}%
+        {{hash=18f1c6b18c80919263bd2c5a41a16ceb}{%
+           family={Whitesides},
+           familyi={W\bibinitperiod},
+           given={Sue},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{5e4076b023e667174beaf4e4f2e15b54}
+      \strng{fullhash}{d80d2f8ec680ceac1dda063282bde71d}
+      \strng{authornamehash}{5e4076b023e667174beaf4e4f2e15b54}
+      \strng{authorfullhash}{d80d2f8ec680ceac1dda063282bde71d}
+      \field{sortinit}{A}
+      \field{sortinithash}{3248043b5fe8d0a34dab5ab6b8d4309b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Computer and Robot Vision (CRV), 2014 Canadian Conference on}
+      \field{title}{The range beacon placement problem for robot navigation}
+      \field{year}{2014}
+      \field{pages}{151\bibrangedash 158}
+      \range{pages}{8}
+    \endentry
+    \entry{beinhofer2013effective}{article}{}
+      \name{author}{3}{}{%
+        {{hash=3f84c2bb5dd477068b62456a69b65edf}{%
+           family={Beinhofer},
+           familyi={B\bibinitperiod},
+           given={Maximilian},
+           giveni={M\bibinitperiod}}}%
+        {{hash=7a14b793f9c8206819859db7ee3c9fc9}{%
+           family={M\"{u}ller},
+           familyi={M\bibinitperiod},
+           given={J\"{o}rg},
+           giveni={J\bibinitperiod}}}%
+        {{hash=98f4ab1bc2ac191d8f8a0651315ce9c0}{%
+           family={Burgard},
+           familyi={B\bibinitperiod},
+           given={Wolfram},
+           giveni={W\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier}%
+      }
+      \strng{namehash}{5415ce8dae682f13f09b69a7a44deb28}
+      \strng{fullhash}{5415ce8dae682f13f09b69a7a44deb28}
+      \strng{authornamehash}{5415ce8dae682f13f09b69a7a44deb28}
+      \strng{authorfullhash}{5415ce8dae682f13f09b69a7a44deb28}
+      \field{sortinit}{B}
+      \field{sortinithash}{5f6fa000f686ee5b41be67ba6ff7962d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Robotics and Autonomous Systems}
+      \field{number}{10}
+      \field{title}{Effective landmark placement for accurate and reliable mobile robot navigation}
+      \field{volume}{61}
+      \field{year}{2013}
+      \field{pages}{1060\bibrangedash 1069}
+      \range{pages}{10}
+    \endentry
+    \entry{lee2015gps}{article}{}
+      \name{author}{6}{}{%
+        {{hash=7e1d9c355ddefa0b23c9c4194b78d9a4}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Byung-Hyun},
+           giveni={B\bibinithyphendelim H\bibinitperiod}}}%
+        {{hash=5f8b249213b826bdad031fa6563ee187}{%
+           family={Song},
+           familyi={S\bibinitperiod},
+           given={Jong-Hwa},
+           giveni={J\bibinithyphendelim H\bibinitperiod}}}%
+        {{hash=c81f8f491f68a0732330fbb930b575e7}{%
+           family={Im},
+           familyi={I\bibinitperiod},
+           given={Jun-Hyuck},
+           giveni={J\bibinithyphendelim H\bibinitperiod}}}%
+        {{hash=f6db728f8ad25a1eebe9a1f7f3529bb8}{%
+           family={Im},
+           familyi={I\bibinitperiod},
+           given={Sung-Hyuck},
+           giveni={S\bibinithyphendelim H\bibinitperiod}}}%
+        {{hash=916658f63055ead4a6053fcbf26c64b6}{%
+           family={Heo},
+           familyi={H\bibinitperiod},
+           given={Moon-Beom},
+           giveni={M\bibinithyphendelim B\bibinitperiod}}}%
+        {{hash=217032efb09be6f19ad67245d020bd75}{%
+           family={Jee},
+           familyi={J\bibinitperiod},
+           given={Gyu-In},
+           giveni={G\bibinithyphendelim I\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Multidisciplinary Digital Publishing Institute}%
+      }
+      \strng{namehash}{637a473f2d5e8d65474e7c60d1b35bda}
+      \strng{fullhash}{f441639f8a8cd1a15fa4b8b5bf74f9a4}
+      \strng{authornamehash}{637a473f2d5e8d65474e7c60d1b35bda}
+      \strng{authorfullhash}{f441639f8a8cd1a15fa4b8b5bf74f9a4}
+      \field{sortinit}{L}
+      \field{sortinithash}{7bba64db83423e3c29ad597f3b682cf3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Sensors}
+      \field{number}{8}
+      \field{title}{GPS/DR error estimation for autonomous vehicle localization}
+      \field{volume}{15}
+      \field{year}{2015}
+      \field{pages}{20779\bibrangedash 20798}
+      \range{pages}{20}
+    \endentry
+    \entry{yao2011distributed}{article}{}
+      \name{author}{2}{}{%
+        {{hash=caa3dc380a00f455fdf80bf3f9f76e32}{%
+           family={Yao},
+           familyi={Y\bibinitperiod},
+           given={Zhenwang},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=2f6b56223619dc21c639a59a13268d4a}{%
+           family={Gupta},
+           familyi={G\bibinitperiod},
+           given={Kamal},
+           giveni={K\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{5ab4f29fb0fcbfadd862bbbcc2348313}
+      \strng{fullhash}{5ab4f29fb0fcbfadd862bbbcc2348313}
+      \strng{authornamehash}{5ab4f29fb0fcbfadd862bbbcc2348313}
+      \strng{authorfullhash}{5ab4f29fb0fcbfadd862bbbcc2348313}
+      \field{sortinit}{Y}
+      \field{sortinithash}{f86c10978eb0c0879609ce6a4f43da7b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Robotics}
+      \field{number}{5}
+      \field{title}{Distributed roadmaps for robot navigation in sensor networks}
+      \field{volume}{27}
+      \field{year}{2011}
+      \field{pages}{997\bibrangedash 1004}
+      \range{pages}{8}
+    \endentry
+  \endsortlist
+\endrefsection
+\endinput
+

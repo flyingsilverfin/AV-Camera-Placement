@@ -7,7 +7,7 @@
             "segments": [
                 {
                     "curvature": 0.0,
-                    "length": 400.0
+                    "length": 350.0
                 },
                 {
                     "curvature": 0.04,
@@ -36,6 +36,10 @@
                 {
                     "curvature": 0.018182,
                     "length": 83.39 
+                },
+                {
+                    "curvature": 0.0,
+                    "length": 50.0
                 }
             ]
         }
@@ -56,11 +60,11 @@
     "controller": {
         "update_rate": 50,
         "velocity_controller": {
-            "lookahead_time": 4.0,
-            "lookahead_interval": 0.25,
-            "straight_speed": 13.0,
+            "lookahead_time": 3.0,
+            "lookahead_interval": 0.20,
+            "straight_speed": 20.0,
             "radius_speed_mult": 0.5,
-            "pid": [0.2, 0.0, 0.0]
+            "pid": [0.3, 0.0, 0.02]
         },
         "hoffman_steering": {
             "distance_multiplier": 1.5
@@ -73,7 +77,7 @@
     "ekf": {
         "update_rate": 25.0,
         "initial_cov_diagonal": [0.18,0.18,0,0,0,0],
-        "model_step_noise": [0.0001, 0.0001, 0.0001, 0.0001],
+        "model_step_noise": [0.0001, 0.00008, 0.00008, 0.0001],
         "motion_model_threshold": 0.0001
     },
     "max_timeout": 200.0

@@ -1,0 +1,111 @@
+\boolfalse {citerequest}\boolfalse {citetracker}\boolfalse {pagetracker}\boolfalse {backtracker}\relax 
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {1.1}Vision}{1}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {1.2}Motivation}{2}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {1.3}Contributions}{3}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {1.4}Overview}{4}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {2}Related Work}{5}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {3}Design and Implementation}{7}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {3.1}Approach}{7}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {3.1.1}Sensors}{7}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {3.1.2}Vehicle Model and Navigation}{7}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {3.1.3}Objective Functions}{8}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {3.1.4}Implementation Overview}{8}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {4}Background}{11}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4.1}Robotics Operating System and Gazebo Simulator}{11}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4.2}Camera Models}{11}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4.3}Extended Kalman Filter}{11}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.3.1}Model}{12}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4.4}Navigation and Controls}{12}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.4.1}Curve Representations}{12}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.4.2}Controllers}{12}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4.5}Submodularity}{13}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {5}Camera Model}{15}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.1}Camera Projection}{15}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.1.1}Generic Camera Model}{16}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.1.2}Tradeoffs}{17}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.1.3}Conclusion}{18}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.2}Localization and Error}{18}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.2.1}Approach}{18}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.2.2}Location and Orientation Error}{19}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.2.3}Algorithmic Error}{20}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.2.4}Error from Camera Limitations}{21}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.2.5}Complete Error Model}{21}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.3}Error Model Validation}{22}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.3.1}Quality of $r$ as an Error Bound}{23}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.3.2}Error Radius as a function of Pitch Angle}{24}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {5.3.3}Impact of Algorithmic Inaccuracy}{25}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.4}Limits and Implications}{26}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.5}Prior Work}{28}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {5.6}Conclusion}{29}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {6}Camera Placement}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {6.1}Single Camera Placement -- Localization}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.1.1}A Cheaper Objective Function}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.1.2}Straight Roads}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.1.3}Relation to Curvature}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.1.4}Aside: Intersection}{31}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.1.5}Varying Pitch, Yaw, and Horizontal and Vertical FoV}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {6.2}Single Camera Placement -- Navigation}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.2.1}Full Objection Function}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.2.2}Straight Roads}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.2.3}Relation to Curvature}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {6.2.4}Comparison to Simpler Objection Function}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {6.3}Multiple Camera Placement}{32}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {6.4}Conclusion}{33}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {7}Optimizing Road Construction for Navigation}{35}
+\defcounter {refsection}{0}\relax 
+\contentsline {chapter}{\numberline {8}Summary and Conclusion}{37}

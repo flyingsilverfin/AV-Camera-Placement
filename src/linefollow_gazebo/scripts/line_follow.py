@@ -188,6 +188,8 @@ class LineFollowController(object):
         target_normal.x, target_normal.y, target_normal.z = self.path_tracker.get_closest_normal()
         msg.velocity_controller_target = target_speed 
         msg.path_curvature = self.path_tracker.active_segment.curvature 
+        msg.current_ekf_position = pose.pose.pose.position 
+        msg.current_time = secs
         self.path_update_pub.publish(msg)
 
         # make sure we elapse the required overshoot distance

@@ -1,0 +1,96 @@
+%\documentclass[twoside,twocolumn]{article}
+\documentclass[12pt]{article}
+
+\usepackage[english]{babel} % Language hyphenation and typographical rules
+\usepackage{csquotes}
+\usepackage[hmarginratio=1:1,top=32mm,columnsep=20pt]{geometry} % Document margins
+
+\usepackage{enumitem} % Customized lists
+\setlist[itemize]{noitemsep} % Make itemize lists more compact
+
+
+\usepackage{abstract} % Allows abstract customization
+\usepackage[parfill]{parskip}
+
+\title{
+	Offboard Sensor Placement for Autonomous Robot Navigation \\
+	\vspace{2mm}
+	\Large{\textit{Part III dissertation proposal}}
+}
+
+\author{
+	Joshua Send (js2173), Trinity Hall \\
+	Supervisor: Dr.~Amanda Prorok
+}
+\date{} % Leave empty to omit a date
+
+
+
+\usepackage[bibstyle=numeric,citestyle=numeric,backend=biber,natbib=true]{biblatex}
+\addbibresource{refs.bib}% Syntax for version >= 1.2
+
+
+
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+
+
+% Print the title
+\maketitle
+
+
+\begin{abstract}
+
+Work on autonomous robots has largely focused on highly perceptive robots with advanced sensing capabilities. Moving sensing from the vehicle to the environment is less explored. This project firstly aims to develop a fully integrated simulation of an autonomous non-holonomic vehicle navigating a circuit instrumented with an off-board sensing infrastructure. The goal is to develop a framework for analyzing the range of navigation solutions between pure dead reckoning and solely using off-board sensors.
+
+\end{abstract}
+
+\section{Introduction, approach and outcomes}
+
+The recent surge in research on autonomous cars has almost entirely focused on a specific model of self-driving vehicle. Featuring high-tech cars with a huge number of sensors, including cameras, LIDAR and sonar for perception, along with more standard inertial measurement units and wheel encoders, these vehicles are outfitted to extract and analyze as much information as possible from their environment \cite{lee2015gps}.
+
+An alternative, less explored approach is to significantly reduce the perceptive capabilities of autonomous robots, and embed sensing units into the environment. By providing sensing as a public infrastructure, autonomy could be made cheaper, more accessible, and easier to retrofit onto existing vehicles. 
+
+This project will begin by developing a simulated autonomous vehicle navigating a course using purely dead reckoning, experimenting with different levels of noise. Then, a purely sensor-driven simulation will be created, removing dead reckoning and obtaining positional information only from off-board sensors. This approach will explore the effect of sensor noise and sensor delay parameters on performance. Next, both dead reckoning and external information will be combined. From this mixture, the entire spectrum of solutions can be explored for cost and performance. Performance would be measured as a combination of successful navigation of the course and speed obtained. The resulting framework will require developing an optimal sensor placement scheme, using existing work \cite{beinhofer2013effective} \cite{allen2014range} as a starting point.
+
+There are many possible extensions to this project. One is to try to complement the simulated results with an analytical approach, solving an optimization problem simultaneously for reduced sensor coverage, probability of success, and speed. A second idea is to use the core of this project to quantify road shape and how well it lends itself to be navigated by an autonomous vehicle using off-board sensors. From this one could determine whether connecting points in a zig-zag (ie. straight segments with sharp turns) or with a smooth curve is more efficient in terms of sensor placement, and navigational speed and safety.
+
+\section{Work Plan}
+
+Project work will be completed according to the following two week increments. The official start date is the 27\textsuperscript{th} of November, 2017.
+
+\textbf{by Sunday, 10 December 2017:} Completed review of past work on sensor placement and navigation algorithms. Begin familiarizing with Gazebo simulator\footnote{http://gazebosim.org/}.
+
+\textbf{Sunday 24 December 2017:} Begin implementing a dead reckoning vehicle and a course it has to navigate. 
+
+(one week break with family through 31 December 2017)
+
+\textbf{Sunday 14 January 2017:} \textbf{\underline{Milestone}} Able to simulate vehicle moving around track according to a kinematic model and a navigation algorithm, using dead reckoning. It may be necessary to experiment with different navigation algorithms. Evaluate impact of introducing increasing amounts of reckoning noise.
+
+\textbf{Sunday 28 January 2017:} Researched and chose off-board sensor type(s) to model, and start integrating these into the Gazebo simulator. Begin implementing at least one existing sensor placement algorithm and adapt it to this use case. 
+
+\textbf{Sunday 11 February 2017:} Fully replicated existing work for sensor placement within simulator, and modify vehicle to navigate using purely external sensors, possibly using something like \cite{yao2011distributed}.
+
+\textbf{Sunday 25 Febrary 2017:} \textbf{\underline{Milestone}} Simulated vehicle navigates track using data received from off-vehicle sensors. Evaluate different sensor placement densities and strategies. Begin combining with dead reckoning work and evaluate effect of varying density of sensor deployment.
+
+\textbf{Sunday 11 March 2017:} Evaluate tradeoff between accuracy and sensor density with various given parameters. Once enough data has been gathered, attempt to create a function approximation using neural networks or gaussian processes.
+
+\textbf{Sunday 25 March 2018:} \textbf{\underline{Milestone}} Completed evaluation of accuracy tradeoff and sensor layout. Should be able to evaluate tradeoff for different noise models in vehicle and sensors and sensor layouts. Begin writeup of `Past Work', `Preparation', and `Introduction' sections of report. Begin work on extensions.
+
+\textbf{Sunday 8 April 2018:} Continue work on extensions and evaluating tradeoff space, also including computational complexity. Begin writup of `Evaluation' section of report.
+
+\textbf{Sunday 22 April 2018:} Finished `Past Work', `Preparation', `Introduction', `Evaluation' sections. Begin `Implementation' and `Conclusion' sections. Work on extensions.
+
+\textbf{Sunday 6 May 2018:} Finish rough draft, continue working on extensions.
+
+\textbf{Sunday 20 May 2018:} Integrate work on extensions, iterate until final draft.
+
+\textbf{Wednesday 29 May 2018:} Submit dissertation three days before hard deadline as a safety margin.
+
+
+
+\printbibliography
+
+\end{document}

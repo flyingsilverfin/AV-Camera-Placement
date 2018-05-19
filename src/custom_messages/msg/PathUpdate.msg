@@ -1,5 +1,7 @@
 geometry_msgs/Point target_point
 geometry_msgs/Vector3 target_heading
 geometry_msgs/Vector3 path_normal
+geometry_msgs/Point current_ekf_position
+float64 current_time
 float64 velocity_controller_target 
 float64 path_curvature

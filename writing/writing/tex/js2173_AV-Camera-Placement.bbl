@@ -1,0 +1,488 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 2.8 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \sortlist[entry]{ynt/global/}
+    \entry{scherzinger2000precise}{inproceedings}{}
+      \name{author}{1}{}{%
+        {{hash=208a331694ce6588e826c16250bb4a6e}{%
+           family={Scherzinger},
+           familyi={S\bibinitperiod},
+           given={Bruno\bibnamedelima M},
+           giveni={B\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \strng{namehash}{208a331694ce6588e826c16250bb4a6e}
+      \strng{fullhash}{208a331694ce6588e826c16250bb4a6e}
+      \strng{authornamehash}{208a331694ce6588e826c16250bb4a6e}
+      \strng{authorfullhash}{208a331694ce6588e826c16250bb4a6e}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 13th International Technical Meeting fo the Satellite Division of the Institute of Navigation (ION GPS)}
+      \field{title}{Precise robust positioning with inertial/GPS RTK}
+      \field{year}{2000}
+      \field{pages}{115\bibrangedash 162}
+      \range{pages}{48}
+    \endentry
+    \entry{kannala2006generic}{article}{}
+      \name{author}{2}{}{%
+        {{hash=8d20e3f80f9d860f9a91b6f18054e4b1}{%
+           family={Kannala},
+           familyi={K\bibinitperiod},
+           given={Juho},
+           giveni={J\bibinitperiod}}}%
+        {{hash=fcd37b6c6dd882c0d7205d449cfb2b51}{%
+           family={Brandt},
+           familyi={B\bibinitperiod},
+           given={Sami\bibnamedelima S},
+           giveni={S\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{9b78f008954c52612155411965d08b04}
+      \strng{fullhash}{9b78f008954c52612155411965d08b04}
+      \strng{authornamehash}{9b78f008954c52612155411965d08b04}
+      \strng{authorfullhash}{9b78f008954c52612155411965d08b04}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE transactions on pattern analysis and machine intelligence}
+      \field{number}{8}
+      \field{title}{A generic camera model and calibration method for conventional, wide-angle, and fish-eye lenses}
+      \field{volume}{28}
+      \field{year}{2006}
+      \field{pages}{1335\bibrangedash 1340}
+      \range{pages}{6}
+    \endentry
+    \entry{bodor2007optimal}{article}{}
+      \name{author}{4}{}{%
+        {{hash=c9faa13aaa9afbf18113f354033269a8}{%
+           family={Bodor},
+           familyi={B\bibinitperiod},
+           given={Robert},
+           giveni={R\bibinitperiod}}}%
+        {{hash=d3dde069ed601411a009904029cf51b2}{%
+           family={Drenner},
+           familyi={D\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod}}}%
+        {{hash=f2255b3128c6b87b6d01b21f90fe9917}{%
+           family={Schrater},
+           familyi={S\bibinitperiod},
+           given={Paul},
+           giveni={P\bibinitperiod}}}%
+        {{hash=f669946ecfef095e9e797e86f0030309}{%
+           family={Papanikolopoulos},
+           familyi={P\bibinitperiod},
+           given={Nikolaos},
+           giveni={N\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{cdda197d324f539ccf7c6dbe00929571}
+      \strng{fullhash}{690e7bd6cd53ea383a78f04208629580}
+      \strng{authornamehash}{cdda197d324f539ccf7c6dbe00929571}
+      \strng{authorfullhash}{690e7bd6cd53ea383a78f04208629580}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Intelligent and Robotic Systems}
+      \field{number}{3}
+      \field{title}{Optimal camera placement for automated surveillance tasks}
+      \field{volume}{50}
+      \field{year}{2007}
+      \field{pages}{257\bibrangedash 295}
+      \range{pages}{39}
+    \endentry
+    \entry{mattern2010high}{inproceedings}{}
+      \name{author}{3}{}{%
+        {{hash=7e6d8dd777dd85df4669873d8355176a}{%
+           family={Mattern},
+           familyi={M\bibinitperiod},
+           given={Norman},
+           giveni={N\bibinitperiod}}}%
+        {{hash=5bf46c6b676a12bb0a66eb4ef38bf0e5}{%
+           family={Schubert},
+           familyi={S\bibinitperiod},
+           given={Robin},
+           giveni={R\bibinitperiod}}}%
+        {{hash=7b55bf5f23ca970093a99bf0f00c0a53}{%
+           family={Wanielik},
+           familyi={W\bibinitperiod},
+           given={Gerd},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{9bd1d5c8a73878ff89db2d22fab6d087}
+      \strng{fullhash}{9bd1d5c8a73878ff89db2d22fab6d087}
+      \strng{authornamehash}{9bd1d5c8a73878ff89db2d22fab6d087}
+      \strng{authorfullhash}{9bd1d5c8a73878ff89db2d22fab6d087}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Intelligent Vehicles Symposium (IV), 2010 IEEE}
+      \field{title}{High-accurate vehicle localization using digital maps and coherency images}
+      \field{year}{2010}
+      \field{pages}{462\bibrangedash 469}
+      \range{pages}{8}
+    \endentry
+    \entry{sharpless2010pannini}{inproceedings}{}
+      \name{author}{3}{}{%
+        {{hash=c39dbf3cffb6048dc8c0c2d3db3d4fd3}{%
+           family={Sharpless},
+           familyi={S\bibinitperiod},
+           given={Thomas\bibnamedelima K},
+           giveni={T\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=296efc9b0dcc4ef03b8d5ed1bdc585b1}{%
+           family={Postle},
+           familyi={P\bibinitperiod},
+           given={Bruno},
+           giveni={B\bibinitperiod}}}%
+        {{hash=1e78c2882de28d3fa10c10b12f707741}{%
+           family={German},
+           familyi={G\bibinitperiod},
+           given={Daniel\bibnamedelima M},
+           giveni={D\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {Eurographics Association}%
+      }
+      \strng{namehash}{ae98d3af27ae2e0839c7e07005b08438}
+      \strng{fullhash}{ae98d3af27ae2e0839c7e07005b08438}
+      \strng{authornamehash}{ae98d3af27ae2e0839c7e07005b08438}
+      \strng{authorfullhash}{ae98d3af27ae2e0839c7e07005b08438}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Sixth international conference on Computational Aesthetics in Graphics, Visualization and Imaging}
+      \field{title}{Pannini: a new projection for rendering wide angle perspective images}
+      \field{year}{2010}
+      \field{pages}{9\bibrangedash 16}
+      \range{pages}{8}
+    \endentry
+    \entry{hata2014road}{inproceedings}{}
+      \name{author}{2}{}{%
+        {{hash=284c90fa963939cba1acbd27953ff143}{%
+           family={Hata},
+           familyi={H\bibinitperiod},
+           given={Alberto},
+           giveni={A\bibinitperiod}}}%
+        {{hash=ad18d90eef18b67307d57307ef30048a}{%
+           family={Wolf},
+           familyi={W\bibinitperiod},
+           given={Denis},
+           giveni={D\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{e7b46c4439b718192b9b512f8baab161}
+      \strng{fullhash}{e7b46c4439b718192b9b512f8baab161}
+      \strng{authornamehash}{e7b46c4439b718192b9b512f8baab161}
+      \strng{authorfullhash}{e7b46c4439b718192b9b512f8baab161}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Intelligent Transportation Systems (ITSC), 2014 IEEE 17th International Conference on}
+      \field{title}{Road marking detection using LIDAR reflective intensity data and its application to vehicle localization}
+      \field{year}{2014}
+      \field{pages}{584\bibrangedash 589}
+      \range{pages}{6}
+    \endentry
+    \entry{ziegler2014video}{inproceedings}{}
+      \name{author}{8}{}{%
+        {{hash=8142c299c2a225ac7864c9f6c2aa5921}{%
+           family={Ziegler},
+           familyi={Z\bibinitperiod},
+           given={Julius},
+           giveni={J\bibinitperiod}}}%
+        {{hash=19f1f4ac459664a02e70cab4a4ded4b0}{%
+           family={Lategahn},
+           familyi={L\bibinitperiod},
+           given={Henning},
+           giveni={H\bibinitperiod}}}%
+        {{hash=2df21fdcd2dc42ded965408fac86b2d2}{%
+           family={Schreiber},
+           familyi={S\bibinitperiod},
+           given={Markus},
+           giveni={M\bibinitperiod}}}%
+        {{hash=3f29ae6d8cfdb23f2db397cc1cd8438f}{%
+           family={Keller},
+           familyi={K\bibinitperiod},
+           given={Christoph\bibnamedelima G},
+           giveni={C\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=aa0206c371f2a595a66c8881ff86489f}{%
+           family={Knoppel},
+           familyi={K\bibinitperiod},
+           given={Carsten},
+           giveni={C\bibinitperiod}}}%
+        {{hash=d5dfd4b665b86c69a99a0455c78004e8}{%
+           family={Hipp},
+           familyi={H\bibinitperiod},
+           given={Jochen},
+           giveni={J\bibinitperiod}}}%
+        {{hash=ff178ea159896f68884f52403a4344b7}{%
+           family={Haueis},
+           familyi={H\bibinitperiod},
+           given={Martin},
+           giveni={M\bibinitperiod}}}%
+        {{hash=ca1de2d211c8e4a0f976b3b90a625cb8}{%
+           family={Stiller},
+           familyi={S\bibinitperiod},
+           given={Christoph},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{7058a0403dfacd0d70a78c446ad01c1d}
+      \strng{fullhash}{1ef142385a751c607b4cd1cdaa163fad}
+      \strng{authornamehash}{7058a0403dfacd0d70a78c446ad01c1d}
+      \strng{authorfullhash}{1ef142385a751c607b4cd1cdaa163fad}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Intelligent Vehicles Symposium Proceedings, 2014 IEEE}
+      \field{title}{Video based localization for bertha}
+      \field{year}{2014}
+      \field{pages}{1231\bibrangedash 1238}
+      \range{pages}{8}
+    \endentry
+    \entry{miura2015gps}{article}{}
+      \name{author}{4}{}{%
+        {{hash=d437121de0971d08db4b540c721a8c19}{%
+           family={Miura},
+           familyi={M\bibinitperiod},
+           given={Shunsuke},
+           giveni={S\bibinitperiod}}}%
+        {{hash=5d604085c93d3658b06419849d5fd338}{%
+           family={Hsu},
+           familyi={H\bibinitperiod},
+           given={Li-Ta},
+           giveni={L\bibinithyphendelim T\bibinitperiod}}}%
+        {{hash=1fca32cc57d656ccfd9be11f4cd9f3df}{%
+           family={Chen},
+           familyi={C\bibinitperiod},
+           given={Feiyu},
+           giveni={F\bibinitperiod}}}%
+        {{hash=8fc783a11eaefc7f663f98c518e372e1}{%
+           family={Kamijo},
+           familyi={K\bibinitperiod},
+           given={Shunsuke},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{0882928911b19570c6e65dc04be85f25}
+      \strng{fullhash}{a2b3957210f9e21fb4192ff227d3d4d7}
+      \strng{authornamehash}{0882928911b19570c6e65dc04be85f25}
+      \strng{authorfullhash}{a2b3957210f9e21fb4192ff227d3d4d7}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Intelligent Transportation Systems}
+      \field{number}{6}
+      \field{title}{GPS error correction with pseudorange evaluation using three-dimensional maps}
+      \field{volume}{16}
+      \field{year}{2015}
+      \field{pages}{3104\bibrangedash 3115}
+      \range{pages}{12}
+    \endentry
+    \entry{USGPSPerformance}{online}{}
+      \name{author}{1}{}{%
+        {{hash=86cab5b2e7029d04a696bbe94bb86ad5}{%
+           family={Force},
+           familyi={F\bibinitperiod},
+           given={US\bibnamedelima Air},
+           giveni={U\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \strng{namehash}{86cab5b2e7029d04a696bbe94bb86ad5}
+      \strng{fullhash}{86cab5b2e7029d04a696bbe94bb86ad5}
+      \strng{authornamehash}{86cab5b2e7029d04a696bbe94bb86ad5}
+      \strng{authorfullhash}{86cab5b2e7029d04a696bbe94bb86ad5}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{GPS Accuracy}
+      \field{urlday}{19}
+      \field{urlmonth}{5}
+      \field{urlyear}{2018}
+      \field{year}{2016}
+      \field{urldateera}{ce}
+      \verb{url}
+      \verb https://www.gps.gov/systems/gps/performance/accuracy/
+      \endverb
+    \endentry
+    \entry{lumeneracamera}{manual}{}
+      \list{organization}{1}{%
+        {Lumenera}%
+      }
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\textit{Available at \url{https://www.lumenera.com/media/wysiwyg/documents/casestudies/selecting-the-right-traffic-camera-solution-sheet.pdf}}}
+      \field{title}{Selecting the Right Camera for Intelligent Traffic Systems}
+      \field{year}{2017}
+    \endentry
+    \entry{StreetscapeGuideance}{report}{}
+      \name{author}{1}{}{%
+        {{hash=230fa2076a99895f1a4be3f820c6d34e}{%
+           family={{Transport for London}},
+           familyi={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{230fa2076a99895f1a4be3f820c6d34e}
+      \strng{fullhash}{230fa2076a99895f1a4be3f820c6d34e}
+      \strng{authornamehash}{230fa2076a99895f1a4be3f820c6d34e}
+      \strng{authorfullhash}{230fa2076a99895f1a4be3f820c6d34e}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Streetscape Guideance}
+      \field{year}{2017}
+    \endentry
+    \entry{vivacqua2017low}{article}{}
+      \name{author}{3}{}{%
+        {{hash=6a2811355af71724fead1580fac24744}{%
+           family={Vivacqua},
+           familyi={V\bibinitperiod},
+           given={Rafael},
+           giveni={R\bibinitperiod}}}%
+        {{hash=96d72b4291fb8cb17870170e89186d7d}{%
+           family={Vassallo},
+           familyi={V\bibinitperiod},
+           given={Raquel},
+           giveni={R\bibinitperiod}}}%
+        {{hash=0b78b2622e11f1b1a5ba972dcefa7d5d}{%
+           family={Martins},
+           familyi={M\bibinitperiod},
+           given={Felipe},
+           giveni={F\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Multidisciplinary Digital Publishing Institute}%
+      }
+      \strng{namehash}{45710537642ccaa012e277289eb8fd65}
+      \strng{fullhash}{45710537642ccaa012e277289eb8fd65}
+      \strng{authornamehash}{45710537642ccaa012e277289eb8fd65}
+      \strng{authorfullhash}{45710537642ccaa012e277289eb8fd65}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Sensors}
+      \field{number}{10}
+      \field{title}{A Low Cost Sensors Approach for Accurate Vehicle Localization and Autonomous Driving Application}
+      \field{volume}{17}
+      \field{year}{2017}
+      \field{pages}{2359}
+      \range{pages}{1}
+    \endentry
+    \entry{lin2018architectural}{inproceedings}{}
+      \name{author}{7}{}{%
+        {{hash=1ece1bf0bbe8c5cd527f9959c7e6fed0}{%
+           family={Lin},
+           familyi={L\bibinitperiod},
+           given={Shih-Chieh},
+           giveni={S\bibinithyphendelim C\bibinitperiod}}}%
+        {{hash=feba3297c0c0f0fc442da0284228feef}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Yunqi},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=0cce1eb2dfda1e5047d9fb24bd575716}{%
+           family={Hsu},
+           familyi={H\bibinitperiod},
+           given={Chang-Hong},
+           giveni={C\bibinithyphendelim H\bibinitperiod}}}%
+        {{hash=8e3a5b344d86e23930422951c1c78319}{%
+           family={Skach},
+           familyi={S\bibinitperiod},
+           given={Matt},
+           giveni={M\bibinitperiod}}}%
+        {{hash=9a908edddf058e304e65d12111ca2371}{%
+           family={Haque},
+           familyi={H\bibinitperiod},
+           given={Md\bibnamedelima E},
+           giveni={M\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=a25808e4b2804498589504887cbc7dd3}{%
+           family={Tang},
+           familyi={T\bibinitperiod},
+           given={Lingjia},
+           giveni={L\bibinitperiod}}}%
+        {{hash=87715be2fdefab372dc37c717000ed5d}{%
+           family={Mars},
+           familyi={M\bibinitperiod},
+           given={Jason},
+           giveni={J\bibinitperiod}}}%
+      }
+      \list{organization}{1}{%
+        {ACM}%
+      }
+      \strng{namehash}{eeee2bfad7072669cba7dbb2a1587707}
+      \strng{fullhash}{fea77f74d706cea89ab378798128c825}
+      \strng{authornamehash}{eeee2bfad7072669cba7dbb2a1587707}
+      \strng{authorfullhash}{fea77f74d706cea89ab378798128c825}
+      \field{sortinit}{2}
+      \field{sortinithash}{0aa614ace9f3a40ef5a67e7f7a184048}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Twenty-Third International Conference on Architectural Support for Programming Languages and Operating Systems}
+      \field{title}{The Architectural Implications of Autonomous Driving: Constraints and Acceleration}
+      \field{year}{2018}
+      \field{pages}{751\bibrangedash 766}
+      \range{pages}{16}
+    \endentry
+    \entry{fleckperspective}{article}{}
+      \name{author}{1}{}{%
+        {{hash=48606378199f94c9cd108644073ebfb1}{%
+           family={Fleck},
+           familyi={F\bibinitperiod},
+           given={Margaret\bibnamedelima M},
+           giveni={M\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \strng{namehash}{48606378199f94c9cd108644073ebfb1}
+      \strng{fullhash}{48606378199f94c9cd108644073ebfb1}
+      \strng{authornamehash}{48606378199f94c9cd108644073ebfb1}
+      \strng{authorfullhash}{48606378199f94c9cd108644073ebfb1}
+      \field{sortinit}{9}
+      \field{sortinithash}{2999ebab86052e6d71b434385f8b4ed2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Google Scholar}
+      \field{title}{Perspective Projection: the Wrong Imaging Model. 1995}
+    \endentry
+  \endsortlist
+\endrefsection
+\endinput
+

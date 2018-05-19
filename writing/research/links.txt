@@ -1,0 +1,20 @@
+# ROS & Gazebo useful links
+* https://www.youtube.com/watch?v=4he7mPV41Xc
+* https://github.com/ros-simulation/gazebo_ros_pkgs/blob/e9d5506933ff2f158fd145edd4d7e6a24ba769f9/gazebo_plugins/src/gazebo_ros_imu_sensor.cpp
+* https://www.packtpub.com/mapt/book/hardware_and_creative/9781783554713/10/ch10lvl2sec100/simulating-imu-on-gazebo
+
+* https://www.youtube.com/watch?v=idZYrFRzjak
+* http://wiki.ros.org/Sensors
+
+*http://robohub.org/simulated-car-demo-using-ros-kinetic-and-gazebo-8/
+*robohub.org/programming-for-robotics-introduction-to-ros/
+
+
+GOOD ROS BOOK
+* https://cse.sc.edu/~jokane/agitr/agitr-letter.pdf
+
+
+ROS + Ubuntu
+http://wiki.ros.org/ROS/Tutorials/WritingServiceClient%28python%29
+
+*https://answers.ros.org/question/259715/how-to-create-a-car-from-scratch-in-ros/

@@ -1,0 +1,36 @@
+http://ais.informatik.uni-freiburg.de/publications/papers/beinhofer13iros.pdf
+http://ais.informatik.uni-freiburg.de/publications/papers/beinhofer11ecmr.pdf
+https://freidok.uni-freiburg.de/dnb/download/9649 (phd thesis)
+
+
+
+## ideas
+* These placement algorithms are based on a single vehicle's dynamics
+  * They also use holonomic vehicles when demonstrating?
+Use simplest non-holonomic system = ackerman or differential
+
+* Choose a sensor model
+  * Active (measures car => communicates) vs Passive (landmark => car reads and knows its position from an internal map)
+  * How is the idea that the faster you drive by a sensor, the less certain the information you get incorporated
+    * i.e. greater uncertainty reduction the slower you go up to some minimum noise level
+
+
+* Focus on speed
+  * Existing work seems to use a fixed speed? Can't quite tell (TODO)
+	
+
+Possible end goal:
+* Develop a function that determines confidence of completing track a certain speed (or within a certain time?)
+  * How to make this work as speed varies around the track?
+* speed profile around track, confidence around track ~ f(sensor noise, car model, sensor positions, track)
+  * Quantify effectiveness of a certain road type - we might be able to use this as a road planning tool for cities of the future!
+	Ie. it might be safest/fastest to connect nodes in a city via two right turns and straight segments OR 
+  * No slip 
+* Dual: generate sensor positions ~ f(sensor noise, car model(s), speed models, track)
+	
+
+
+## Title Ideas
+* Evaluating Offboard Sensor Placement for Autonomous Car Navigation in Restricted Environments
+* Velocity Based Landmark Placement and Evaluation for Holonomic Robot Navigation
+* Velocity Profile 
