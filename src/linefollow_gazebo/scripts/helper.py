@@ -2,10 +2,13 @@
 import numpy as np
 import tf_conversions
 
-from geometry_msgs.msg import PointStamped, TransformStamped, Vector3
-from geometry_msgs.msg import Pose
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import Quaternion
+try:
+    from geometry_msgs.msg import Vector3
+    from geometry_msgs.msg import Point
+    from geometry_msgs.msg import Quaternion
+except ImportError:
+    # put these in a try/catch to use on non-ROS systems (eg for CameraModel testing)
+    pass
 
 EPSILON = 0.001
 
