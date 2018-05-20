@@ -22,7 +22,7 @@ class SimDataAggregator(object):
         self.from_ekf_sub = rospy.Subscriber('/ekf_to_simcollector', SimulationDataMsg, self.receive_from_ekf)
 
         # self.truth_sub = rospy.Subscriber("/base_pose_ground_truth", Odometry, self.receive_ground_truth)
-        self.camera_sub = rospy.Subscriber("/camera_updates", CameraUpdate, self.receive_camera_update)
+        self.camera_sub = rospy.Subscriber("/camera_update", CameraUpdate, self.receive_camera_update)
         # self.ekf_sub = rospy.Subscriber('/ekf_odom', Odometry, self.receive_ekf_odom) 
         self.controller_sub = rospy.Subscriber("/prius", Control, self.receive_prius_control_msg)
         self.path_update_sub = rospy.Subscriber('/path_update', PathUpdate, self.receive_path_update)

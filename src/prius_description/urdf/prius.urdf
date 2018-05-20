@@ -36,7 +36,7 @@
   <joint name="base_link_connection" type="fixed" >
     <parent link="base_link"/>
     <child link="chassis"/>
-    <origin xyz="1.45 0 0" rpy="0 0 1.57"/>
+    <origin xyz="1.45 0 0" rpy="0 0 1.57079632679"/>
     <axis xyz="1 0 0"/>
   </joint>
 
@@ -119,7 +119,7 @@
 
     <inertial>
       <mass value="1356.0"/>
-      <origin xyz="0 0 0.48" rpy="0 0 1.5708"/>
+      <origin xyz="0 0 0.48" rpy="0 0 1.57079632679"/>
       <inertia ixx="2581.13354740" ixy="0.0" ixz="0.0" iyy="591.30846112" iyz="0.0" izz="2681.95008628"/>
     </inertial>
   </link>
@@ -543,16 +543,16 @@
   </collision>
 </link>
 
-<gazebo>
-    <plugin name="imu_plugin" filename="libgazebo_ros_imu.so">
-      <alwaysOn>true</alwaysOn>
-      <bodyName>imu_link</bodyName>
-      <topicName>imu</topicName>
-      <serviceName>imu_service</serviceName>
-      <gaussianNoise>2.98e-08</gaussianNoise>
-      <updateRate>100.0</updateRate>
-    </plugin>
-</gazebo>
+<!--<gazebo>-->
+    <!--<plugin name="imu_plugin" filename="libgazebo_ros_imu.so">-->
+      <!--<alwaysOn>true</alwaysOn>-->
+      <!--<bodyName>imu_link</bodyName>-->
+      <!--<topicName>imu</topicName>-->
+      <!--<serviceName>imu_service</serviceName>-->
+      <!--<gaussianNoise>2.98e-08</gaussianNoise>-->
+      <!--<updateRate>100.0</updateRate>-->
+    <!--</plugin>-->
+<!--</gazebo>-->
 
 <!--
   <gazebo reference="center_laser_link">

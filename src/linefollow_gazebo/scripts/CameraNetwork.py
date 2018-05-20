@@ -87,6 +87,8 @@ class CameraNetwork(object):
         self.alg_error = 4
         self.pos_error_stddev = positional_error_stddev
         self.orient_error_stddev = orient_error_stddev
+        
+        self.error_elipse = rospy.get_param('/camera/use_error_elipse', default=True)
     
         
 
@@ -114,8 +116,8 @@ class CameraNetwork(object):
         # get estimate of vehicle position
         
         for placement in placements_seeing_point:
-            location, error_radius = self.get_location_and_error(placement, true_position)
-            self.send_camera_update(location, error_radius)
+            location, error = self.get_location_and_error(placement, true_position)
+            self.send_camera_update(location, error)
 
     def add_placement(self, placement):
         # get corners on ground plane
@@ -131,15 +133,29 @@ class CameraNetwork(object):
     def add_world_object(self, world_object):
         self.world_objects.append(world_object)
 
-    def send_camera_update(self, location, error_radius):
+    def send_camera_update(self, location, error):
         # convert the 99% error radius into a covariance matrix
         # error_radius == 3 stddevs
         # 3s^2 = radius
         # s = sqrt(radius/3)
-        variance = np.sqrt(error_radius/3.0)
+
         covariance = np.diag(np.zeros(2, dtype=np.float64)) # this gets handed off as R_k in the EKF
-        covariance[0,0] = variance
-        covariance[1,1] = variance
+        if not self.error_elipse:
+            variance = np.sqrt(error/3.0)
+            covariance[0,0] = variance
+            covariance[1,1] = variance
+        else:
+            major, minor, angle = error # these represent approximately 3 stddevs!
+            major = np.sqrt(major/3.0)
+            minor = np.sqrt(minor/3.0)
+            maj_sq, minor_sq, cos_a_sq, sin_a_sq = major**2, minor**2, np.cos(angle)**2, np.sin(angle)**2
+            varx = maj_sq*cos_a_sq + minor_sq*sin_a_sq
+            vary = maj_sq*sin_a_sq + minor_sq*cos_a_sq
+            covxy = (maj_sq - minor_sq) * cos_a_sq * sin_a_sq
+            covariance[0,0] = varx
+            covariance[1,0] = covxy
+            covariance[0,1] = covxy
+            covariance[1,1] = vary
 
         msg = CameraUpdate()
         pos = msg.position
@@ -202,12 +218,20 @@ class CameraNetwork(object):
         return visible_from
 
 
-    def get_location_and_error(self, placement, true_world_position):
+    def get_location_and_error(self, placement, true_world_position, ellipse=True):
         # at this point, guaranteed to have visibility of vehicle (tested before) 
         # 1. project true world position into real camera
         real_camera_pixel = placement.real_camera.world_to_pixel(*true_world_position)
         # 2. Round it to get pixel center/corner
         pixel = np.round(real_camera_pixel)
+
+        # apply algorithmic error
+        pixel_move_distance = np.random.normal(loc=0.0, scale=self.alg_error/2.0)
+        direction = np.random.uniform(0.0, 2*np.pi)
+        dx = pixel_move_distance * np.cos(direction)
+        dy = pixel_move_distance * np.sin(direction)
+        pixel += np.array([dx, dy])
+
 
         # 3. use it to estimate world position
         location = placement.ideal_camera.pixel_to_plane(*pixel)
@@ -215,8 +239,31 @@ class CameraNetwork(object):
         ground_dist = np.linalg.norm((location - placement.ideal_camera.position)[:2])
         # calculate error radius
         error_radius = self.get_predicted_error_radius(placement.get_camera_height(), ground_dist, area)
+        
+        if ellipse:
+            # convert error radius into an ellipse!
+            # need pixel direction, major axis length
+            c = placement.real_camera.pixel_to_plane(*pixel) # target point, should be cached anyway
+            dy = placement.real_camera.pixel_to_plane(pixel[0], pixel[1]+1) - c
+            # dx = placement.real_camera.pixel_to_plane(pixel[0]+1, pixel[1]) - c
+            camera_pos = placement.real_camera.position
+            camera_pos[2] = 0.0
+            direction, major_axis_length = c - camera_pos, np.linalg.norm(dy)
+            minor_axis_length = area / major_axis_length
+            # minor_axis_length = np.linalg.norm(dy)
+            ratio = minor_axis_length/major_axis_length
 
-        return (location, error_radius)
+            # convert circular error area into elliptical one of same area
+            error_area = np.pi*error_radius**2
+            major = np.sqrt(error_area/(ratio*np.pi))
+            minor = error_area/(np.pi*major)
+           
+            # convert direction into an angle!
+            angle = np.arctan2(direction[1], direction[0])
+            
+            return (location, (major, minor, angle))
+        else:
+            return (location, error_radius)
     
 
     def get_predicted_error_radius(self,
