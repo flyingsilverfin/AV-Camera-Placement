@@ -19,12 +19,12 @@
 
 
 \usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace} 
-%\usepackage[
-    %backend=biber,
-    %style=numeric,
-    %sorting=ynt
-%]{biblatex}
-%\addbibresource{bibliography.bib}
+\usepackage[
+    backend=biber,
+    style=numeric,
+    sorting=ynt
+]{biblatex}
+\addbibresource{bibliography.bib}
 
 \usepackage{amsmath}
 \usepackage{gensymb} 
@@ -184,7 +184,6 @@ used in simulation, and examines the feasibility of using cameras in the infrast
 Chapter ~\ref{chap:cameraplacement} optimizes single and multiple camera placements
 in various environments and using different objective functions. This is followed by concluding remarks.
 
-
 \chapter{Related Work} 
 \label{chap:relatedwork}
 
@@ -338,18 +337,6 @@ TODO FIGURE
 \section{Mutual Information}
 
 
- 
-
-
-
-
-
-
-
-
-
-
-
 
 \chapter{Camera Model}
 \label{chap:cameramodel}
@@ -403,6 +390,18 @@ I model three components that contribute to the error radius:
 \end{enumerate}
  
 These will be analysed in turn. Note that I assume calibrated cameras without distortions, and no motion blur.
+
+
+\begin{figure}[htb]
+    \begin{center}
+        \input{figures/camera/a_estimate_example.pgf}
+    \end{center}
+    \caption[Example Predictions about a World Point]{The red point is a true world location, while green points were
+    estimated by a large sample of cameras. Discrepancies occur due to the three errors listed above. We must associate an estimated error with each green point.}
+    \label{fig:camera:dist}
+\end{figure}
+
+
 
 \subsection{Location and Orientation Error}
 
@@ -573,7 +572,8 @@ the true error only slightly exceeds the error bound.
 
 \begin{figure}[htb]
     \begin{center}
-        \input{figures/camera/diff_radius_true_error.pgf}
+        %\input{figures/camera/diff_radius_true_error.pgf}
+        \includegraphics{figures/camera/diff_radius_true_error.pdf}
     \end{center}
     \caption[Bound Minus True Distance]{Computed radius minus actual error distance.}
     \label{fig:camera:diff bound error}
@@ -668,8 +668,6 @@ how well could we perform? Alternatively, how much accuracy do we gain from incr
     \label{fig:camera:resolution}
 \end{figure}
 
-*** TODO update this figure with 2 standard deviations ***
-
 Figure~\ref{fig:camera:resolution} shows that the mean error bound stops decreasing
 significantly beyond a resolution of 2000 by 2000 pixels. A smaller pitch 
 angle gains further from higher resolution, which is in line with what we 
@@ -728,7 +726,7 @@ within these limits. Note that even though the mean and 95\% percentile error bo
 at lower pitch angles are high, the median tells us that most measurements
 from such a camera would still be useful.
 
-Lastly, I present
+Lastly, I present TODO
 
 \begin{table}[htb]
 \centering
@@ -744,11 +742,35 @@ Lastly, I present
 \cmidrule(ll){2-9}
 0.0 & \textbf{0.017} & \textbf{0.034} & \textbf{0.051} & \textbf{0.069} & \textbf{0.087} & \textbf{0.103} & \textbf{0.124} & \textbf{0.140} \\
 0.1 & \textbf{0.177} & \textbf{0.196} & \textbf{0.214} & \textbf{0.230} & \textbf{0.248} & \textbf{0.268} & \textbf{0.280} & \textbf{0.298 } \\
-0.2 & \textbf{0.342} & 0.360 & 0.378 & 0.394 & 0.409 & 0.430 & 0.443 & 0.460  \\
+0.2 & 0.342 & 0.360 & 0.378 & 0.394 & 0.409 & 0.430 & 0.443 & 0.460  \\
 0.2 & 0.503 & 0.524 & 0.538 & 0.552 & 0.566 & 0.586 & 0.605 & 0.616  \\
 0.4 & 0.665 & 0.685 & 0.702 & 0.715 & 0.737 & 0.757 & 0.765 & 0.794  \\
 \end{tabular} 
 \end{table}
+
+
+\begin{table}[htb]
+\centering
+\caption{Median 99\% Localization Bound for 45$\degree$ pitch, 2000x2000 pixels}
+\label{tab:camera:70deg}
+
+\begin{tabular}{ccccccccc}
+\toprule
+& \multicolumn{8}{c}{\textbf{Orientation Error, 95\%}} \\
+\cmidrule(ll){2-9}
+\multicolumn{1}{N}{\textbf{95\% Pos. Error (m)}} & 0$\degree$& 0.2$\degree$& 0.4$\degree$ & 0.6$\degree$ & 0.8$\degree$ & 1$\degree$ & 1.2$\degree$ & 1.4$\degree$\\
+\cmidrule(lr){1-1}
+\cmidrule(ll){2-9}
+0 & \textbf{0.027} & \textbf{0.060} & \textbf{0.083} & \textbf{0.114} & \textbf{0.145} &\textbf{ 0}.180 & \textbf{0.211} & \textbf{0.228} \\
+0.1 & \textbf{0.222} & \textbf{0.252} & \textbf{0.285} & 0.324 & 0.338 & 0.365 & 0.398 & 0.446 \\
+0.2 & 0.421 & 0.460 & 0.484 & 0.504 & 0.540 & 0.561 & 0.599 & 0.636 \\
+0.3 & 0.624 & 0.661 & 0.682 & 0.713 & 0.761 & 0.764 & 0.796 & 0.837 \\
+0.4 & 0.839 & 0.828 & 0.873 & 0.921 & 0.950 & 0.971 & 1.030 & 1.030 \\
+\end{tabular} 
+\end{table}
+\begin{tabular}{ccccccccc}
+\end{tabular} 
+
 
 
 \section{Error Circles to Error Ellipses}
@@ -771,9 +793,18 @@ and minor axes determined by the ratio of ground height to width of the chosen p
 The orientation of the ellipse is given by the angle from the camera to the pixel's
 ground position.
 
+
+\begin{figure}[htb]
+    \begin{center}
+        \input{figures/camera/ovals_vs_circles.pgf}
+    \end{center}
+    \caption[elliptical versus circular error]{An example of where elliptical error bounds are more accurate than circular ones. Red circles represent error circles, while error ellipses are in blue. Note the vast majority of both are accurate bounds (very lightly drawn ovals and circles)}
+    \label{fig:camera:oval better}
+\end{figure}
+
 This modification improves the accuracy of the error bound even further, as shown
 in Table~\ref{tab:camera:ellipse vs circle}. A case of this occuring is shown
-in Figure~ REF TODO, which samples many camera positions and orientations
+in Figure~\ref{fig:camera:oval better} which samples many camera positions and orientations
 estimating the location of the point in red. The circular and elliptical 
 error bounds that contain the red point are shown faintly in the background. One
 case where the circular error bound fails while the elliptical one succeeds
@@ -785,19 +816,11 @@ is shown in bold.
     \label{tab:camera:ellipse vs circle}
     \begin{tabular}{@{}llll@{}}
         \toprule
-        Bound Type    & \# Samples Drawn        & \# Within Error Bound   & \% Within Error Bound \\ \midrule
+        Bound Type    & \# Samples  & \# Within Error& \% Within Error \\ \midrule
         Circular      &   125000              & 124290                  & 99.432  \\
-        Elliptical    &   125000              & 124528                  & \textbf{99.6224}
+        Elliptical    &   125000              & 124528                  & \textbf{99.622}
     \end{tabular}
 \end{table}
-
-\begin{figure}[htb]
-    \begin{center}
-        \input{figures/camera/ovals_vs_circles.pgf}
-    \end{center}
-    \caption[elliptical versus circular error]{an example of where elliptical error bounds are more accurate.}
-    \label{fig:camera:oval better}
-\end{figure}
 
 
 In simulation I use oval error bounds as these more effectively represent the 
@@ -898,6 +921,6 @@ positions or orientations, add these to the set of possible locations and orient
 \appendix
 \singlespacing
 
-%\printbibliography
+\printbibliography
 
 \end{document}
