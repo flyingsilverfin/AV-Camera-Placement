@@ -198,6 +198,10 @@ in surveillance, and...
 
 * talk about limits of lateral errors allowable for navigation
 
+\section{External Localisation Sensors}
+* talk about alternative sensors to cameras here
+
+* discuss how cameras can provide very rich information, including pose, but only focus on (x,y) updates
 
 \section{External Camera-based Localisation}
 
@@ -228,10 +232,10 @@ referenced to throughout the report.
 \section{Approach}
 
 The basis of this work is a simulation developed using industry-standard tools.
-The Gazebo REF TODO robotics simulator is used in conjunction with ROS,
-the Robot Operating System, to model a non-holonomic Ackermann drive vehicle
+The Gazebo~\cite{koenig2004design} robotics simulator is used in conjunction with ROS,
+the Robot Operating System~\cite{quigley2009ros}, to model a non-holonomic Ackermann drive vehicle
 following predefined paths. A camera is modeled using standard formulations
-discussed in~\ref{impl:sensors}.
+discussed in Section~\ref{impl:sensors}.
 
 **Todo figure of ackermann drive**
 
@@ -240,19 +244,55 @@ implementation. Simulation allows quickly modifying the environment
 and models to examine a greater range of tasks.
 
 
-
-\section{Sensors}
+\section{Cameras}
 \label{impl:sensors}
 
-talk about camera model (perspective  co)
+The standard model for cameras is the pinhole projective model. This model 
+keeps lines in the real world as straight lines in the pixel plane,
+and can be implemented as a single matrix multiplication
 
+TODO matrices describing world => pixel transformation
 
-Here only focus on x,y updates from camera. Pose is possible, cite literature on pose estimation
-on a variety of tasks. 
+My implementation a raytracing module that only uses
+translation and rotation portions of the matrices above, which bring the world intp place
+in the camera's zero-centered, Z-axis aligned coordinate system. Raytracing
+allows adding parametric geometry into the world, which is used later.
+Additionally, my formulation can also be used to model non-pinhole camera models,
+including ones that better represent ultra-wide field of view cameras. However, this work leaves
+examining the impact of such cameras on robot localization and navigation as
+a future research direction; I cap the maximum field of view of the pinhol model
+at 110 degrees horizontally and vertically, when the perspective model
+breaks down~\cite{fleckperspective} (some authors claim different cutoffs all the way down
+to 70 degrees~\cite{sharless2010pannini}, but for the analysis presented here it won't 
+matter too much). 
 
-**** talk about coorindate systems somewhere
-* Roll, pitch yaw
-* how rotations were implemented (quaternions or matrices)
+An infrastructure-mounted camera's task is to localize vehicles in its pixel plane 
+into world coordinates, and provide an error bound. The error bound is developed 
+in Chapter~\ref{chap:cameramodel}. To localize the vehicle, the camera needs to
+be provided with its own world orientation and location, as well as its parameters.
+\textit{Camera parameters} will be used to mean both the horizontal
+and vertical field of view of the camera, as well as its resolution. These can be
+combined to estimate the geometric center of the vehicle, on the ground plane. Thus,
+the update from the camera is world location $(x,y)$.
+
+In the following chapter I also discuss how I model a localization algorithm. A
+ concrete implementation could be use an object detection or segmentation network,
+such as YOLO~\cite{redmon2018yolov3} or DeepLab~\cite{chen2017rethinking}, which are constantly
+improving, to determine a bounding box for the vehicle. The center of the box in the pixel plane
+can be seen as an estimate of the volumetric center of the vehicle. 
+Using an estimate of the height of the vehicle, a geometric correction can be applied 
+to obtain a good estimate of the vehicle position. %TODO maybe put this experiment in the Appendix?
+
+However, real implementations could be arbitrary complex algorithms,
+or even require vehicles carry visual markers.
+
+\subsection{Coordinate Systems}
+For reference, the following graphic shows the orientations
+associated with camera placements. I only allow the roll and pitch
+to be modified during my optimizations.
+
+TODO FIGURE
+
 
 \section{Curve Representations}
 
