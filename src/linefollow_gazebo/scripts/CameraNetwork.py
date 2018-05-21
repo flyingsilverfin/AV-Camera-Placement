@@ -146,8 +146,8 @@ class CameraNetwork(object):
             covariance[1,1] = variance
         else:
             major, minor, angle = error # these represent approximately 3 stddevs!
-            major = np.sqrt(major/3.0)
-            minor = np.sqrt(minor/3.0)
+            major = major/3.0
+            minor = minor/3.0
             maj_sq, minor_sq, cos_a_sq, sin_a_sq = major**2, minor**2, np.cos(angle)**2, np.sin(angle)**2
             varx = maj_sq*cos_a_sq + minor_sq*sin_a_sq
             vary = maj_sq*sin_a_sq + minor_sq*cos_a_sq
