@@ -14,17 +14,17 @@
 \def\authorname{Joshua G. Send\xspace}
 \def\authorcollege{Trinity Hall\xspace}
 \def\authoremail{js2173@cam.ac.uk}
-\def\dissertationtitle{Road Curvature and Camera Parameters for Autonomous Navigation}
+\def\dissertationtitle{Offboard Camera Placement for Autonomous Robot Navigation}
 \def\wordcount{TODO}
 
 
 \usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace} 
-\usepackage[
-    backend=biber,
-    style=numeric,
-    sorting=ynt
-]{biblatex}
-\addbibresource{bibliography.bib}
+%\usepackage[
+    %backend=biber,
+    %style=numeric,
+    %sorting=ynt
+%]{biblatex}
+%\addbibresource{bibliography.bib}
 
 \usepackage{amsmath}
 \usepackage{gensymb} 
@@ -33,10 +33,13 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.3}
 \usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
 
 \newcommand*{\eg}{e.g.\@\xspace}
 \newcommand*{\ie}{i.e.\@\xspace}
 \newcommand{\etal}{\textit{et al.}}
+\newcolumntype{N}{>{\centering\arraybackslash}m{.7in}}
 
 %% START OF DOCUMENT
 \begin{document}
@@ -105,8 +108,8 @@ and implies only large platforms can be used.
 
 I propose moving the localization and navigation sensing tasks
 from vehicles to the infrastructure, which is particularly applicable in urban environments.
-I examine a static environment containing a single vehicle, with dynamic components
-as a future research avenue.
+I examine a static environment containing a single vehicle, with safety and dynamic components
+as future research avenues.
 
 Most current localization approaches utilize global satellite navigations systems,
 such as GPS and its augmentations like real time kinematic (RTK)~\cite{scherzinger2000precise}.
@@ -116,7 +119,7 @@ authors' proposed correction steps, the mean localization error was around 5.2 m
 In contrast, most authors agree autonomous vehicles can tolerate 0.2 to 0.35 meters lateral error
 ~\cite{vivacqua2017low}\cite{ziegler2014video}\cite{mattern2010high}.
 
-To achieve these error bounds, current techniques may use computationally heavy visual odometry~\cite{ziegler2014video}
+To achieve these error bounds, current techniques may use computationally heavy visual odometry~\cite{ziegler2014video},
 very high precision maps~\cite{mattern2010high}, or expensive LIDAR to localize
 lane markings very accurately~\cite{hata2014road}.  
 
@@ -145,7 +148,7 @@ and is addressed at the end of Chapter~\ref{chap:cameramodel}.
 The second and third questions examine the optimal camera placement task 
 for localization and navigation performance. This is related to past work 
 on landmark placement for robotic navigation, where the robots observe landmarks fixed to the environment. 
-Here, the use case is inverted to observe the robots as they move through the environment. 
+Here, the use case is inverted to observe the robot as it moves through the environment. 
 Thus, it is also closely related to previous work on surveillance networks.
 
 While literature on surveillance using cameras has explored camera placement, none 
@@ -193,6 +196,8 @@ This dissertation touches on a large body of literature ranging from
 control theory to surveillance optimisation. I focus on past work
 in surveillance, and... 
 
+* talk about limits of lateral errors allowable for navigation
+
 
 \section{External Camera-based Localisation}
 
@@ -231,7 +236,7 @@ discussed in~\ref{impl:sensors}.
 **Todo figure of ackermann drive**
 
 An expensive, high fidelity simulation was used instead of a real hardware
-implementation. Simulation also allows quickly modifying the environment
+implementation. Simulation allows quickly modifying the environment
 and models to examine a greater range of tasks.
 
 
@@ -239,7 +244,7 @@ and models to examine a greater range of tasks.
 \section{Sensors}
 \label{impl:sensors}
 
-talk about camera model (perspective & co)
+talk about camera model (perspective  co)
 
 
 Here only focus on x,y updates from camera. Pose is possible, cite literature on pose estimation
@@ -309,7 +314,7 @@ on a variety of tasks.
 \chapter{Camera Model}
 \label{chap:cameramodel}
 
-The analysis presented in the next chapter is based on the navigaton of an
+The analysis presented in the following chapter is based on the navigaton of an
 autonomous vehicle guided only by its own wheel odometry. 
 This implies that errors accumulate over time, and
 occasional updates need to be provided to reduce the positional 
@@ -317,116 +322,12 @@ uncertainty of the robot. The sensor selected to provide this
 information is the camera, which is already widely deployed
 in modern city infrustructure.
 
-The format of the update provided to the vehicle is a location,
+The updates to kalman filters contain two components: a value (in this case, an $(x,y)$ position),
 along with an uncertainty in the form of covariance. This chapter
 develops the simulated camera which is used to report vehicle 
 location and uncertainty.
-
-\section{Camera Projection}
- --------- Cut or trim down massively -----------
- 
-One of the parameters that will be optimized against is the camera
-field of view. The standard camera model, referred to as a 
-pinhole camera, is generally accepted to model real cameras
-closely. However, the pinhole model breaks down (ie. looks distorted) when approaching
-a very wide field of view. The literature varies on where this point is --
-some sources claim 70 degrees~\cite{sharpless2010pannini}, others 90 degrees~\cite{fleckperspective},
-or even 120 degrees as acceptable. Real ultra-wide-angle cameras
-are difficult to obtain with more than 114 degrees field of view and usually discard some corner information
-to map curvilinear distortions back onto straight lines (ie. emulate
-perspective projection from a fisheye model).
-
-%TODO insert images of projections
-
-There are several alternative models capable of modeling
-very wide fields of view: stereographic, equidistant, and 
-equisolid projections are common~\cite{kannala2006generic}.
-
-In order to discusse their merits, I describe the pinhole model,
-along with stereographic and equidistant models below.
-
-\subsection{Generic Camera Model}
- --------- Cut or trim down massively -----------
-
-We first begin by assuming the camera is located at the origin,
-with the principal axis (ie. direction vector) aligned with the $+Z$ axis.
-Please refer to Figure~\ref{fig:camera:generic} for the following description.
-
-World coordinate $P$ is mapped onto a pixel plane, located at distance $f$ from the world center,
-via a mapping into spherical coordinates. $\theta$ is given as the angle between
-the principal axis ($+Z$), and the point $P$. By projecting $P$ through the origin 
-onto the pixel plane, the angle $\phi$ can be determined. Lastly, to determine
-the $(x,y)$ position in the pixel plane, the radius from the origin $r$ is computed
-as a function of the angle $\theta$. The generic model of Kannala~\etal shows 
-how the function $r(\theta)$ defines the various models:
-% 
-\begin{subequations}
-\begin{align}\label{eq:perspective projection}
-    r = f tan(\theta)       &&\text{(pinhole perspective projection)} \\
-    r = 2f tan(\theta/2)    &&\text{(stereographic projection)} \\
-    r = f \theta            &&\text{(equidistance projection)} 
-\end{align}
-\end{subequations}
-
-\begin{wrapfigure}{R}{0.5\textwidth}
-    \caption{The generic model given by Kannala \etal~\cite{kannala2006generic}.}
-    \includegraphics[width=0.5\textwidth]{figures/camera/generic_model.png}
-    \label{fig:camera:generic}
-\end{wrapfigure}
-
-In this formulation, we can see that the difference between models is purely
-the mapping from real-world angle to the camera principal vector. Also 
-clearly evident is that the theoretical limit of the pinhole model lies at
-$180\degree$ field of view, meaning $\pm90$ in any direction, which is when
-$\tan$ diverges. On the other hand, stereographic projection can handle up to
-$\pm180$ degrees in any direction before diverging.
-
-\subsection{Tradeoffs}
-
- --------- Cut or trim down massively -----------
-
-%Arguably, it is mostly human operators that care about the type of projection
-%used in cameras. Computer vision algorithms can be developed that operate
-%over each of the resulting types of distortions. 
-
-Since I am to simulate localizing a vehicle's world position from the pixels
-on the camera plane, and derive an associated localization error, I examine a bound
-on localization accuracy in the form of ground area covered per pixel. That is,
-in the worst case a vehicle will be contained within 1 pixel, so the ground
-area covered by each pixel is an upper bound for localization error.
-
-% TODO figure of different projections and areas covered, at straight down and 45 degrees
-% TODO discuss these
-
-The literature suggests that a good camera model should closely approximate
-real cameras, and have useful mathematical properties~\cite{fleckperspective}.
-Pinhole perspective projections preserve straight lines, but not circular
-shapes as field of view widens. On the other hand, steregraphic models 
-preserve circularity everywhere but not straight lines. The choice here
-will depend on the type of algorithm selected.
-
-\subsection{Conclusion}
- --------- Cut or trim down massively -----------
-
-In order to be able to analyze the use of very wide fields of view, I 
-implemented this unified model as a ray tracing module with a fixed
-focal length of 0.1 meters, which according to~\cite{lumeneracamera}
-is sometimes used in traffic cameras. Besides being able to select
-the specific model to use, the resolution is allowed to vary,
-as well as the horizontal and vertical maximum field of view.
-
-However, while this section has presented alternative camera models, I will mostly
-continue to use the pinhole model, unless the field of view is pushed beyond
-90 degrees in either direction, in order to conform with the type of camera
-most likely to be used in practice.
-
  
 \section{Localization and Error}
-
-As previously mentioned, the cameras deployed in the infrastructure will
-send an estimated real world position to the vehicle as it travels through the 
-camera's catchment area, reducing its positional uncertainty. This requires
-deriving an accurate simulation how real-world cameras would perform this task.
 
 \subsection{Approach}
 
@@ -442,17 +343,23 @@ Note that in practice, using the midpoint of the front or rear axle, rather than
 may be a more consistent reference between vehicles.
 
 Once the computer vision algorithm running on the camera estimates the center of the vehicle,
-it must also be associated with an uncertainty. I simplify to a circular
-error radius, $r$, which is transmitted as a $2\sigma^2I$ covariance 
-with the state vector $(x,y)$. The error radius directly determines
-the operational capability of the autonomous vehicles, thus must be
-accurately represented.
+we must derive an uncertainty in the form of a covariance. I develop a mathematical model of localizaton error,
+and analyze its properties. 
 
-There are three components that contribute to the error radius:
+To start with, I develop a circular error radius, $r$, which I show to contain
+the true error 99\% of the time. While circular error radii are more amenable to analysis and are good
+estimates at high pitch angles, error ellipses are more realistic at low pitch angles and are an 
+even more accurate error bound. Therefore, I also transform the circular error bounds into error ellipses at the end of this chaper.
+
+Both circles and ellipses can be encoded as three standard deviations of a normal distrbution
+using the covariance matrix for the estimated state $(x,y)$. The error radius directly determines
+the operational capability of the autonomous vehicles, thus must be accurately represented.
+
+I model three components that contribute to the error radius:
 \begin{enumerate}
-    \item Error in the camera's own location and orientation
+    \item Error in the camera's own location and orientation due to imprecise installation
     \item The algorithmic error in the estimation of the pixel that represents the estimated center of the vehicle
-    \item The ground area covered by the pixel that represents the estimated center of the vehicle
+    \item The ground area covered by the pixel that represents the estimated center of the vehicle (encoding camera's finite precision)
 \end{enumerate}
  
 These will be analysed in turn. Note that I assume calibrated cameras without distortions, and no motion blur.
@@ -472,6 +379,8 @@ $\Delta_{orientation} \sim \mathcal{N}(0, (0.5/2)\degree2)$.
 These tight bounds could be achieved using some sort of post-installation 
 calibration procedure. 
 
+% TODO discuss such a calibration procedure!
+
 %Orientation accuracy can be further improved by adding 
 %an interial measurement unit to the camera, which on its own
 %could provide better than $0.5\degree$ accuracy in the roll and raw directions according
@@ -483,6 +392,22 @@ the predicted vehicle location and therefore increases its error by the length o
 I call this combined value $err_{xy}$ and at two standard deviations it is bounded above by
 $\abs{err_{xy}} = 0.03$.
 
+\begin{figure}[hbh]
+\centering
+\begin{subfigure}[b]{.45\textwidth}
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/camera/xyz_error.pstex_t}} 
+  \caption{Positional Errors}
+  \label{fig:camera:xyz error}
+\end{subfigure}%
+\begin{subfigure}[b]{.45\textwidth}
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/camera/orient_error.pstex_t}}
+  \caption{Orientational Error}
+  \label{fig:camera:orient error}
+\end{subfigure}
+\label{fig:camera:errors}
+\end{figure}
 Vertical translation, $\Delta_z\sim \mathcal{N}(0, (0.03/2)^2)$
 of the camera induces an error as $err_{z}(d, h) = \Delta_z \frac{d}{h}$ %, with variance $\sigma_{z}(d,h)^2 = (d/h)^2(0.03/2)^2$ 
 where $d$ is the ground distance to the vehicle (on the XY plane), and $h$ is the true intended
@@ -501,7 +426,6 @@ error induced in the estimation of the vehicle's center is
 \[ err_{orientation}(h, d) = h\tan(\tan^{-1}(d/h) + \Delta_{orientation}) - d \] %\frac{hd + h^2\Delta_{orientation}}{h - d\Delta_{orientation}} - d$.
 
 
-***TODO graphic showing two types of orientation error to help reader visualize what is being calculated***
 
 
 \subsection{Algorithmic Error}
@@ -550,16 +474,16 @@ a directed bias for any point in the pixel plane, though over many installed cam
 these terms have a normal distribution. The $\Delta_{alg}$ is 
 modeled as normal as well. To take advantage of this, I also multiply each with a tuning
 parameter, related to their variances, which I use to trade off error bound size versus
-error bound accuracy. The $err_{pixel}$ term is systematic i
-and a complex function of camera parameters and estimated vehicle location, and
+error bound accuracy. The $err_{pixel}$ term is a systematic 
+and complex function of camera parameters and estimated vehicle location, and
 the only component with a non-zero mean over a large number of samples.
 
-To validate $r$ in simulation, when a vehicle is visible to a camera,
+To use $r$ in simulation, when a vehicle is visible to a camera,
 I project the ground truth vehicle center to the (slightly-mispositioned) camera, which
 automatically incorporates the positional and orientational errors.
 The algorithmic error shifts the incident pixel a distance sampled according to the distribution 
 of $\Delta_{alg}$, in a randomly sampled direction. 
-Finally, the pixel error is computed from the area of the chosen pixel.
+Finally, the pixel error is computed from the ground area of the chosen pixel.
 
 \section{Error Model Validation}
 \label{sec:camera:validation}
@@ -582,23 +506,23 @@ was ignored as it does not affect results.
 
 \subsection{Quality of $r$ as an Error Bound}
 
-For this and the following subsection I assume a perfect algorithm,
+For this and the following subsection I assume a perfect vision algorithm,
 setting $\Delta_{alg}$ to 1.
 
 \begin{table}[htb]
     \centering
-    \caption[$r$ as an ErrorBound]{Success Rate of $r$ as an Error Bound}
+    \caption[$r$ as an Error Bound]{Success Rate of $r$ as an Error Bound}
     \label{tab:camera:bound accuracy}
     \begin{tabular}{@{}ccc@{}}
         \toprule
         Total Samples & \# Within Error Bound & \% Within Error Bound \\ \midrule
-        125000        & 123865                     & 99.092               
+        125000              & 124290                  & 99.432 
     \end{tabular}
 \end{table}
 
 Table~\ref{tab:camera:bound accuracy} shows that more than 99\% of 125000 sampled camera positions
 and vehicle positions, the distance from the predicted vehicle position to 
-its actual position is within is within the calculated error radius. This
+its actual position is within the calculated error radius. This
 is actually better than intended, since the construction was for 95\% accuracy.
 
 It is easy to achieve an error bound that is always valid: simply set it very high.
@@ -629,15 +553,14 @@ proportion of the predicted radius. Figure~\ref{fig:camera:proportional diff} sh
 of predictions, the error radius is far too large -- most commonly it is 3 times 
 too large. 
 
-However, consider that each sample is drawn from a near-normal distribution,
-and the computed bound is in the tail of that distribution -- we thus expect
-that most of the time the bound will be much larger than the actual sample value.
-Attempts to make the bound tighter resulted in a loss of the 99\% accuracy presented above.
+Note that the true error is dependent on several random variables -- sampled positional and orientational
+error, and pertubations modeling algorithmic error (pixel ground area is not randomly sampled). Each
+of these are approximately gaussian and added together in absolute values, meaning the computed error bound is intended to be in the tail
+of a rectified gaussian distribution as well. Thus, we expect most samples to
+fall far from the error bound, which is exactly what we see.
+Attempts to make the bound tighter resulted in a loss of the 99\% accuracy.
 
-
-*** TODO - should probably back this up further to make sure it makes sense... ***
-
-These results suggests the $r$ is very good at modeling the true error, even though during construction
+These results suggests the $r$ is good at modeling the true error, even though during construction
 I did not model interplay between some of the factors (eg. how orientation 
 or positional error affects pixel area inaccuracy).
 
@@ -652,7 +575,7 @@ illustrates the components of the error radius as a function of pitch.
     \begin{center}
         \input{figures/camera/mean_error_pitch_variation.pgf}
     \end{center}
-    \caption[$r$ as a Function of Pitch Angle]{How $r$ varies as a function pitch angle.}
+    \caption[$r$ as a Function of Pitch Angle]{How $r$ varies as a function pitch angle. Error bars are left out for clarity.}
     \label{fig:camera:radius versus pitch}
 \end{figure}
 
@@ -677,7 +600,7 @@ the pixel containing the center of the vehicle.
     \begin{center}
         \input{figures/camera/algorithm_influence.pgf}
     \end{center}
-    \caption[Effect of Algorithmic Inaccuracy]{The effect on the mean value of $r$, and bound accuracy, as the algorithmic inaccuracy increases. Error bars indicate two standard deviations.}
+    \caption[Effect of Algorithmic Inaccuracy]{The effect of algorithmic inaccuracy on the mean value and accuracy of $r$. Error bars indicate two standard deviations.}
     \label{fig:camera:algorithm effect}
 \end{figure}
 
@@ -718,7 +641,7 @@ A similar behavior can be had by decreasing the field of view, which was for
 these experiments set to $60\degree$ horizontally and vertically. 
 In the next chapter, I fix the resolution and only optimize for the field of view,
 since a higher resolution always increases the performance
-of the proposed system and is thus not interesting.
+of the proposed system at no cost and is thus not interesting.
 
 Figure~\ref{fig:camera:resolution} was created assuming the following 95\% bounds: positional error
 within 3 centimeters in any direction, orientational error within a
@@ -751,23 +674,95 @@ and across various world vehicle positions).
     \begin{tabular}{@{}ccccc@{}}
         \toprule 
         \textbf{Pitch}       & \textbf{Mean (m)}   & \textbf{Median (m)} & \textbf{$95^{th}$ Percentile (m)} &  \\ \midrule 
-        $90\degree$ & 0.1035 & 0.1035 & 0.1172           &  \\ 
-        $70\degree$ & 0.1163 & 0.1075 & 0.1658           &  \\
-        $50\degree$ & 0.1824 & 0.1454 & 0.3866           &  \\
-        $40\degree$ & 0.3167 & 0.1884 & 1.022            &  \\ \midrule
+        $90\degree$ & \textbf{0.1035} & \textbf{0.1035} & \textbf{0.1172}           &  \\ 
+        $70\degree$ & \textbf{0.1163} & \textbf{0.1075} & \textbf{0.1658}           &  \\
+        $50\degree$ & \textbf{0.1824} & \textbf{0.1454} & 0.3866           &  \\
+        $40\degree$ & 0.3167 & \textbf{0.1884} & 1.022            &  \\ \midrule
     \end{tabular}
 \end{table}
 
-*** TODO update this table with bottom 25\% as well, this might be the only region being used as vehicle goes by ***
+
+As discussed in the related works chapter, allowable lateral deviations are generally
+quoted at $\pm$10-25cm. The table above shows in bold which camera placements would be 
+within these limits. Note that even though the mean and 95\% percentile error bounds
+at lower pitch angles are high, the median tells us that most measurements
+from such a camera would still be useful.
+
+Lastly, I present
+
+\begin{table}[htb]
+\centering
+\caption{Median 99\% Localization Bound for 70$\degree$ pitch, 2000x2000 pixels}
+\label{tab:camera:70deg}
+
+\begin{tabular}{ccccccccc}
+\toprule
+& \multicolumn{8}{c}{\textbf{Orientation Error, 95\%}} \\
+\cmidrule(ll){2-9}
+\multicolumn{1}{N}{\textbf{95\% Pos. Error (m)}} & 0$\degree$& 0.2$\degree$& 0.4$\degree$ & 0.6$\degree$ & 0.8$\degree$ & 1$\degree$ & 1.2$\degree$ & 1.4$\degree$\\
+\cmidrule(lr){1-1}
+\cmidrule(ll){2-9}
+0.0 & \textbf{0.017} & \textbf{0.034} & \textbf{0.051} & \textbf{0.069} & \textbf{0.087} & \textbf{0.103} & \textbf{0.124} & \textbf{0.140} \\
+0.1 & \textbf{0.177} & \textbf{0.196} & \textbf{0.214} & \textbf{0.230} & \textbf{0.248} & \textbf{0.268} & \textbf{0.280} & \textbf{0.298 } \\
+0.2 & \textbf{0.342} & 0.360 & 0.378 & 0.394 & 0.409 & 0.430 & 0.443 & 0.460  \\
+0.2 & 0.503 & 0.524 & 0.538 & 0.552 & 0.566 & 0.586 & 0.605 & 0.616  \\
+0.4 & 0.665 & 0.685 & 0.702 & 0.715 & 0.737 & 0.757 & 0.765 & 0.794  \\
+\end{tabular} 
+\end{table}
 
 
-TODO talk about required accuracy for navigation... generally quoted from 10-25 centimeters
-so we are just about ok if the pitch isn't too flat... But if the pitch IS low
-the error bound will still be small toward the bottom of the pixel plane
-=>>> discuss general feasibility of cameras and installation constraints!
+\section{Error Circles to Error Ellipses}
+
+The prior sections used circular error bounds, which while also accurate and insightful,
+can be slightly improved upon. A quick inspection of position estimates versus their true
+positions in Figure~\ref{fig:camera:distributions} shows that at higher pitch angles, the estimates lie 
+along an oval rather than a circle.
+
+\begin{figure}[htb]
+    \begin{center}
+        \input{figures/camera/actual_position_estimate_distributions.pgf}
+    \end{center}
+    \caption[Distribution of Estimates]{Ground plane estimates (green) of true position (red) across a large sample of cameras showing algorithmic, positional, and orientational error.}
+    \label{fig:camera:distributions}
+\end{figure}
+
+I thus reshape the error circles into ovals of equal area, with the major
+and minor axes determined by the ratio of ground height to width of the chosen pixel.
+The orientation of the ellipse is given by the angle from the camera to the pixel's
+ground position.
+
+This modification improves the accuracy of the error bound even further, as shown
+in Table~\ref{tab:camera:ellipse vs circle}. A case of this occuring is shown
+in Figure~ REF TODO, which samples many camera positions and orientations
+estimating the location of the point in red. The circular and elliptical 
+error bounds that contain the red point are shown faintly in the background. One
+case where the circular error bound fails while the elliptical one succeeds
+is shown in bold.
+
+\begin{table}[htb]
+    \centering
+    \caption[Elliptical versus Circular Error Bound]{$r$ as an Elliptical versus Circular Error Bound}
+    \label{tab:camera:ellipse vs circle}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        Bound Type    & \# Samples Drawn        & \# Within Error Bound   & \% Within Error Bound \\ \midrule
+        Circular      &   125000              & 124290                  & 99.432  \\
+        Elliptical    &   125000              & 124528                  & \textbf{99.6224}
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htb]
+    \begin{center}
+        \input{figures/camera/ovals_vs_circles.pgf}
+    \end{center}
+    \caption[elliptical versus circular error]{an example of where elliptical error bounds are more accurate.}
+    \label{fig:camera:oval better}
+\end{figure}
 
 
-
+In simulation I use oval error bounds as these more effectively represent the 
+actual shape of errors, encoding the angle and lengths of major
+and minor axes into the covariance between $x$ and $y$.
 
 \section{Conclusion}
 
@@ -786,8 +781,9 @@ the installation bounds can be achieved). The effect of pitch angle
 was extensively analyzed, and Section~\ref{sec:camera:implications}
 explored the impact of resolution in the limit, providing a 
 fundamental limit on the effectiveness of the proposed system,
-as well as some real-world constraints requirements in terms of
-installation and algorithmic accuracy.
+as well as some real-world requirements in terms of
+installation and algorithmic accuracy. Finally, I showed
+the effectiveness of reshaping circular bounds into elliptical ones.
 
 
 \chapter{Camera Placement}
@@ -862,6 +858,6 @@ positions or orientations, add these to the set of possible locations and orient
 \appendix
 \singlespacing
 
-\printbibliography
+%\printbibliography
 
 \end{document}
