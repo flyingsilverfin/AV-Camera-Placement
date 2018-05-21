@@ -16,7 +16,8 @@
   <param name="robot_description" textfile="$(arg model)"/>
 
   <!-- Generate URDF from Xacro-parametrized model -->
-  <param name="camera_description" command="xacro --inorder '$(find linefollow_gazebo)/urdf/single_camera.urdf.xacro' horizontal_fov:=$(arg horizontal_fov) width_resolution:=$(arg width_resolution) height_resolution:=$(arg height_resolution)" />
+  <!--NOTE: missing double hypher inorder here!-->
+  <!--<param name="camera_description" command="xacro inorder '$(find linefollow_gazebo)/urdf/single_camera.urdf.xacro' horizontal_fov:=$(arg horizontal_fov) width_resolution:=$(arg width_resolution) height_resolution:=$(arg height_resolution)" />-->
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -36,7 +37,7 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="world_pos" args="0 0 0 0 0 0 map odom"/>
 
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -x 0.0 -y 0.0 -z 0.0 -R 0.0 -P 0.0 -Y 0.0 -model prius"/>
-  <node name="spawn_urdf_camera" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->
+  <!--<node name="spawn_urdf_camera" pkg="gazebo_ros" type="spawn_model" args="-param camera_description -urdf -model camera" />-->-->
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
