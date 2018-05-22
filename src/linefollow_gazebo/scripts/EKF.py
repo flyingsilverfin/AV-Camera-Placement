@@ -223,7 +223,7 @@ class OdometryEKF(object):
             return True
         
 
-    def publish_pose(self, last_ekf_state, last_true_position, last_true_theta, current_true_odom):
+    def publish_pose(self, last_ekf_state, pre_update_ekf_state, pre_update_ekf_cov, last_true_position, last_true_theta, current_true_odom):
         print("Publishing EKF pose! Time: {0}".format(rospy.get_rostime().to_sec()))
 
         odom = Odometry()
@@ -265,16 +265,36 @@ class OdometryEKF(object):
             pose.pose = odom.pose
             self.pose_publisher.publish(pose)
 
-        # publish a SimDataMessage for the sim data collector to deal with
+        # ----publish a SimDataMessage for the sim data collector to deal with---
         if last_true_position is None:
             return
+
         msg = SimulationDataMsg()
         msg.true_odom = current_true_odom
-        msg.ekf_odom = odom
         p = msg.last_true_pos
         p.x, p.y, p.z = last_true_position
         msg.last_true_heading = last_true_theta
         msg.last_ekf_state = last_ekf_state.tolist()
+
+        # NOTE: we may have had a camera update here
+        # so we want to write the position before jumping due to camera update!
+        position = msg.ekf_odom.pose.pose.position
+        position.x, position.y = pre_update_ekf_state[0], pre_update_ekf_state[1]
+        orientation = msg.ekf_odom.pose.pose.orientation
+        quat = quat_from_rpy_rad(0.0, 0.0, pre_update_ekf_state[2])
+        orientation.x, orientation.y, orientation.z, orientation.w = quat
+    
+        cov = np.zeros((6,6))
+        cov[:3, :3] = pre_update_ekf_cov[:3, :3]
+        msg.ekf_odom.pose.covariance = list(pre_update_ekf_cov.ravel())
+
+        # insert velocity information
+        linear_vel= msg.ekf_odom.twist.twist.linear
+        linear_vel.x, linear_vel.y, linear_vel.z = pre_update_ekf_state[3], pre_update_ekf_state[4], 0.0
+
+        angular_vel = msg.ekf_odom.twist.twist.angular
+        angular_vel.z = pre_update_ekf_state[5]
+
         self.to_sim_data_collector.publish(msg)
 
     def receive_ground_truth(self, odom):
@@ -323,11 +343,14 @@ class OdometryEKF(object):
 
         self.predict(dt)
 
+        pre_update_ekf_state = self.state.copy()
+        pre_update_ekf_cov = self.cov.copy()
+
         for sensor_source in self.sensors:
             if sensor_source.has_new_data():
                 self.update(sensor_source)
 
-        self.publish_pose(last_ekf_state, last_true_pos, last_true_heading, current_true_odom)
+        self.publish_pose(last_ekf_state, pre_update_ekf_state, pre_update_ekf_cov, last_true_pos, last_true_heading, current_true_odom)
 
         self.last_true_position_time = true_pos_time
 
@@ -388,12 +411,13 @@ class OdometryEKF(object):
         pose = odom.pose.pose
         position = get_as_numpy_position(pose.position)
         rpy = quat_to_rpy(get_as_numpy_quaternion(pose.orientation)) 
-        heading_angle = rpy[2] # yaw == heading
+        current_heading_angle = rpy[2] # yaw == heading
         dist, d_start_angle, d_end_angle = 0.0, 0.0, 0.0 
         if self.last_true_position is not None:
             diff = position - self.last_true_position
             angle = np.arctan2(diff[1], diff[0])
             dist = np.linalg.norm(diff)
+            heading_angle = current_heading_angle # may be modified
             if dist < self.motion_model_threshold:
                 return [0.0, 0.0, 0.0]
             # shift the deltas around into non-rollover zones!!
@@ -406,10 +430,10 @@ class OdometryEKF(object):
             if heading_angle < 0:
                 heading_angle += 2*np.pi
             # now shift danger areas away!
-            # if angle > 5 or angle < 1 or last_true_theta > 5 or last_true_theta < 1 or heading_angle > 5 or heading_angle < 1:
-                # angle = (angle + np.pi) % (2*np.pi)
-                # last_true_theta = (last_true_theta + np.pi)%(2*np.pi)
-                # heading_angle = (heading_angle + np.pi)%(2*np.pi)
+            if angle > 5 or angle < 1 or last_true_theta > 5 or last_true_theta < 1 or heading_angle > 5 or heading_angle < 1:
+                angle = (angle + np.pi) % (2*np.pi)
+                last_true_theta = (last_true_theta + np.pi)%(2*np.pi)
+                heading_angle = (heading_angle + np.pi)%(2*np.pi)
             # now safely calculate deltas
             d_start_angle = angle - last_true_theta
             d_end_angle = heading_angle - angle
@@ -418,10 +442,10 @@ class OdometryEKF(object):
             # print("\t[real deltas] start angle to movement angle: {0}, end angle to movement angle {1}".format(d_start_angle, d_end_angle))
 
 
-            print("Current position: {0}, last positiong: {1}, start_angle: {4}, end_angle: {5}, Movement angle: {2}, initial angle error: {3}, finish angle error: {4}".format(position, self.last_true_position, angle, d_start_angle, self.last_true_theta, heading_angle))
+            print("Current position: {0}, last positiong: {1}, start_angle: {2}, end_angle: {3}, Movement angle: {4}, initial angle error: {5}, finish angle error: {6}".format(position, self.last_true_position, last_true_theta, heading_angle, angle, d_start_angle, d_end_angle ))
 
         self.last_true_position = position
-        self.last_true_theta = heading_angle
+        self.last_true_theta = current_heading_angle
 
         return [dist, d_start_angle, d_end_angle]
         

@@ -57,22 +57,9 @@ class CameraPlacement(object):
 
 
 
+class ROSCameraNetwork(object):
 
-
-class CameraNetwork(object):
-    """ Represents a set of cameras, world objects, and tracks
-        vehicle position, sending updates on a given topic as required """
-
-    def __init__(self, ground_truth_odom_topic, camera_update_topic, update_rate=10.0, positional_error_stddev=0.03/2, orient_error_stddev=0.5/2, alg_error=4):
-
-        # world objects to do collisions with
-        self.world_objects = []
-        
-        # cameras and catchment areas
-        self.catchment_areas = [] 
-        self.catchment_cameras = []
-        self.always_project = [] # cameras that have infinite FoV always need to be projected into, no shortcuts!
-
+    def __init__(self, network, ground_truth_odom_topic, camera_update_topic, update_rate=10.0):
         # how often to check for and possibly send updates at most
         self.update_rate = update_rate
         self.update_period = 1.0/update_rate
@@ -80,17 +67,14 @@ class CameraNetwork(object):
 
         self.true_pos_topic = ground_truth_odom_topic
         self.listener = rospy.Subscriber(ground_truth_odom_topic, Odometry, self.update)
-        self.camera_update_publisher = rospy.Publisher(camera_update_topic, CameraUpdate, queue_size=3)
+        self.camera_update_publisher = rospy.Publisher(camera_update_topic, CameraUpdate, queue_size=10)
         self.seq = 0
 
-        # store the error bounds to incorporate into error function
-        self.alg_error = 4
-        self.pos_error_stddev = positional_error_stddev
-        self.orient_error_stddev = orient_error_stddev
-        
+
         self.error_elipse = rospy.get_param('/camera/use_error_elipse', default=True)
-    
-        
+        network.set_use_ellipse(self.error_elipse)
+        self.camera_network = network
+
 
     def update(self, odom_msg):
         """ Receives base pose ground truth and computes predicted vehicle location and associated error """
@@ -99,12 +83,11 @@ class CameraNetwork(object):
 
         if now - self.last_update < self.update_period:
             return
-
         self.last_update = now
 
         true_position = h.get_as_numpy_position(odom_msg.pose.pose.position)
         
-        placements_seeing_point = self.check_visibility(true_position)
+        placements_seeing_point = self.camera_network.check_visibility(true_position)
         
         if len(placements_seeing_point) == 0:
             # no cameras see the vehicle => no updates to send
@@ -116,23 +99,9 @@ class CameraNetwork(object):
         # get estimate of vehicle position
         
         for placement in placements_seeing_point:
-            location, error = self.get_location_and_error(placement, true_position)
+            location, error = self.camera_network.get_location_and_error(placement, true_position)
             self.send_camera_update(location, error)
-
-    def add_placement(self, placement):
-        # get corners on ground plane
-        corners = placement.get_catchment_corners()
-        if None in corners:
-            self.always_project.append(placement)
-            return
-
-        # safe to assume all 4 corners are now valid ground points
-        self.catchment_areas.append(corners)
-        self.catchment_cameras.append(placement)
-
-    def add_world_object(self, world_object):
-        self.world_objects.append(world_object)
-
+    
     def send_camera_update(self, location, error):
         # convert the 99% error radius into a covariance matrix
         # error_radius == 3 stddevs
@@ -168,6 +137,46 @@ class CameraNetwork(object):
         msg.header.frame_id = "map"
 
         self.camera_update_publisher.publish(msg)
+
+class CameraNetwork(object):
+    """ Represents a set of cameras, world objects, and tracks
+        vehicle position, sending updates on a given topic as required """
+
+    def __init__(self, update_rate=10.0, positional_error_stddev=0.03/2, orient_error_stddev=0.5/2, alg_error=4, error_ellipse=True):
+
+        # world objects to do collisions with
+        self.world_objects = []
+        
+        # cameras and catchment areas
+        self.catchment_areas = [] 
+        self.catchment_cameras = []
+        self.always_project = [] # cameras that have infinite FoV always need to be projected into, no shortcuts!
+
+        # store the error bounds to incorporate into error function
+        self.alg_error = 4
+        self.pos_error_stddev = positional_error_stddev
+        self.orient_error_stddev = orient_error_stddev
+        
+        self.use_error_ellipse = error_ellipse 
+   
+    def set_use_ellipse(self, ellipse):
+       self.use_error_ellipse = ellipse
+        
+
+    def add_placement(self, placement):
+        # get corners on ground plane
+        corners = placement.get_catchment_corners()
+        if None in corners:
+            self.always_project.append(placement)
+            return
+
+        # safe to assume all 4 corners are now valid ground points
+        self.catchment_areas.append(corners)
+        self.catchment_cameras.append(placement)
+
+    def add_world_object(self, world_object):
+        self.world_objects.append(world_object)
+
 
     def point_within_catchment(self, point, corners):
 
@@ -371,12 +380,10 @@ if __name__ == "__main__":
     # get camera update rate
     update_rate = rospy.get_param('/cameras/update_rate', default=10.0)
 
-    camera_network = CameraNetwork("/base_pose_ground_truth", 
-                        "/camera_update", 
-                        update_rate=update_rate,
-                        positional_error_stddev=pos_error_stddev,
+    camera_network = CameraNetwork(positional_error_stddev=pos_error_stddev,
                         orient_error_stddev=orient_error_stddev, 
                         alg_error=alg_error)
+
 
     # get road definition
     road_width = rospy.get_param('/road/width')
@@ -453,6 +460,10 @@ if __name__ == "__main__":
     cv2.imwrite(os.path.join(save_dir, "world.png"), image)
 
 
+    ros_camera_network = ROSCameraNetwork(camera_network,
+                                            "/base_pose_ground_truth", 
+                                            "/camera_update", 
+                                            update_rate=update_rate)
 
     rospy.spin()
 
