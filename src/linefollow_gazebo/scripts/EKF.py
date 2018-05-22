@@ -314,6 +314,8 @@ class OdometryEKF(object):
     def predict(self, dt):
 
         real_deltas = self.get_real_deltas()
+        if real_deltas == [0.0, 0.0, 0.0]:
+            return 
 
         print("Predicting - real deltas: {0}, time since last used odom: {1}".format(real_deltas, dt))
         sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)

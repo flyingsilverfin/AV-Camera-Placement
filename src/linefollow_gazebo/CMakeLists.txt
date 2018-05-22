@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   prius_msgs
   rospy
-  logging_server
 )
 
 find_package(gazebo 8 REQUIRED)

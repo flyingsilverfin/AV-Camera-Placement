@@ -228,6 +228,8 @@ class Path(object):
         return self.end_time
 
     def save_as_fig(self, path):
+        import matplotlib as mpl
+        mpl.use('agg')
         import matplotlib.pyplot as plt
         pts = self.discretize_points()
         if pts is None:
