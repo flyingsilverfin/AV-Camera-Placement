@@ -76,7 +76,7 @@
 
     "ekf": {
         "update_rate": 25.0,
-        "initial_cov_diagonal": [0.18,0.18,0,0,0,0],
+        "initial_cov_diagonal": [0.2,0.2,0,0,0,0],
         "model_step_noise": [0.0001, 0.00008, 0.00008, 0.0001],
         "motion_model_threshold": 0.0001
     },

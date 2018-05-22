@@ -64,7 +64,7 @@
             "lookahead_interval": 0.20,
             "straight_speed": 20.0,
             "radius_speed_mult": 0.5,
-            "pid": [0.3, 0.0, 0.02]
+            "pid": [0.25, 0.0, 0.01]
         },
         "hoffman_steering": {
             "distance_multiplier": 1.5
@@ -76,7 +76,7 @@
 
     "ekf": {
         "update_rate": 25.0,
-        "initial_cov_diagonal": [0.18,0.18,0,0,0,0],
+        "initial_cov_diagonal": [0.2,0.2,0,0,0,0],
         "model_step_noise": [0.0001, 0.00008, 0.00008, 0.0001],
         "motion_model_threshold": 0.0001
     },
