@@ -58,7 +58,7 @@
 
 
     "controller": {
-        "update_rate": 50,
+        "update_rate": 100,
         "velocity_controller": {
             "lookahead_time": 3.0,
             "lookahead_interval": 0.20,
@@ -67,7 +67,7 @@
             "pid": [0.25, 0.0, 0.01]
         },
         "hoffman_steering": {
-            "distance_multiplier": 1.5
+            "distance_multiplier": 1.0
         },
         "path_tracking": {
             "max_horizon": 10.0

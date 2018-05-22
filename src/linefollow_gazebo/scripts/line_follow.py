@@ -27,12 +27,12 @@ from Path import Path, ForwardPathTracker
 from PID import PID
 
 class LineFollowController(object):
-    def __init__(self, path, straight_line_velocity=20.0, positioning=None, rviz=True):
+    def __init__(self, path, straight_line_velocity=20.0, rviz=True):
         rospy.loginfo("Create LineFollowController object")
         self.rate = rospy.get_param("/controller/update_rate", 50.0)   
         self.period = 1.0 / self.rate
 
-        self.positioning = positioning
+        # self.positioning = positioning
         self.prius_msg_generator = PriusControlMsgGenerator()
         # topic to publish prius Control message
         self.prius_move = rospy.Publisher("/prius", Control, queue_size=25)
@@ -66,12 +66,27 @@ class LineFollowController(object):
         self.set_ekf_running = rospy.ServiceProxy('/ekf/set_running', SetBool)
         self.set_ekf_running(True)
 
-        self.timer = rospy.Timer(rospy.Duration(self.period), self.wait_until_at_speed)
+        # self.timer = rospy.Timer(rospy.Duration.from_sec(self.period), self.wait_until_at_speed)
+        # run off subscriber directly
+        self.subber = rospy.Subscriber('/ekf_odom', Odometry, self.step_wait)
+        self.dont_wait = False
+        self.last_update = rospy.get_rostime().to_sec()
+
+    def step_wait(self, true_odom):
+        self.new_true_odom = true_odom
+        if self.dont_wait:
+            return
+        self.wait_until_at_speed()
 
 
-    def wait_until_at_speed(self, event, accel_tolerance=0.5):
+    def wait_until_at_speed(self, accel_tolerance=0.5):
+        t = rospy.get_rostime().to_sec()
+        if t - self.last_update < self.period:
+            return
+        self.last_update = t
 
-        pose = self.positioning.get_odom()
+        # pose = self.positioning.get_odom()
+        pose = self.new_true_odom
         
         if pose is None:
             print("Pose is None")
@@ -89,7 +104,9 @@ class LineFollowController(object):
         # check if have stopped accelerating and velocity has some magnitude
         # that means we've finished accelerating
         if speed > 0.2:
-            self.timer.shutdown()   # stop this update loop
+            # self.timer.shutdown()   # stop this update loop
+            self.subber.unregister()
+            self.dont_wait = True
             self.begin_track_path() # begin path tracking!
             return
 
@@ -103,10 +120,12 @@ class LineFollowController(object):
         # messes with pubs/subs
         if self.tracking:
             rospy.logerr("Already tracking path!")
-            return
+            raise Exception()
 
         now = rospy.get_rostime()
-        current_pose = self.positioning.get_odom()
+        self.last_update = now.to_sec()
+        # current_pose = self.positioning.get_odom()
+        current_pose = self.new_true_odom
  
         rospy.loginfo("Starting path tracking at: " + str(current_pose))
 
@@ -141,21 +160,29 @@ class LineFollowController(object):
         self.velocity_pid = PID(kp=p, ki=i, kd=d)
 
         # publisher for path/tracking info to log
-        self.path_update_pub = rospy.Publisher('/path_update', PathUpdate, queue_size=25)
+        self.path_update_pub = rospy.Publisher('/path_update', PathUpdate, queue_size=2)
 
-        self.timer = rospy.Timer(rospy.Duration(self.period), self.track_path_update)
-
+        # self.timer = rospy.Timer(rospy.Duration.from_sec(self.period), self.track_path_update)
+        self.subber = rospy.Subscriber('/ekf_odom', Odometry, self.step_path)
         self.tracking = True
 
-    def track_path_update(self, event):
+    def step_path(self, true_odom):
+        self.new_true_odom = true_odom
+        self.track_path_update()
+
+    def track_path_update(self):
         if not self.tracking:
             rospy.logerr("Path tracking update called when not tracking, call begin_track_path_first!")
             return
 
         now = rospy.get_rostime()
         secs = now.to_sec()
+        
+        if secs - self.last_update < self.period:
+            return
+        self.last_update = secs
 
-        pose = self.positioning.get_odom()
+        pose = self.new_true_odom
         position = get_as_numpy_position(pose.pose.pose.position)
         heading = vel = get_as_numpy_velocity_vec(pose.twist.twist.linear)
         speed = np.linalg.norm(vel)
@@ -201,7 +228,8 @@ class LineFollowController(object):
         if self.begin_finish is not None and \
            rospy.get_rostime().to_sec() - self.begin_finish > self.path_tracker.finish_undershoot/self.begin_finish_speed:
             self.tracking = False
-            self.timer.shutdown()
+            # self.timer.shutdown()
+            self.subber.unregister()
             print("FINISHED tracking")
             self.prius_move.publish(self.prius_msg_generator.forward(-1.0, 0.0))
             # shutdown this node => kills all others
@@ -260,7 +288,8 @@ class LineFollowController(object):
         
     def stop_path_tracking(self):
         self.tracking = False
-        self.timer.shutdown() 
+        # self.timer.shutdown() 
+        self.subber.unregister()
 
 
     def is_finished_tracking(self):
@@ -276,7 +305,7 @@ class Testing(object):
         self.pub = rospy.Publisher("/testing/occasional_odom", Odometry, queue_size=25)
         self.variance = variance
         
-        self.timer = rospy.Timer(rospy.Duration(update_period), self.update)
+        self.timer = rospy.Timer(rospy.Duration.from_sec(update_period), self.update)
 
     def update(self, event):
         pose = self.true_pos.get_odom()
@@ -326,7 +355,7 @@ if __name__ == "__main__":
     save_dir = rospy.get_param('/results_dir')
     path.save_as_fig(save_dir + '/path.png')
 
-    line_follow = LineFollowController(path=path, positioning=positioning)
+    line_follow = LineFollowController(path=path)#, positioning=positioning)
 
     rviz = rospy.get_param('/rviz')
 

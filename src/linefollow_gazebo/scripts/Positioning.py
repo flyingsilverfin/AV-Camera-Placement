@@ -37,6 +37,7 @@ class TruePositioning(Positioning):
     def on_update(self, msg):
         self.last_odom = msg
         self.last_msg_time = msg.header.stamp
+        print("Received base pose ground truth message at: {0}".format(self.last_msg_time.to_sec()))
         
         if self.repub:
             self.republish_odom_as_pose()

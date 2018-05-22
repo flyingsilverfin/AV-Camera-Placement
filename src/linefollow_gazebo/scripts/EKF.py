@@ -162,7 +162,9 @@ class OdometryEKF(object):
         self.period = 1.0/self.rate
         print("EKF update rate: {0}".format(self.rate))
 
-        self.true_positioning = TruePositioning()
+        # self.true_positioning = TruePositioning()
+        self.true_position_subscriber = rospy.Subscriber('/base_pose_ground_truth', Odometry, self.receive_ground_truth)
+        self.new_true_odom, self.new_true_odom_time = None, None
         self.last_true_position, self.last_true_theta = None, None
         self.last_true_position_time = None
 
@@ -205,7 +207,9 @@ class OdometryEKF(object):
             return False
         else:
             self.running = True
-            self.timer = rospy.Timer(rospy.Duration(self.period), self.step)
+            # self.timer = rospy.Timer(rospy.Duration.from_sec(self.period), self.step)
+            # above unrealiable with interleaving data arrival/use
+
             return True
 
     def stop(self):
@@ -214,11 +218,13 @@ class OdometryEKF(object):
             return False
         else:
             self.running = False
-            self.timer.shutdown()
+            # self.timer.shutdown()
+            self.true_position_subscriber.unregister()
             return True
         
 
     def publish_pose(self, last_ekf_state, last_true_position, last_true_theta, current_true_odom):
+        print("Publishing EKF pose! Time: {0}".format(rospy.get_rostime().to_sec()))
 
         odom = Odometry()
 
@@ -271,23 +277,37 @@ class OdometryEKF(object):
         msg.last_ekf_state = last_ekf_state.tolist()
         self.to_sim_data_collector.publish(msg)
 
+    def receive_ground_truth(self, odom):
+        self.new_true_odom = odom
+        self.new_true_odom_time = odom.header.stamp.to_sec()
+        print("Received new ground truth at time: {0}".format(self.new_true_odom_time))
 
-    def step(self, event):
-        if not self.true_positioning.ready():
+        self.step()
+
+    def step(self): #, event):
+
+        # if not self.true_positioning.ready():
+        if self.new_true_odom is None:
             print("True positioning not ready - not starting EKF")
             return
         if self.last_true_position_time is None:
-            self.last_true_position_time = self.true_positioning.get_odom_time()
-        
+            self.last_true_position_time = self.new_true_odom_time
+
+        if self.new_true_odom_time - self.last_true_position_time < self.period:
+            return
+
         if self.state is None:
-            odom = self.true_positioning.get_odom()
+            # odom = self.true_positioning.get_odom()
+            odom = self.new_true_odom
             position = odom.pose.pose.position
             orientation_rpy = quat_to_rpy(get_as_numpy_quaternion(odom.pose.pose.orientation)) # orientation quat => rpy
             self.state = np.array([position.x, position.y, orientation_rpy[2], 0.0, 0.0, 0.0]) # just 0 velocity will be overriden next update step anyway
 
-        true_pos_time = self.true_positioning.get_odom_time()
-        dt = (true_pos_time - self.last_true_position_time).to_sec()
+        true_pos_time = self.new_true_odom_time 
+        print("Using true position time: {0}, last true position time: {1}".format(true_pos_time, self.last_true_position_time))
+        dt = (true_pos_time - self.last_true_position_time)
         if dt == 0: # not received new true position, don't bother updating
+            print("DT is 0!")
             return
 
         # HACK retain these for publishing later
@@ -298,7 +318,7 @@ class OdometryEKF(object):
             last_true_pos = np.array([self.state[0], self.state[1], 0.0])
             last_true_heading = 0.0
 
-        current_true_odom = self.true_positioning.get_odom()
+        current_true_odom = self.new_true_odom
         last_ekf_state = self.state.copy()
 
         self.predict(dt)
@@ -363,7 +383,8 @@ class OdometryEKF(object):
     def get_real_deltas(self):
         # get d_translation, rotation 1, rotation 2 from real simulation position
 
-        odom = self.true_positioning.get_odom() # get the latest position... might need to interpolate a bit? #TODO
+        # odom = self.true_positioning.get_odom() # get the latest position... might need to interpolate a bit? #TODO
+        odom = self.new_true_odom
         pose = odom.pose.pose
         position = get_as_numpy_position(pose.position)
         rpy = quat_to_rpy(get_as_numpy_quaternion(pose.orientation)) 

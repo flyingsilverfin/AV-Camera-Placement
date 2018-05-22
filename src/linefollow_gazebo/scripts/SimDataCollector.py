@@ -68,13 +68,14 @@ class SimDataAggregator(object):
     def publish_sim_data(self, msg):
 
         # msg = SimulationDataMsg()
-        # header = msg.header
-        # header.stamp = rospy.get_rostime() # want to retain stamp!
-        # header.seq = self.seq
-        # self.seq += 1
-        # header.frame_id = "map"
+        header = msg.header
+        header.stamp = rospy.get_rostime() # want to retain stamp!
+        header.seq = self.seq
+        self.seq += 1
+        header.frame_id = "map"
 
         if self.last_true_odom is None or self.last_prius is None or self.last_path_msg is None:
+            print("HAVE A NONE! Prius: {0} \n path_msg: {1}".format(self.last_prius, self.last_path_msg))
             return
         
         assert self.last_ekf is not None, "Last EKF is None, should never happen!"
@@ -111,7 +112,7 @@ class SimDataAggregator(object):
        
         # transmit path data
         msg.path_update = self.last_path_msg
-        self.last_path_msg = None
+        # self.last_path_msg = None # easiest solutionfor now...
 
         self.pub.publish(msg)
         print("Passed on sim data msg: {0}".format(msg))
