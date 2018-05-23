@@ -25,6 +25,12 @@ sudo apt-get install -y ros-lunar-gazebo8-ros-pkgs
 sudo apt-get install -y ros-lunar-gazebo8-ros-control # need control package for prius
 
 
+# set up some other stuff
+sudo apt-get install -y ros-lunar-robot-state-publisher
+sudo apt-get install -y ros-lunar-tf-conversions ros-lunar-tf2-geometry-msgs
+sudo apt-get install python-scipy python-matplotlib ipython # last one is just for convenience...
+
+
 # set up catkin workspace
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws

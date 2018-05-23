@@ -123,7 +123,7 @@ To achieve these error bounds, current techniques may use computationally heavy 
 very high precision maps~\cite{mattern2010high}, or expensive LIDAR to localize
 lane markings very accurately~\cite{hata2014road}.  
 
-In this exploratory work, I show that if certain installation and algorithmic constraints
+In this work, I show that if certain installation and algorithmic constraints
 can be met, cameras mounted at side of roads can provide the required localization
 accuracy without reliance on GPS, LIDAR, or RADAR. Wheel odometry is used to navigate
 between updates received from the infrastructure. I then examine the task of 
@@ -270,51 +270,73 @@ into world coordinates, and provide an error bound. The error bound is developed
 in Chapter~\ref{chap:cameramodel}. To localize the vehicle, the camera needs to
 be provided with its own world orientation and location, as well as its parameters.
 \textit{Camera parameters} will be used to mean both the horizontal
-and vertical field of view of the camera, as well as its resolution. These can be
-combined to estimate the geometric center of the vehicle, on the ground plane. Thus,
-the update from the camera is world location $(x,y)$.
+and vertical field of view of the camera, as well as its resolution. 
 
-In the following chapter I also discuss how I model a localization algorithm. A
- concrete implementation could be use an object detection or segmentation network,
+The parameters, location, orientation and a vehicle in the pixel plane can be
+combined to estimate the geometric center of the vehicle, on the ground plane. Thus,
+the update from the camera is world location $(x,y)$, as I assume a planar surface
+with $z = 0$.
+
+In the following chapter I discuss how I model a localization algorithm. A 
+concrete implementation could be use an object detection or segmentation network,
 such as YOLO~\cite{redmon2018yolov3} or DeepLab~\cite{chen2017rethinking}, which are constantly
 improving, to determine a bounding box for the vehicle. The center of the box in the pixel plane
 can be seen as an estimate of the volumetric center of the vehicle. 
 Using an estimate of the height of the vehicle, a geometric correction can be applied 
-to obtain a good estimate of the vehicle position. %TODO maybe put this experiment in the Appendix?
+to obtain a ground estimate of the vehicle position. %TODO maybe put this experiment in the Appendix?
 
 However, real implementations could be arbitrary complex algorithms,
 or even require vehicles carry visual markers.
 
 \subsection{Coordinate Systems}
 For reference, the following graphic shows the orientations
-associated with camera placements. I only allow the roll and pitch
-to be modified during my optimizations.
+associated with camera placements. I only allow pitch and yaw
+to be modified during my optimizations, as it simplifies
+the geometric modeling performed in following chapters. However, 
+my implementation is also capable of handling non-zero roll.
 
 TODO FIGURE
 
 
 \section{Curve Representations}
 
-* discuss various ways of representing curves
+One key aspect of this work is that the desired trajectory is known.
+There are a variety of ways of representing curves that have been
+used in the literature.
 
-* eg spline, linear approximations, dubins (what I've done), euler
+One simple option is to discretize any curve as a set of linear
+piecewise segments~\cite{bodor2007optimal}, where it was used to 
+represent paths to observe in a surveillance task. This is attractive
+since any arbitrarily complex path can be represented the same way,
+with some tradeoffs in accuracy and size. 
 
-* limitations
+I chose to use a slightly more complex representation: piecewise
+constant curvature paths, also known as Dubins curves~\cite{dubins1957curves}.
+They have an easy geometrical definition, where curvature $C = 1/R$, $R$ 
+being the radius of the circle with the given curvature.
 
-  * not smooth, more complex, don't generalize well to 3D (This is a bad one!)
+TODO figure of dubins curves - original path I used?
 
-* advantages
+Dubins curves can therefore be easily parametrized using only curvature and length.
+My implementation allows specification sequences of curvatures and lengths, which are
+then joined together (again using translation and rotational matrices) to form
+continuous curves. Dubins curves also lend themselves to analytically finding the closest point
+on the curve to any other world point. I used this property to calculate
+the perpendicular error distance used for the steering controller
+discussed in~\ref{sec:impl:vehicle}.
 
-  * analytically easy to solve crosstrack distance, relatively accurate
+Alternative representations were considered, including splines and
+Euler curves, which allow linearly varying curvature,
+but these were deemed overly complex for the purpose of this work.
 
-  * less costly than splines
+During implementation I began representation of rotations as
+quaternions and translations as vectors, but this was very error prone. 
+In the end I used homogenous coordinates to joinly store translation
+and rotation matrices, and unit tested all geometric transformations.
 
-  * easy to look up time corresponding to any point in space (related to ease of crosstrack distance)
-
-* unit testing for correctness - 3D geometry easy to mess up
 
 \section{Vehicle Model and Navigation}
-
+\label{sec:impl:vehicle}
 * Planar Z = 0 assumption, restrction to x,y,theta
 * Kalman Filter
 * odometry model, non-holonomic vehicles
@@ -323,6 +345,9 @@ TODO FIGURE
 * PID, advantages and disadvantages
 
 * Alternative controllers -- use of Stanford's steering controller and homebrew velocity controller.
+
+post-calibration mean, max finishing deviation: (2.0613898119306162, 5.8511940475902247)
+post calibration mean, max finishing angular deviation: 0.257, 1.014 (degrees)
 
 \section{Objective Functions and Optimization}
 
@@ -397,7 +422,7 @@ These will be analysed in turn. Note that I assume calibrated cameras without di
         \input{figures/camera/a_estimate_example.pgf}
     \end{center}
     \caption[Example Predictions about a World Point]{The red point is a true world location, while green points were
-    estimated by a large sample of cameras. Discrepancies occur due to the three errors listed above. We must associate an estimated error with each green point.}
+    estimated by a large sample of cameras. Discrepancies occur due to the three errors listed above. We must associate an error with each green point.}
     \label{fig:camera:dist}
 \end{figure}
 
@@ -409,7 +434,7 @@ Of the three sources of error, this one is the most difficult to reason about.
 Many transport authorities have standard mounting specifications, including mount heights, for cameras~\cite{StreetscapeGuideance}.
 However, none of these specify the tolerances in location and orientation, and we will have to make some educated guesses.
 
-I assume that the position and orientation error is normally distributed, with
+I assume for now that the position and orientation error is normally distributed, with
 95\% of positions within 0.03 meters in any direction, 
 and orientation within a 0.5 degree cone about the principal axis 95\% of the time.
 In mathematical terms, this means $\Delta_{x}$, $\Delta_{y}$, and $\Delta_{z}$ 
@@ -518,11 +543,12 @@ and complex function of camera parameters and estimated vehicle location, and
 the only component with a non-zero mean over a large number of samples.
 
 To use $r$ in simulation, when a vehicle is visible to a camera,
-I project the ground truth vehicle center to the (slightly-mispositioned) camera, which
+I project the ground truth vehicle center to a (slightly-mispositioned) camera, which
 automatically incorporates the positional and orientational errors.
 The algorithmic error shifts the incident pixel a distance sampled according to the distribution 
 of $\Delta_{alg}$, in a randomly sampled direction. 
-Finally, the pixel error is computed from the ground area of the chosen pixel.
+Finally, I use a second, fake, perfectly positioned camera 
+to calculate the pixel error and reproject into a world position from the perturbed pixel.
 
 \section{Error Model Validation}
 \label{sec:camera:validation}
@@ -657,6 +683,8 @@ algorithmic error is indeed well matched to the growth of the actual error.
 Having validated that the error model serves as a good bound on the real errors, we can use the function $r$
 to reason about fundamental limits of the proposed system.
 
+\subsection{Effect of Resolution}
+
 One interesting questions to ask is: if we had infinite resolution,
 how well could we perform? Alternatively, how much accuracy do we gain from increasing resolution?
 
@@ -681,11 +709,13 @@ In the next chapter, I fix the resolution and only optimize for the field of vie
 since a higher resolution always increases the performance
 of the proposed system at no cost and is thus not interesting.
 
+\subsection{Installation Requirements}
+
 Figure~\ref{fig:camera:resolution} was created assuming the following 95\% bounds: positional error
 within 3 centimeters in any direction, orientational error within a
 $5\degree$ diameter cone about the intended axis, 
 and an algorithmic inaccuracy radius of 4 pixels. Table \ref{tab:camera:best error bounds}
-shows the tightest reasonable bounds (sampled from
+shows how well such a configuration might perform at different pitch angles (sampled from
 a large number of cameras instantiated according to the allowed variations,
 and across various world vehicle positions). 
 
@@ -730,13 +760,13 @@ Lastly, I present some installation accuracies that would need to be achieved
 in order for the system to provide acceptable performance. In bold in 
 Tables~\ref{tab:camera:best error bounds}, ~\ref{tab:camera:70deg}, and
 ~\ref{tab:camera:45deg} I highlight positional and orientational 
-constraints that provide sub-30 centimeter median localization performance.
+constraints that provide sub-25 centimeter median localization performance.
 
 
 
 \begin{table}[htb]
 \centering
-\caption{Median 99\% Localization Bound for 70$\degree$ pitch, 2000x2000 pixels}
+\caption{Median Localization Bound for 70$\degree$ pitch, 2000x2000 pixels}
 \label{tab:camera:70deg}
 
 \begin{tabular}{ccccccccc}
@@ -747,7 +777,7 @@ constraints that provide sub-30 centimeter median localization performance.
 \cmidrule(lr){1-1}
 \cmidrule(ll){2-9}
 0.0 & \textbf{0.017} & \textbf{0.034} & \textbf{0.051} & \textbf{0.069} & \textbf{0.087} & \textbf{0.103} & \textbf{0.124} & \textbf{0.140} \\
-0.1 & \textbf{0.177} & \textbf{0.196} & \textbf{0.214} & \textbf{0.230} & \textbf{0.248} & \textbf{0.268} & \textbf{0.280} & \textbf{0.298 } \\
+0.1 & \textbf{0.177} & \textbf{0.196} & \textbf{0.214} & \textbf{0.230} & \textbf{0.248} & 0.268 & 0.280 & 0.298 \\
 0.2 & 0.342 & 0.360 & 0.378 & 0.394 & 0.409 & 0.430 & 0.443 & 0.460  \\
 0.2 & 0.503 & 0.524 & 0.538 & 0.552 & 0.566 & 0.586 & 0.605 & 0.616  \\
 0.4 & 0.665 & 0.685 & 0.702 & 0.715 & 0.737 & 0.757 & 0.765 & 0.794  \\
@@ -768,16 +798,28 @@ constraints that provide sub-30 centimeter median localization performance.
 \cmidrule(lr){1-1}
 \cmidrule(ll){2-9}
 0 & \textbf{0.027} & \textbf{0.060} & \textbf{0.083} & \textbf{0.114} & \textbf{0.145} &\textbf{ 0}.180 & \textbf{0.211} & \textbf{0.228} \\
-0.1 & \textbf{0.222} & \textbf{0.252} & \textbf{0.285} & 0.324 & 0.338 & 0.365 & 0.398 & 0.446 \\
+0.1 & \textbf{0.222} & \textbf{0.250} & 0.285 & 0.324 & 0.338 & 0.365 & 0.398 & 0.446 \\
 0.2 & 0.421 & 0.460 & 0.484 & 0.504 & 0.540 & 0.561 & 0.599 & 0.636 \\
 0.3 & 0.624 & 0.661 & 0.682 & 0.713 & 0.761 & 0.764 & 0.796 & 0.837 \\
 0.4 & 0.839 & 0.828 & 0.873 & 0.921 & 0.950 & 0.971 & 1.030 & 1.030 \\
 \end{tabular} 
 \end{table}
+
+These tables show that achieving a 10 centimeter installation accuracy 95\% of the time is an absolute necessity, while angular deviations of up to
+one degree are acceptable. Finally, Table~\ref{tab:camera:alg} shows how algorithmic inaccuracy impacts localization:
+with the usual 3 centimeter placement and a 0.5 degree orientation error as well as 45 degree pitch the algorithm must be able to
+localize the vehicle center to within 20 pixels at the most. 
+
+\begin{table}[htb]
+\centering
+\caption{Median Localization Bound for 45$\degree$ pitch, 2000x2000 pixels with increasing algorithmic errors}
+\label{tab:camera:alg}
 \begin{tabular}{ccccccccc}
+\toprule
+Error (pixels) & 4 & 8 & 12 & 16 & 20 & 24 & 28 \\ \midrule
+Median $r$ (m)	&  \textbf{0.157} & \textbf{0.183} & \textbf{0.219} & \textbf{0.237} & 0.260 & 0.294 & 0.313 \\
 \end{tabular} 
-
-
+\end{table}
 
 \section{Error Circles to Error Ellipses}
 
@@ -809,7 +851,7 @@ ground position.
 \end{figure}
 
 This modification improves the accuracy of the error bound even further, as shown
-in Table~\ref{tab:camera:ellipse vs circle}. A case of this occuring is shown
+in Table~\ref{tab:camera:ellipse vs circle}. A case of this ocurring is shown
 in Figure~\ref{fig:camera:oval better} which samples many camera positions and orientations
 estimating the location of the point in red. The circular and elliptical 
 error bounds that contain the red point are shown faintly in the background. One
@@ -830,9 +872,35 @@ is shown in bold.
 
 
 In simulation I use oval error bounds as these more effectively represent the 
-actual shape of errors, encoding the angle and lengths of major
-and minor axes into the covariance between $x$ and $y$.
+actual shape of errors, encoding the angle $\phi$ and lengths of major axis $M$
+and minor axis $N$ into the covariance between $x$ and $y$.
 
+\[
+\Sigma_{x,y} =
+  \begin{bmatrix}
+    M^2 \cos(\phi)^2 + N^2 \sin(\phi) &  (M^2 - N^2) \sin(\phi)^2 \cos(\phi)^2 \\
+    (M^2 - N^2) \sin(\phi)^2 \cos(\phi)^2  &  M^2 \sin(\phi)^2 + N^2\cos(\phi) 
+  \end{bmatrix}
+\]
+
+\subsection{Practical Issues}
+In practice, I found that due to timing delays between parts of the simulation,
+the camera update delivered to the vehicle was slightly old compared to the
+vehicle's actual state (much as it might be in a real implementation). This
+difference ended up having a big impact on the EKF update step, and even
+more so if an oval was used (when only 1 dimension was stale, the stale
+value would pollute the remaining good value).
+
+To fix this, I did two things: firstly, I included a timestamp in the 
+camera's update message, which enabled me to apply a time difference
+correction based on the vehicle's instantaneous velocity. To further
+avoid partially stale updates from corrupting the vehicle's state,
+I also made the oval 50\% more circular, as defined by the ratio
+of its major to minor axis lengths. These worked very well in practice.
+
+The issue of timing delays is not considered further, and could
+be dealt with similarly in a physical implementation.
+ 
 \section{Conclusion}
 
 This chapter has developed and evaluated the camera sensor model
@@ -858,6 +926,10 @@ the effectiveness of reshaping circular bounds into elliptical ones.
 \chapter{Camera Placement}
 \label{chap:cameraplacement}
 
+* mention time correction for camera update!
+* in practice time disturbances in the simulation resulted in ~100ms delays which could only partially be compensated for
+=> induce strange behavior in EKF since one coordinate is very unlikely though this is just due to time delay
+=> make oval more circular by 50\% works well in practice 
 
 \section{Single Camera Placement -- Localization}
 
