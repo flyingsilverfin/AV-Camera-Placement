@@ -18,11 +18,12 @@ import cv2 # for drawing world and points
 
 class CameraPlacement(object):
 
-    def __init__(self, position, pitch_deg, yaw_deg, model, 
+    def __init__(self, id, position, pitch_deg, yaw_deg, model, 
                  resolution, fov, 
                  positional_error_stddev=0.03/2.0,
                  orientation_error_stddev=0.5/2.0
                  ):
+        self.id = id
         # this will encompass two Cameras
         # one true positioned
         # one with error
@@ -54,6 +55,9 @@ class CameraPlacement(object):
 
     def get_camera_height(self):
         return self.ideal_camera.position[2]
+
+    def get_id(self):
+        return self.id
 
 
 
@@ -100,9 +104,9 @@ class ROSCameraNetwork(object):
         
         for placement in placements_seeing_point:
             location, error = self.camera_network.get_location_and_error(placement, true_position)
-            self.send_camera_update(location, error)
+            self.send_camera_update(placement.get_id(), location, error)
     
-    def send_camera_update(self, location, error):
+    def send_camera_update(self, camera_id, location, error):
         # convert the 99% error radius into a covariance matrix
         # error_radius == 3 stddevs
         # 3s^2 = radius
@@ -136,6 +140,8 @@ class ROSCameraNetwork(object):
         msg.header.stamp = rospy.get_rostime()
         msg.header.frame_id = "map"
 
+        msg.source_camera_id = camera_id
+
         self.camera_update_publisher.publish(msg)
 
 class CameraNetwork(object):
@@ -158,7 +164,15 @@ class CameraNetwork(object):
         self.orient_error_stddev = orient_error_stddev
         
         self.use_error_ellipse = error_ellipse 
-   
+  
+    def get_placement_by_id(self, identifier):
+        for placement in self.catchment_cameras:
+            if placement.get_id() == identifier:
+                return placement
+        for placement in self.always_project:
+            if placement.get_id() == identifier:
+                return placement
+
     def set_use_ellipse(self, ellipse):
        self.use_error_ellipse = ellipse
         
@@ -261,6 +275,11 @@ class CameraNetwork(object):
             minor_axis_length = area / major_axis_length
             # minor_axis_length = np.linalg.norm(dy)
             ratio = minor_axis_length/major_axis_length
+
+
+            # *** This is often TOO oval and gets severely messed up by time differences in the simulation!
+            # => make the ratio half close to a circle
+            ratio = ratio + (1.0 - ratio)/2.0
 
             # convert circular error area into elliptical one of same area
             error_area = np.pi*error_radius**2
@@ -431,9 +450,9 @@ if __name__ == "__main__":
 
     
     camera_defs = rospy.get_param('/cameras/placements')
-    for conf in camera_defs:
+    for i, conf in enumerate(camera_defs):
 
-        placement = CameraPlacement(np.array(conf['position']), 
+        placement = CameraPlacement(i, np.array(conf['position']), 
                      conf['pitch_degrees'], 
                      conf['yaw_degrees'], 
                      model=conf['model'], 

@@ -105,10 +105,30 @@ class CameraSensorSource(SensorSource):
         # only care about top left 2x2
         
         self.state_data = np.array([pos.x, pos.y])
+        self.update_time = camera_update.header.stamp.to_sec()
         
     
     def get_jacobian(self, ekf_state):
         return self.static_jacobian
+
+    def consume_state(self, ekf_time, ekf_state):
+        position = super(CameraSensorSource, self).consume_state()
+        if position is None:
+            return
+
+        # apply a time correction using current EKF state and time from message stamp/current time
+        msg_time = self.update_time
+        dt = ekf_time - msg_time
+        v_x, v_y = ekf_state[3], ekf_state[4]
+        dx, dy = v_x * dt, v_y * dt
+        position += np.array([dx, dy])
+
+        return position
+
+    def get_noise_matrix(self):
+        return self.R_k*2
+
+
 
 class FakeOdomSensorSource(SensorSource):
     """ 
@@ -287,6 +307,7 @@ class OdometryEKF(object):
         cov = np.zeros((6,6))
         cov[:3, :3] = pre_update_ekf_cov[:3, :3]
         msg.ekf_odom.pose.covariance = list(pre_update_ekf_cov.ravel())
+        msg.ekf_odom.header.stamp = rospy.get_rostime()
 
         # insert velocity information
         linear_vel= msg.ekf_odom.twist.twist.linear
@@ -378,25 +399,35 @@ class OdometryEKF(object):
     
     def update(self, sensor_source):
         """ Following Wikipedia EKF notation """
-        sensor_values = sensor_source.consume_state()
+        sensor_values = sensor_source.consume_state(rospy.get_rostime().to_sec(), self.state)
         h_t = sensor_source.calculate_expected_state(self.state)
+        print("Received update: {0}".format(sensor_values))
+        print("current state is: {0}, current cov is : {1}".format(self.state, self.cov))
 
         # compute residual
         y_t = sensor_values - h_t
+        print("Residual: {0}".format(y_t))
+        
 
         # get jacobian
         H_t = sensor_source.get_jacobian(self.state)
         # get sensor source covariance
         R_t = sensor_source.get_noise_matrix()
+        # R_t[0,1] = R_t[1,0] = 0
+        print("Jacobian: {0}".format(H_t))
+        print("Sensor noise: {0}".format(R_t))
         
         # residual covariance/innovation covariance
         S_t = matmul(H_t, matmul(self.cov, H_t.T)) + R_t
+        print("Residual Covariance: {0}".format(S_t))
 
         # gain
         K_t = matmul(self.cov, matmul(H_t.T, np.linalg.inv(S_t))) # this is the expensive step
+        print("Kalman gain: {0}".format(K_t))
 
         # update estimates
         self.state = self.state + matmul(K_t, y_t)
+        print("Updated State: {0}".format(self.state))
         self.cov = matmul((self.I - matmul(K_t, H_t)), self.cov)
 
         print("Updated state!")
@@ -527,7 +558,8 @@ class OdometryEKF(object):
         # only the column corresponding to theta has cross-termed derivatives
         a = -sampled_dist * np.sin(state[2] +  sampled_start_angle)
         b = sampled_dist * np.cos(state[2] + sampled_start_angle)
-        d_theta_column = np.array([a, b, 1.0, a/dt, b/dt, 0.0])
+        # d_theta_column = np.array([a, b, 1.0, a/dt, b/dt, 0.0])
+        d_theta_column = np.array([a,b,1.0,0,0,0])
 
         F[:, 2] = d_theta_column
 
