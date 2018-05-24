@@ -35,12 +35,14 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{bm}
 
 \newcommand*{\eg}{e.g.\@\xspace}
 \newcommand*{\ie}{i.e.\@\xspace}
 \newcommand{\etal}{\textit{et al.}}
 \newcolumntype{N}{>{\centering\arraybackslash}m{.7in}}
 
+\DeclareMathOperator{\arctantwo}{arctan2}
 %% START OF DOCUMENT
 \begin{document}
 
@@ -71,17 +73,17 @@
 
 \section{Vision}
 
-In the future, private vehicles in urban environments have been made redundant by an efficient
-fleet of autonomous vehicles, ferrying passengers on demand between locations in 
-the city. The city's pool of vehicles consists of vehicles from various manufacturers, 
+It is conceivable that, in the near future, private vehicles have been made redundant by an efficient
+fleet of local autonomous vehicles, ferrying passengers on demand between locations in 
+a city. The city's pool of vehicles consists of vehicles from various manufacturers, 
 but are managed by a public-private partnership, much like a utility, and 
 seen as an essential part of the city infrastructure fulfilling the needs of its citizens.
 
-The utility manages not only a large selection of vehicles, but also the infrastructure 
-that the autonomous vehicles run on: a network of cameras, placed along roads to 
+The utility would manage not only a large selection of vehicles, but also the infrastructure 
+that the autonomous vehicles rely on: a network of cameras, placed along roads to 
 facilitate vehicle navigation. At this point in time the hardware requirements of
-object detection algorithms are miniaturized, and are highly accurate, able to identify
-pedestrians and vehicles to within a few centimeters. These locations are
+object detection algorithms are miniaturized, and are highly accurate, enabling cameras
+to identify pedestrians and vehicles to within a few centimeters. These locations are
 transmitted to nearby vehicles. As a result, GPS, radar, and expensive LIDAR systems
 have become largely redundant on the autonomous vehicles.
 
@@ -99,7 +101,7 @@ of path planning, localization, and safe navigation.
 
 Current autonomous vehicle projects use a large set of sensors, combined with
 maps, to solve each of those complex tasks. This comes at a cost: current
-Level 3 TODO REFERENCE autonomy attempts for example use LIDAR, which 
+Level 3 attempts for example use LIDAR, which 
 provides rich data to perform self-localization and dynamic obstacle avoidance,
 but also costs around \$75,000~\cite{lin2018architectural}. The computational
 power required to fuse and process data from wheel odometry,
@@ -108,7 +110,7 @@ and implies only large platforms can be used.
 
 I propose moving the localization and navigation sensing tasks
 from vehicles to the infrastructure, which is particularly applicable in urban environments.
-I examine a static environment containing a single vehicle, with safety and dynamic components
+I examine a static environment containing a single vehicle, with dynamic components and safety
 as future research avenues.
 
 Most current localization approaches utilize global satellite navigations systems,
@@ -165,7 +167,7 @@ analysed previously.
 
 In summary, I make the following contributions in this work
 \begin{itemize}
-    \item An error model for vehicle locazation using infrastructure-mounted cameras, given an installation uncertainty and estimated vehicle position
+    \item An error model for vehicle locazation using infrastructure-mounted cameras, which is motivated by physical properties such as installation uncertainty
     \item A feasibility analysis for using cameras for localization, using the developed error model
     \item An analysis of placement of a single camera camera along roads, and the relationship to road curvature
     \item An analysis of placement of sets of cameras along roads, and the relationship to road curvature
@@ -179,7 +181,7 @@ Chapter~\ref{chap:relatedwork} reviews relevant literature in the fields of
 localization, landmark placement, and surveillance. Chapter~\ref{chap:impl} discusses required background and the simulation
 used for analysis. 
 
-Chapter \ref{chap:cameramodel} develops the error model for cameras
+Chapter \ref{chap:cameramodel} then develops the error model for cameras
 used in simulation, and examines the feasibility of using cameras in the infrastructure for localization.
 Chapter ~\ref{chap:cameraplacement} optimizes single and multiple camera placements
 in various environments and using different objective functions. This is followed by concluding remarks.
@@ -235,8 +237,6 @@ The Gazebo~\cite{koenig2004design} robotics simulator is used in conjunction wit
 the Robot Operating System~\cite{quigley2009ros}, to model a non-holonomic Ackermann drive vehicle
 following predefined paths. A camera is modeled using standard formulations
 discussed in Section~\ref{impl:sensors}.
-
-**Todo figure of ackermann drive**
 
 An expensive, high fidelity simulation was used instead of a real hardware
 implementation. Simulation allows quickly modifying the environment
@@ -298,14 +298,14 @@ my implementation is also capable of handling non-zero roll.
 TODO FIGURE
 
 
-\section{Curve Representations}
+\section{Road Representations}
 
 One key aspect of this work is that the desired trajectory is known.
-There are a variety of ways of representing curves that have been
+There are a variety of ways of representing paths that have been
 used in the literature.
 
 One simple option is to discretize any curve as a set of linear
-piecewise segments~\cite{bodor2007optimal}, where it was used to 
+piecewise segments such as in~\cite{bodor2007optimal}, where it was used to 
 represent paths to observe in a surveillance task. This is attractive
 since any arbitrarily complex path can be represented the same way,
 with some tradeoffs in accuracy and size. 
@@ -326,28 +326,274 @@ the perpendicular error distance used for the steering controller
 discussed in~\ref{sec:impl:vehicle}.
 
 Alternative representations were considered, including splines and
-Euler curves, which allow linearly varying curvature,
+Euler curves (linearly varying curvature paths),
 but these were deemed overly complex for the purpose of this work.
 
-During implementation I began representation of rotations as
+\subsection{Implementation}
+
+I began representation of rotations as
 quaternions and translations as vectors, but this was very error prone. 
-In the end I used homogenous coordinates to joinly store translation
+In the end I used homogenous coordinates to jointly store translation
 and rotation matrices, and unit tested all geometric transformations.
 
+In order to provide road boundaries and 
+maintain compatibility with placement of cameras, I define
+constant-width roads, with an additional side offset that
+might represent pavements. Cameras can be placed beyond the 
+side offset. I then place cylindrical walls
+or planes in the ray-tracing space to prevent cameras from
+seeing beyond the edges of roads.
 
-\section{Vehicle Model and Navigation}
+
+\section{Vehicle Model and Controls}
 \label{sec:impl:vehicle}
-* Planar Z = 0 assumption, restrction to x,y,theta
-* Kalman Filter
-* odometry model, non-holonomic vehicles
-* influence of vehicle and noise model on results TODO (=> discussion/conclusion?)
 
-* PID, advantages and disadvantages
+The navigation tasks performed throughout are executed by a modified
+open-source model of a Toyota Prius~\cite{osrfPrius}. This model
+takes two primary commands: throttle, and steering wheel angle.
+The state of the robot is both a world position $(x,y,z)$ and
+and orientation quaternion, but due to the planar restriction
+the state we are interested in can be written as
+$(x,y, \theta)$, where heading $\theta$ is the angle from the $x=0$ axis 
+on the ground plane.
 
-* Alternative controllers -- use of Stanford's steering controller and homebrew velocity controller.
+\subsection{Controllers}
 
-post-calibration mean, max finishing deviation: (2.0613898119306162, 5.8511940475902247)
-post calibration mean, max finishing angular deviation: 0.257, 1.014 (degrees)
+\subsubsection{PID Controller}
+PID controllers~\cite{aastrom1995pid} are widely used feedback controllers
+that calculate a response based on an error signal, its integral, and its derivative
+(hence, \textbf{P}roportional, \textbf{I}ntegral, \textbf{D}erivative).
+
+TODO figure of PID feedback
+
+To use a PID controller, one needs to define target value and a current state,
+which together form an error. Then, the PID gains are tuned to match
+the response of the system.
+
+Typical downsides of PID are that they only control a single variable, their
+parameters can be difficult to tune, and that they don't perform
+well in out-of-ordinary scenarios. I implemented a PID controller to 
+maintain vehicle speed, and attempted to use another for steering angle,
+which proved too difficult to tune well for wider variety of scenarios.
+ 
+\subsubsection{Speed Controller}
+
+The speed PID controller has access to the vehicle throttle 
+and the current vehicle speed. Thus, I need to define
+a target speed for all points in time to create an error function.
+
+I set target speed policy $s$ based on the curvature $C$ of the 
+closest point on the reference path:
+
+\[
+    s(C) = 
+    \begin{cases} 
+      20.0   & C = 0.0 \\
+      \frac{k}{C} & C > 0.0 
+   \end{cases}
+\]
+
+Constant $k$ was experimentally found to perform well at $k=0.5$.
+20.0 m/s was also found to be a reasonable straight-line speed, which corresponds
+to about 72 km/h.
+
+However, just using $s(C)$ as the target speed results in massive overshoots
+at tight corners -- velocity controllers practically require some amount of lookahead
+due to finite decelerations. Therefore, I define a target speed as the mean of 
+$s(C)$ at $n$ equidistant points ahead of the vehicle on the curve.
+This induces a linear deceleration up to a curve. I also only allow accelerations
+once the curvature decreases.
+
+\begin{figure}
+\centering
+\begin{subfigure}{0.55\textwidth}
+    \centering
+    \input{figures/implementation/velocity_controller.pgf}
+    \label{fig:ekf:speed controller}
+\end{subfigure}
+\begin{subfigure}{0.4\textwidth}
+    \centering
+    \input{figures/implementation/calibration_circuit_plain.pgf}
+    \label{fig:ekf:calibration plain}
+\end{subfigure}
+\caption[Speed Controller]{Speed Controller Performance over the calibration curve, traversed from (0,0) counter clockwise. Notice the sharp
+corner in the top right corner corresponds to a massive drop in target and actual speed.}
+\label{fig:impl:speedcontroller}
+\end{figure}
+
+
+
+\subsubsection{Steering Controller}
+
+The steering controller must minimize deviation from the desired trajectory
+as much as possible. PID controllers are difficult to use for this task
+since they tend to oscillate or underreact, or perform well at once
+constant speed but not others.
+
+Instead, I use the steering controller published in~\cite{thrun2006stanley}, which
+was describes the autonomous vehicle that won the 2006 DARPA Grand Challenge. They define
+a controller that directly computes the desired steering angle using only the 
+perpendicular distance to the path, as well as the vehicle's speed.
+
+TODO image of crosstrack distance, angles
+
+\[
+    \delta(t) = \Psi(t) + \arctan\frac{ke(t)}{u(t)}
+\]
+
+The original paper shows that when used with
+with a linear bicycle model, the crosstrack error $e(t)$ converges exponentially to zero. The constant $k$ 
+was experimentally determined to perform well at $k = 0.8$ across a wide variety of paths.
+
+
+\subsection{Extended Kalman Filter}
+
+The simulated vehicle tracks its position using an Extended Kalman Filter (EKF)
+to integrate camera updates and correct its noisy state~\cite{fujii2013extended}. An EKF
+uses predict and update steps, propagating the vehicle's state
+according to a motion model in the predict step, and correcting
+the vehicle state during the update step. Like a standard Kalman Filter,
+every step produces normal distributions, which are efficient to compute over.
+ The main difference to a standard Kalman Filter is that non-linear motion models
+can be used by linearizing the model at each timestep using a
+Taylor-like expansion about the estimated mean.
+
+Formally, if the previous state of the vehicle is $\bm{x}_{t-1} = (x_{t-1}, y_{t-1}, \theta_{t-1})$ and
+covariance is $\bm{\Sigma}_{t-1}$, the predict step is given as
+
+\begin{flalign}
+    \bm{\hat{x}}_{t} &= f(\bm{x}_{t-1}, \bm{u}_{t}) \\
+    \bm{\hat{\Sigma}}_{t} &= \bm{F}_t \bm{\Sigma}_{t-1} \bm{F}_k^T + \bm{Q}_k
+\end{flalign}
+
+Here, $f$ is the vehicle motion model described in the following section, $u$ are control commands,
+and $\bm{Q}$ represents process noise. $\bm{F}$ is the Jacobian of the motion model, 
+evaluated at the prior timestep -- this is the linearization step of the EKF
+that distinguishes it from a normal Kalman Filter.
+
+The update step is then performed as the following, given a measurement
+$\bm{z}_t$.
+
+\begin{flalign}
+    \bm{\tilde{y}}_t &= \bm{z}_t - h(\bm{\hat{x}}_t) \\
+    \bm{S}_t &= \bm{H}_t \bm{\hat{\Sigma}}_t \bm{H}_t^T + \bm{R}_t \\  
+    \bm{K}_t &= \bm{\hat{\Sigma}}_t \bm{H}_t^T \bm{S}_k^{-1} \\ 
+    \bm{x}_t &= \bm{\hat{x}}_t + \bm{K}_t \bm{\tilde{y}}_t \\
+    \bm{\Sigma}_t &= (\bm{I} - \bm{K}_t\bm{H}_t)\bm{\hat{\Sigma}}_t
+\end{flalign}
+
+Here, $h(\bm{x})$ is the \textit{sensor model}, which describes
+the relationship between a state and a produced measurement.
+$\bm{H}$ is the Jacobian of $h(\bm{x})$, which for my 
+purposes I set as the identity (ie. a linear relationship,
+which works well enough in practice). Finally, $\bm{R}$ is
+the covariance of the measurement.
+
+An important value is the \textit{Kalman Gain}, $\bm{K}$.
+In an intuitive sense, the update step can be seen as
+performing a weighted average between the vehicle's state,
+and the incoming measurement. The weighting $\bm{K}$
+is determined by a relationship analogous to $\frac{\bm{\Sigma}}{\bm{\Sigma} + \bm{R}}$,
+if the these matrices were scalars. I come back to this idea
+in Chapter~\ref{chap:cameraplacement}.
+
+
+
+\subsubsection{Odometry Motion Models}
+\label{sec:impl:motion model}
+
+I describe the probabilistic odometry motion model $f(\bm{x}, \bm{u})$
+that is used as the basis of the EKF predict step~\cite{thrun2005probabilistic}.
+Here, the control commands $\bm{u}$ are not actually the commands sent to the vehicle,
+but taken from the "wheel odometry", which is just the simuation's ground
+truth state (a common formulation). So, $\bm{u}_t = (\bar{x}_t, \bar{y}_t, \bar{\theta}_t)$ is the vehicle's
+true state at time t.
+
+The high level explanation of the motion model is as follows: I use the vehicle's ground truth movement 
+between timesteps to calculate a series of deltas:
+the translational change, and a starting and ending angular change. These 
+are perturbed slightly and added to the EKF's current state.
+
+TODO figure 
+
+\begin{flalign}
+\delta^{trans}_{t} &= \sqrt{(\bar{x}_{t+1} - \bar{x}_t)^2 + (\bar{y}_{t+1} - \bar{y}_t)^2} \\
+\delta^{rot1}_{t} &= \arctantwo(\bar{y}_{t+1} - \bar{y}_t, \bar{x}_{t+1} - \bar{x}_t) - \bar{\theta}_{t+1} \\
+\delta^{rot2}_{t} &= \bar{\theta}_{t+1} - \bar{\theta}_{t} - \delta^{rot1}_{t}
+\end{flalign}
+
+This calculates the ground truth changes to orientations and distance.
+
+We next add noise to these deltas using a function $norm(\mu, \sigma^2)$ which 
+samples the indicated normal distribution. 
+
+\begin{flalign}
+\hat{\delta}^{rot1}_t &= \delta^{rot1}_t + norm(0, \alpha_1|\delta^{rot1}_t| + \alpha_2|\delta^{trans}_t|) \\
+\hat{\delta}^{trans}_t &= \delta^{trans}_t + norm(0, \alpha_3|\delta^{trans}_t| + \alpha_4|\delta^{rot1}_{t} + \delta^{rot2}_t| \\
+\hat{\delta}^{rot1}_t &= \delta^{rot2}_t + norm(0, \alpha_1|\delta^{rot2}_t| + \alpha_2|\delta^{trans}_t|) 
+\end{flalign}
+
+Lastly, given current mean belief state $(x_t, y_t, \theta_t)$, we generate
+
+\begin{flalign}
+x_{t+1} &= x_t + \hat{\delta}^{trans}_t\cos(\theta_t + \hat{\delta}^{rot1}_t) \\
+y_{t+1} &= y_t + \hat{\delta}^{trans}_t\sin(\theta_t + \hat{\delta}^{rot1}_t) \\
+\theta_{t+1} &= \theta_t + \hat{\delta}^{rot1}_t + \hat{\delta}^{rot2}_t 
+\end{flalign}
+
+This creates the updated state $\bm{x}_{t+1}$. The Jacobian $\bm{F}$ required
+for the EKF prediction step is computed from the partial derivatives
+of these three equations.
+
+
+\subsection{Calibration}
+
+There are four constants, $\alpha_{1-4}$ which are present in the odometry
+model equations. These determine the ``shape'' of the robot's probabilistic
+motion.
+
+\begin{figure}
+    \includegraphics[width=\linewidth]{figures/implementation/ekf/noise_params.png}
+\caption[Noise Parameter Settings]{How various settings of $alpha$'s affect propagation samples. The canonical settings produce the leftmost spread\textsuperscript{1}}
+    \tiny\textsuperscript{1}Borrowed from \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}}
+    \label{fig:ekf:noiseparams}
+\end{figure}
+
+I use settings which produce canonical distributions, increasing lateral uncertainty more
+than longitudinal uncertainty.
+
+%TODO Example of state propagation along a line with a sharp turn
+
+Lastly, since I am using a simulation without a physical reference vehicle to
+calibrate my parameters against, I use data from~\cite{vivacqua2017low}. 
+They measure their vehicle's wheel odometry over 12 laps of a circuit, 1800 meters long, similar
+to the one below. I mainly aim to produce similar order-of-magnitude errors.
+
+\begin{figure}
+    \begin{center}
+        \input{figures/implementation/calibration_circuit.pgf}
+    \end{center}
+    \caption[Calibration Circuit]{The calibration circuit containing one tight turn, two middle turns, and one low curvature turn, for a total length of about 1800 meters.}
+    \label{fig:ekf:noiseparams}
+\end{figure}
+
+I ran my simulation on the circuit 20 times, and compare my calibrated results to~\cite{vivacqua2017low} in
+Table~\ref{tab:impl:calibration}. The values are roughly aligned, so I use
+the corresponding values for $\alpha$ going forward.
+
+\begin{table}[htb]
+\centering
+\caption[Noise Calibration Results]{Mine versus~\citeauthor{vivacqua2017low} dead reckoning errors.}
+\label{tab:impl:calibration}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Metric                          & My Value           & Value from~\cite{vivacqua2017low} \\ \midrule
+Mean Final Positional Error     & 2.06m              & 2.4m                                                          \\
+Max Final Positional Error      & 5.85m              & 5.3m                                                          \\
+Angular Error Accumulation Rate & 0.25 $\degree$/min & $\sim$1$\degree$/min                                         
+\end{tabular}
+\end{table}
+
 
 \section{Objective Functions and Optimization}
 
