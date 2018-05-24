@@ -3,16 +3,17 @@ import tf_conversions
 
 tf_transformations = tf_conversions.transformations
 
-import tf2_geometry_msgs
 try:
+    import tf2_geometry_msgs
     from geometry_msgs.msg import PointStamped, TransformStamped
     from geometry_msgs.msg import Pose
     from geometry_msgs.msg import Point
     from geometry_msgs.msg import Quaternion
     
     from helper import *
-except Excetion:
-    pass
+except Exception:
+    def inv_transform(matrix):
+        return tf_conversions.transformations.inverse_matrix(matrix)
 
 
 class ConstantCurvaturePath(object):
