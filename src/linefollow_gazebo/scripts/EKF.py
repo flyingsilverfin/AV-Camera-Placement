@@ -385,12 +385,13 @@ class OdometryEKF(object):
         sampled_deltas, sampled_stddevs = self.sample_deltas(real_deltas)
         print("\tsampled deltas, stddevs added: {0} with stddev {1}".format(sampled_deltas, sampled_stddevs))
 
+        pre_predict_state = self.state.copy()
         # apply `f` ie. motion model
         self.state, Q_k = self.motion_model(self.state, sampled_deltas, sampled_stddevs, dt)
         print("\tstate: {0}".format(self.state))
 
         # get jacobian
-        F_k = self.motion_model_jacobian(self.state, sampled_deltas, dt)
+        F_k = self.motion_model_jacobian(pre_predict_state, sampled_deltas, dt)
         # print("--Covariances--\n Jacobian: \n {0} \n Current Covariance: \n {1} \n Q_k: \n {2}".format(F_k, self.cov, Q_k))
         # compute update covariance
         self.cov = matmul(F_k, matmul(self.cov, F_k.T)) + Q_k

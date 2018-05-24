@@ -262,7 +262,7 @@ examining the impact of such cameras on robot localization and navigation as
 a future research direction; I cap the maximum field of view of the pinhol model
 at 110 degrees horizontally and vertically, when the perspective model
 breaks down~\cite{fleckperspective} (some authors claim different cutoffs all the way down
-to 70 degrees~\cite{sharless2010pannini}, but for the analysis presented here it won't 
+to 70 degrees~\cite{sharpless2010pannini}, but for the analysis presented here it won't 
 matter too much). 
 
 An infrastructure-mounted camera's task is to localize vehicles in its pixel plane 
@@ -292,8 +292,7 @@ or even require vehicles carry visual markers.
 For reference, the following graphic shows the orientations
 associated with camera placements. I only allow pitch and yaw
 to be modified during my optimizations, as it simplifies
-the geometric modeling performed in following chapters. However, 
-my implementation is also capable of handling non-zero roll.
+the geometric modeling performed in following chapters. 
 
 TODO FIGURE
 
@@ -447,6 +446,7 @@ was experimentally determined to perform well at $k = 0.8$ across a wide variety
 
 
 \subsection{Extended Kalman Filter}
+\label{chap:impl:vehicle:ekf}
 
 The simulated vehicle tracks its position using an Extended Kalman Filter (EKF)
 to integrate camera updates and correct its noisy state~\cite{fujii2013extended}. An EKF
@@ -771,6 +771,7 @@ resulting in a ground distance of $err_{pixel}(p) = \sqrt{(2A(p))}$.
 
 
 \subsection{Complete Error Model}
+\label{sec:cameramodel:r}
 
 I now combine the three sources of error to determine an approximate
 error radius for the vehicle localization.
@@ -867,7 +868,7 @@ too large.
 
 Note that the true error is dependent on several random variables -- sampled positional and orientational
 error, and pertubations modeling algorithmic error (pixel ground area is not randomly sampled). Each
-of these are approximately gaussian and added together in absolute values, meaning the computed error bound is intended to be in the tail
+of these are approximately gaussian and added together r(in absolute values, meaning the computed error bound is intended to be in the tail
 of a rectified gaussian distribution as well. Thus, we expect most samples to
 fall far from the error bound, which is exactly what we see.
 Attempts to make the bound tighter resulted in a loss of the 99\% accuracy.
@@ -1172,17 +1173,77 @@ the effectiveness of reshaping circular bounds into elliptical ones.
 \chapter{Camera Placement}
 \label{chap:cameraplacement}
 
-* mention time correction for camera update!
-* in practice time disturbances in the simulation resulted in ~100ms delays which could only partially be compensated for
-=> induce strange behavior in EKF since one coordinate is very unlikely though this is just due to time delay
-=> make oval more circular by 50\% works well in practice 
+Two of the questions this dissertation sets out to answer
+are related to the placement of cameras for localization and navigation.
+Normally, problems of this type are formulated one of two ways. Either,
+given a budget of $n$ cameras, find the best placement according to
+some objective function, or given some objective function criteria,
+place as many cameras as required. I focus on the first formulation
+in this chapter.
 
-\section{Single Camera Placement -- Localization}
+I split the results in this chapter based on the objective
+function optimized.
 
-\subsection{A Cheaper Objective Function}
+\section{A Cheap Objective Function}
+
+The mutual information measure TODO REF is an extremely expensive to compute,
+but principled, objective function. Due to its cost however, I
+develop a cheaper objective that can be used for optimizing
+the parameters (orientation, field of view) of a single camera.
+
+
+\subsection{Objective Function for Localization}
+
+The task of a camera is to maximally aid in vehicle localization: a natural
+objective is therefore to maximize the reduction in vehicle uncertainty
+after an update. This intuitive means we have to provide the best possible
+updates to the vehicles, or minimize $r$ the error radius (I consider circular errors here,
+since they neatly quantify uncertainty as a single number), in all possible updates sent to vehicles
+passing by the camera.
+
+To quantify ``all possible updates'', consider that we know roughly where vehicles will be: 
+for vehicles to be running they must self-localize to at most $\pm25cm$ from
+their ground truth position. Additionally, if the controllers
+are implemented well, their position estimate should be exactly on the path
+to be traversed. Thus, assuming the 25cm represents two standard deviations,
+the vehicle will be within 25cm of the path 95\% of the time.
+
+Using this information, I place a normal distribution
+along the path, which defines the probability of being at a distance
+from the center line at all points, and call it $p(x,y)$.
+
+Now, I can formulate the objective function as minimizing the
+expected reported error radius over the camera's pixel plane.
+In other words, for a camera $Cam$ 
+\begin{flalign}
+    obj_1(Cam) = \Sum{(i,j)\in Cam}(p(proj_{Cam}(i,j)) * r_{Cam}(i,j)) 
+\end{flalign}
+
+where $(i,j)$ represent the pixels in the camera plane, $proj_{Cam}$ projects
+a pixel onto the ground plane from the camera, and $r_{Cam}(i,j)$ is shorthand for 
+the error radius for a prediction at pixel $(i,j)$ as given in Section~\ref{sec:cameramodel:r}.
+
+The problem with this formulation is that when allowing the camera
+to rotate to minize the objective, it naturally selects views
+where the road is not visible at all, driving the expectation to 0.
+Really, the problem needs to be reformulated as a maximization to obtain
+sensible results, but any number of operations can invert $r$, making
+the objective a maximization problem.
+
+My insight is to utilize the Kalman gain, $\bm{K}$, from Section~\ref{chap:impl:vehicle:ekf}.
+It directly quantifies how much the vehicle's localization will ``trust'' an update,
+and is highest when the error in the measurement is low. This provides
+a principled way of inverting $r$.
+
+A simple one dimensional Kalman Filter computes the gain $K = \frac{\sigma}{\sigma + \sigma_{measurement}$.
+
+
+
 Pros/Cons
 
 \subsection{Straight Roads}
+
+*aggregate basic approach
 
 \subsection{Relation to Curvature}
 

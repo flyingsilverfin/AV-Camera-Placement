@@ -114,7 +114,7 @@ class ROSCameraNetwork(object):
 
         covariance = np.diag(np.zeros(2, dtype=np.float64)) # this gets handed off as R_k in the EKF
         if not self.error_elipse:
-            variance = np.sqrt(error/3.0)
+            variance = (error/3.0)**2
             covariance[0,0] = variance
             covariance[1,1] = variance
         else:
