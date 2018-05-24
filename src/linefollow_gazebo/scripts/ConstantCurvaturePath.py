@@ -1,5 +1,4 @@
 import numpy as np
-import rospy
 import tf_conversions
 
 tf_transformations = tf_conversions.transformations
@@ -126,7 +125,6 @@ class ConstantCurvaturePath(object):
         elif return_type == 'PointStamped':
             return PointStamped(point=Point(*pt))
         else:
-            rospy.logerr("Unknown return type: " + return_type)
             raise UnknownPathTypeException("Unknown requested point return type: " + return_type) 
 
 
@@ -149,7 +147,6 @@ class ConstantCurvaturePath(object):
         if return_type == 'numpy':
             return T
         else:
-            rospy.logerr("Can only return numpy array for tangent")
             raise TypeError("Bad type for tangent: " + return_type)
 
     def abstract_normal_at(self, t, speed=None, return_type='numpy'):
