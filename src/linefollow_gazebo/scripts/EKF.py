@@ -100,6 +100,7 @@ class CameraSensorSource(SensorSource):
 
 
     def process_msg(self, camera_update):
+        print("Received camera update mssage!")
         pos = camera_update.position
         self.R_k = np.array(camera_update.covariance).reshape(2,2)
         # only care about top left 2x2
@@ -137,6 +138,7 @@ class CameraSensorSource(SensorSource):
         sampled_delta = np.random.multivariate_normal(np.array([0,0]), cov)
         ground_truth_position = get_as_numpy_position(ground_truth_odom.pose.pose.position)[:2]
         perturbed = ground_truth_position + sampled_delta
+        print("Pertubring Ground truth position {0} with delta {1} to form {2}".format(ground_truth_position, sampled_delta, perturbed))
         self.last_msg.position.x, self.last_msg.position.y = perturbed 
         return perturbed
 
@@ -335,11 +337,17 @@ class OdometryEKF(object):
         angular_vel.z = pre_update_ekf_state[5]
 
         # insert camera update if had any
-        if self.sensor_source_update is None:
+        if self.last_sensor_position is None:
             msg.has_camera_update = False
         else:
             msg.has_camera_update = True
-            msg.camera_update = self.sensor_source_update.last_msg # just insert the last message into the sim data msg
+            # save the saved values into the message
+            # have to do it this way because 
+            # ROS may interrupt/receive new data 
+            # at any time it seems...
+            msg_pos = msg.camera_update.position
+            msg_pos.x, msg_pos.y = self.last_sensor_position
+            msg.camera_update.covariance = self.last_sensor_cov.ravel().tolist()
 
 
         self.to_sim_data_collector.publish(msg)
@@ -393,7 +401,9 @@ class OdometryEKF(object):
         pre_update_ekf_state = self.state.copy()
         pre_update_ekf_cov = self.cov.copy()
 
-        self.sensor_source_update = None
+        # self.sensor_source_update = None
+        self.last_sensor_position = None
+        self.last_sensor_cov = None
         for sensor_source in self.sensors:
             if sensor_source.has_new_data():
                 self.update(sensor_source)
@@ -428,7 +438,9 @@ class OdometryEKF(object):
     def update(self, sensor_source):
         """ Following Wikipedia EKF notation """
         sensor_values = sensor_source.consume_state(rospy.get_rostime().to_sec(), self.state, self.new_true_odom)
-        self.sensor_source_update = sensor_source # save this for writing to sim data collector
+        self.last_sensor_position = sensor_values.copy() #HACK breaking my APIs :( running out of time though
+        self.last_sensor_cov = sensor_source.R_k.copy()
+        # self.sensor_source_update = sensor_source # save this for writing to sim data collector
         h_t = sensor_source.calculate_expected_state(self.state)
         print("Received update: {0}".format(sensor_values))
         print("current state is: {0}, current cov is : {1}".format(self.state, self.cov))
