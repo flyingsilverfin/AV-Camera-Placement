@@ -85,12 +85,13 @@ class SimDataAggregator(object):
         # self.last_true_odom = None
        
         # transmit last camera update, if there was one
-        if self.last_camera is not None:
-            msg.camera_update = self.last_camera
-            msg.has_camera_update = True
-            self.last_camera = None
-        else:
-            msg.has_camera_update = False
+        # this is all now done by EKF!
+        # if self.last_camera is not None:
+            # msg.camera_update = self.last_camera
+            # msg.has_camera_update = True
+            # self.last_camera = None
+        # else:
+            # msg.has_camera_update = False
 
         # transmit controls
         # I'm going to unpack this a bit for ease of use later

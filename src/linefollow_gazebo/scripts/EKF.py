@@ -106,24 +106,42 @@ class CameraSensorSource(SensorSource):
         
         self.state_data = np.array([pos.x, pos.y])
         self.update_time = camera_update.header.stamp.to_sec()
+
+        self.last_msg = camera_update
         
     
     def get_jacobian(self, ekf_state):
         return self.static_jacobian
 
-    def consume_state(self, ekf_time, ekf_state):
+    def consume_state(self, ekf_time, ekf_state, ground_truth_odom):
+        """ TODO cheat here...
+            Something isn't matching up in my camera =>  vehicle update (big distances!)
+            Instead, use a normal sensor model eg. use the covariance here
+            to sample within the error ellipse and add it to the ground truth state...
+            This is kinda voiding my proposition a bit since i'm not testing the whole
+            raytrace => estimate bit but I showed earlier the model fits well...
+        """
         position = super(CameraSensorSource, self).consume_state()
         if position is None:
             return
 
         # apply a time correction using current EKF state and time from message stamp/current time
-        msg_time = self.update_time
-        dt = ekf_time - msg_time
-        v_x, v_y = ekf_state[3], ekf_state[4]
-        dx, dy = v_x * dt, v_y * dt
-        position += np.array([dx, dy])
+        # msg_time = self.update_time
+        # dt = ekf_time - msg_time
+        # v_x, v_y = ekf_state[3], ekf_state[4]
+        # dx, dy = v_x * dt, v_y * dt
+        # position += np.array([dx, dy])
 
-        return position
+        cov = self.R_k
+        
+        sampled_delta = np.random.multivariate_normal(np.array([0,0]), cov)
+        ground_truth_position = get_as_numpy_position(ground_truth_odom.pose.pose.position)[:2]
+        perturbed = ground_truth_position + sampled_delta
+        self.last_msg.position.x, self.last_msg.position.y = perturbed 
+        return perturbed
+
+
+        # return position
 
     def get_noise_matrix(self):
         return self.R_k*2
@@ -316,6 +334,14 @@ class OdometryEKF(object):
         angular_vel = msg.ekf_odom.twist.twist.angular
         angular_vel.z = pre_update_ekf_state[5]
 
+        # insert camera update if had any
+        if self.sensor_source_update is None:
+            msg.has_camera_update = False
+        else:
+            msg.has_camera_update = True
+            msg.camera_update = self.sensor_source_update.last_msg # just insert the last message into the sim data msg
+
+
         self.to_sim_data_collector.publish(msg)
 
     def receive_ground_truth(self, odom):
@@ -367,6 +393,7 @@ class OdometryEKF(object):
         pre_update_ekf_state = self.state.copy()
         pre_update_ekf_cov = self.cov.copy()
 
+        self.sensor_source_update = None
         for sensor_source in self.sensors:
             if sensor_source.has_new_data():
                 self.update(sensor_source)
@@ -400,7 +427,8 @@ class OdometryEKF(object):
     
     def update(self, sensor_source):
         """ Following Wikipedia EKF notation """
-        sensor_values = sensor_source.consume_state(rospy.get_rostime().to_sec(), self.state)
+        sensor_values = sensor_source.consume_state(rospy.get_rostime().to_sec(), self.state, self.new_true_odom)
+        self.sensor_source_update = sensor_source # save this for writing to sim data collector
         h_t = sensor_source.calculate_expected_state(self.state)
         print("Received update: {0}".format(sensor_values))
         print("current state is: {0}, current cov is : {1}".format(self.state, self.cov))

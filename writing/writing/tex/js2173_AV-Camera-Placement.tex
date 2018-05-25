@@ -555,7 +555,7 @@ motion.
 \begin{figure}
     \includegraphics[width=\linewidth]{figures/implementation/ekf/noise_params.png}
 \caption[Noise Parameter Settings]{How various settings of $alpha$'s affect propagation samples. The canonical settings produce the leftmost spread\textsuperscript{1}}
-    \tiny\textsuperscript{1}Borrowed from \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}}
+    \tiny\textsuperscript{1}Borrowed from \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}
     \label{fig:ekf:noiseparams}
 \end{figure}
 
@@ -601,6 +601,8 @@ Angular Error Accumulation Rate & 0.25 $\degree$/min & $\sim$1$\degree$/min
 * Objection functions used in the past (=> related work? Or into camera placement chapter?) 
 
 * grid search, hillclimbing..
+\subsection{Optimization}
+\label{sec:impl:optimization}
 
 \section{Submodularity}
 * TODO -- leave to end to see if have time to explore this
@@ -646,7 +648,7 @@ and analyze its properties.
 
 To start with, I develop a circular error radius, $r$, which I show to contain
 the true error 99\% of the time. While circular error radii are more amenable to analysis and are good
-estimates at high pitch angles, error ellipses are more realistic at low pitch angles and are an 
+estimates at steeper pitch angles, error ellipses are more realistic at low pitch angles and are an 
 even more accurate error bound. Therefore, I also transform the circular error bounds into error ellipses at the end of this chaper.
 
 Both circles and ellipses can be encoded as three standard deviations of a normal distrbution
@@ -1148,7 +1150,7 @@ of its major to minor axis lengths. These worked very well in practice.
 The issue of timing delays is not considered further, and could
 be dealt with similarly in a physical implementation.
  
-\section{Conclusion}
+\section{Summary}
 
 This chapter has developed and evaluated the camera sensor model
 used in the following chapter to provide correctional updates
@@ -1197,14 +1199,13 @@ the parameters (orientation, field of view) of a single camera.
 The task of a camera is to maximally aid in vehicle localization: a natural
 objective is therefore to maximize the reduction in vehicle uncertainty
 after an update. This intuitive means we have to provide the best possible
-updates to the vehicles, or minimize $r$ the error radius (I consider circular errors here,
-since they neatly quantify uncertainty as a single number), in all possible updates sent to vehicles
-passing by the camera.
+updates to the vehicles, or minimize $r$ the error radius, in all possible updates sent to vehicles
+passing by the camera. I consider circular errors here,
+since they neatly quantify uncertainty as a single number.
 
 To quantify ``all possible updates'', consider that we know roughly where vehicles will be: 
-for vehicles to be running they must self-localize to at most $\pm25cm$ from
-their ground truth position. Additionally, if the controllers
-are implemented well, their position estimate should be exactly on the path
+for vehicles to be running they must self-localize to at most $\pm25cm$ lateral error. 
+Additionally, if the controllers are implemented well, their position estimate should be exactly on the path
 to be traversed. Thus, assuming the 25cm represents two standard deviations,
 the vehicle will be within 25cm of the path 95\% of the time.
 
@@ -1216,7 +1217,7 @@ Now, I can formulate the objective function as minimizing the
 expected reported error radius over the camera's pixel plane.
 In other words, for a camera $Cam$ 
 \begin{flalign}
-    obj_1(Cam) = \Sum{(i,j)\in Cam}(p(proj_{Cam}(i,j)) * r_{Cam}(i,j)) 
+    obj_1(Cam) &= \sum_{(i,j)\in Cam}p(proj_{Cam}(i,j)) * r_{Cam}(i,j) 
 \end{flalign}
 
 where $(i,j)$ represent the pixels in the camera plane, $proj_{Cam}$ projects
@@ -1224,22 +1225,24 @@ a pixel onto the ground plane from the camera, and $r_{Cam}(i,j)$ is shorthand f
 the error radius for a prediction at pixel $(i,j)$ as given in Section~\ref{sec:cameramodel:r}.
 
 The problem with this formulation is that when allowing the camera
-to rotate to minize the objective, it naturally selects views
+to minize the objective, it naturally selects views
 where the road is not visible at all, driving the expectation to 0.
 Really, the problem needs to be reformulated as a maximization to obtain
-sensible results, but any number of operations can invert $r$, making
-the objective a maximization problem.
+sensible results. To do this, $r$ needs to be inverted, but there are 
+many ways to achieve this.
 
 My insight is to utilize the Kalman gain, $\bm{K}$, from Section~\ref{chap:impl:vehicle:ekf}.
 It directly quantifies how much the vehicle's localization will ``trust'' an update,
 and is highest when the error in the measurement is low. This provides
 a principled way of inverting $r$.
 
-A simple one dimensional Kalman Filter computes the gain $K = \frac{\sigma}{\sigma + \sigma_{measurement}$.
+A simple one dimensional Kalman Filter computes the gain $K = \frac{\sigma^2}{\sigma^2 + \sigma_{measurement}^2}$.
+So, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, resulting in the following objective function:
 
+\begin{flalign}
+    obj_2(Cam) &= \sum_{(i,j)\in Cam}\frac{p(proj_{Cam}(i,j))}{1 + (r_{Cam}(i,j)/3)^2}
+\end{flalign}
 
-
-Pros/Cons
 
 \subsection{Straight Roads}
 
@@ -1253,9 +1256,39 @@ Pros/Cons
 
 Because we can in this case! ... may be a pain to implement in current code of piecewise paths...
 
+
 \subsection{Varying Pitch, Yaw, and Horizontal and Vertical FoV}
 
+As mentioned in the introduction of this dissertation, I also attempt
+to optimize the field of view simultaneously with the pitch and yaw
+directions.
+
+To examine this I used a hill-climbing algorithm with random restarts
+to explore the space of options, as described in Section~\ref{sec:impl:optimization}.
+
+Unfortunately, using the Kalman-gain based objective function
+
 * hill climbing (put in background?)
+
+\subsection{Discussion}
+
+The objective function used in this section can be seen as
+a measure of the \textit{instantaneous localization power}
+of the camera. In other words, if a vehicle appeared suddenly, or
+could only be sent a single update, how can the camera best
+be oriented to reduce its localization error, on average.
+
+There are several issues with this metric. Biggest of them
+is the embedded assumption that only 1 update can be sent.
+In reality, a vehicle spends a longer amount of time in the camera's
+field of view if the camera can cover more ground area -- 
+though the resulting updates sent to the vehicle may be
+less accurate. A useful property of the Kalman
+filter is that the uncertainty (covariance) in the state
+can only shrink as a result of a measurement, so there
+must some utility in taking advantage of sending
+multiple measurements to the vehicle.
+
 
 
 \section{Single Camera Placement -- Navigation}
