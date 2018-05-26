@@ -9,6 +9,7 @@ import numpy as np
 import tf_conversions
 from ..LoggingServer import Logger 
 from ..SimulationExperimentRunner import Runner 
+import analysis
 
 from custom_messages.msg import SimulationDataMsg, CameraUpdate
 
@@ -23,68 +24,18 @@ def quat_to_numpy(quat):
 def vec3_to_numpy(vec):
     return np.array([vec.x, vec.y, vec.z])
 
-# def dfs_loader(path, config, runner):
-
-    # for key in config:
-        # child = config[key]
-        # if key.endswith('_') or (type(child) != dict and type(child) != list):
-            # name = '/'.join(path) + '/' + key
-            # runner.set_param(name, child)
-        # else:
-            # dfs_loader(path + [key], child,runner)
-
-
 def init_params(config, simulation_runner):
     for key in config:
         simulation_runner.set_param(key, config[key]) # addressable as /.../... by default! yay ROS
 
 def run_n_times(runner, repeats, save_dir, rviz, max_timeout=120, continue_exec=True):
 
-    # def receive_sim_data(msg):
-        # time = msg.header.stamp.to_sec()
-
-        # true_odom = msg.true_odom
-        # true_position = point_to_numpy(true_odom.pose.pose.position)
-        # true_quat = quat_to_numpy(true_odom.pose.pose.orientation)
-        # true_linear_vel = vec3_to_numpy(true_odom.twist.twist.linear)
-        # true_angular_vel = vec3_to_numpy(true_odom.twist.twist.angular)
-        # true_heading = tf_conversions.transformations.euler_from_quaternion(true_quat)[2] # in radians
-
-        # ekf_state = list(msg.ekf_state)
-        # ekf_cov = list(msg.ekf_cov)
-
-        # sim_data_log.append({
-            # 't': time,
-            # 'true': {
-                # 'pos': true_position.tolist(),
-                # 'quat': true_quat.tolist(),
-                # 'linear_vel': true_linear_vel.tolist(),
-                # 'angular_vel': true_angular_vel.tolist(),
-                # 'heading_radians': true_heading,
-            # },
-            # 'ekf_state': ekf_state,
-            # 'ekf_cov': ekf_cov
-            # })
-
-
-    # def receive_camera_update(msg):
-        # time = msg.header.stamp.to_sec()
-        # position = point_to_numpy(msg.position)
-        # covariance = np.array(msg.covariance)
-        # camera_updates_log.append({
-            # 't': time,
-            # 'pos': position.tolist(),
-            # 'cov': covariance.tolist(),
-            # 'camera_id': msg.source_camera_id
-            # })
-
-
     count = 0
     last_num = 0
     if continue_exec:
         # get the last number already executed in `this_save_dir`
         dirs = os.listdir(save_dir)
-        nums = [int(x.split("_")[-1]) for x in dirs]
+        nums = [int(x.split("_")[-1]) for x in dirs if os.path.isdir(os.path.join(save_dir,x))]
         nums.sort()
         if len(nums) > 0:
             last_num = nums[-1]+1
@@ -188,4 +139,22 @@ if __name__ == "__main__":
     run_n_times(sim_runner, repeats, save_dir, rviz=config['rviz'], max_timeout=timeout, continue_exec=args.continue_exec)
 
     sim_runner.shutdown_core()
+
+    print("\n\nBeginning bagfile analysis for all bagfiles below: {0}".format(save_dir))
+
+    # run analysis over the produced .bag files!
+    # get all produced bagfiles for this runner
+    bagfiles = analysis.get_all_bagfiles_below(save_dir)
+    print("found bagfiles: {0}".format(bagfiles))
+    definition = config
+    max_steps = definition['analysis']['max_steps']
+    metrics = analysis.compute_metrics(definition, bagfiles, max_steps) 
+   
+    
+    # need to convert bigfloat mutual information into something JSON serializable
+    # can be deseralized from strings again via bf.BigFloat()
+    metrics['mean mutual inf']['mutual inf'] = str(metrics['mean mutual inf']['mutual inf'])
+
+    with open(os.path.join(save_dir, "summary.json"), 'w') as f:
+        json.dump(metrics, f)
 

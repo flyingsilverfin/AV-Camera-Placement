@@ -6,6 +6,7 @@ import os
 import json
 from ..LoggingServer import Logger 
 from ..SimulationExperimentRunner import Runner 
+import bigfloat as bf
 
 
 # general idea: use Popen to launch a couple of instance launchers
@@ -26,6 +27,20 @@ def wait_for_finish(popen_runners):
     elapsed = time.time() - start_time
     print("------Finished, took {0} seconds -------".format(elapsed))
 
+
+def get_all_summary_files(experiment_dir, name='summary.json'):
+    # directory structure is
+    # experiment dir => runner_x => run_x => .bags
+    # summaries are under runner_
+
+    # just use walk to handle it...
+    summary_files = []
+    for path, subdirs, files in os.walk(experiment_dir):
+        for f in files:
+            if f == name:
+                summary_files.append(os.path.join(path, f))
+
+    return summary_files
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Launch parallel instances of simulation, with a specified config file')
@@ -105,5 +120,64 @@ if __name__ == "__main__":
 
     wait_for_finish(runners)
     
+
+
+    # aggregate all the summaries computed by the runners
+    summary_files = get_all_summary_files(save_dir)
+    
+    aggregate_metrics = {
+        "means": {
+            "mean total trace": 0,
+            "mean final trace": 0,
+            "mean total differential entropy": 0,
+            "mean final differential entropy": 0,
+            "mean mean crosstrack error": 0,
+            "num_bags": 0
+        },
+        "mean mutual inf": {
+            "mutual inf": 0,
+            "num_bags": 0
+        }
+    }
+
+    agg_means = aggregate_metrics['means']
+    agg_MI = aggregate_metrics['mean mutual inf']
+
+    for summary in summary_files:
+        with open(summary) as f:
+            metrics = json.load(f)
+        
+        means = metrics['means']
+        # multiply partial means by number of bags
+        num_bags = means['num_bags']
+        for key in agg_means:
+            if key == 'num_bags':
+                agg_means[key] += num_bags
+            else:
+                agg_means[key] += num_bags * means[key]
+
+        # also expand mutual information same way
+        mi = metrics['mean mutual inf']
+        mi_num_bags = mi['num_bags']
+        # add how many bags were comptued over
+        agg_MI['num_bags'] += mi_num_bags 
+        agg_MI['mutual inf'] += mi_num_bags * bf.BigFloat(mi['mutual inf'])
+        
+    # re-average to compute overall means
+    total_num_bags_means = agg_means['num_bags']
+    for key in agg_means:
+        if key == 'num_bags':
+            continue
+        agg_means[key] = agg_means[key]/total_num_bags_means
+
+    # re-average MI
+    agg_MI['mutual inf'] /= agg_MI['num_bags']
+    agg_MI['mutual inf'] = str(agg_MI['mutual inf']) # make serializable
+
+    with open(os.path.join(save_dir, "metrics_summary.json"), 'w') as f:
+        json.dump(aggregate_metrics, f)
+
+
+
 
 

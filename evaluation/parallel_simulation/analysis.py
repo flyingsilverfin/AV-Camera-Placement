@@ -25,6 +25,14 @@ import bigfloat as bf
 def point_to_numpy(point):
     return np.array([point.x, point.y, point.z])
 
+def vec_to_numpy(vec):
+    return point_to_numpy(vec)
+def quat_to_numpy(quat):
+    return np.array([quat.x, quat.y, quat.z, quat.w])
+def quat_to_rpy(quat):
+    # note: need numpy quaternion
+    return tf_conversions.transformations.euler_from_quaternion(quat)
+
 class BasicEntropyMetric(object):
 
     def __init__(self):
@@ -238,6 +246,11 @@ class ConditionalEntropyMetric(object):
         prob_movements = []
         n_skipped = 0
         timesteps = 0
+        # quite important we discount ones without enough steps
+        # because each step adds like 10^-3 to the probability...
+        if bag.get_message_count() < max_steps:
+            raise Exception("Bag does not have enough messages")
+
         for i, msg in enumerate(bag):
             if i >= max_steps:
                 break
@@ -378,35 +391,47 @@ class ConditionalEntropyMetric(object):
             camera_network.add_placement(placement)
     
         
-        # need to find out the sample with the smallest number of time steps
-        # don't want to multiply more time steps in one than another
-        
-        total_entropy, n = 0, len(bag_files)
-        
-        # first go through each one and count the number of timesteps to find the minimum
-        smallest_timesteps = 999999
-        for i, filename in enumerate(bag_files):
-            bag = rosbag.Bag(filename)
-            count = bag.get_message_count()
-            if count < smallest_timesteps:
-                smallest_timesteps = count
-        
-        smallest_timesteps = min(smallest_timesteps, max_steps)
+        total_entropy, num_bags_used = 0, 0
         
         for i, filename in enumerate(bag_files):
             bag = rosbag.Bag(filename)
-            
-            log_probability, timesteps, n_skipped = self.calculate_log_probability(bag, camera_network, verbose=verbose, max_steps=smallest_timesteps)
-            entropy = -1*bf.exp(log_probability) * (log_probability) # use bigfloat
-    #         if not np.isnan(entropy) and not np.isinf(entropy):
+            try:
+                log_probability, timesteps, n_skipped = self.calculate_log_probability(bag, camera_network, verbose=verbose, max_steps=max_steps)
+                entropy = -1*bf.exp(log_probability) * (log_probability) # use bigfloat
+            except Exception as e:
+                print(e)
+                print("(skipping)")
+                continue
+
             total_entropy += entropy
+            num_bags_used += 1
                 
             print("Log Probability of run {0}: {1}, Entropy: {2} from {3} timesteps skipped {4}".format(i, log_probability, entropy, timesteps, n_skipped))
     #         total_entropy += probability
         
-        return total_entropy/n
+        return total_entropy/num_bags_used, num_bags_used
 
 
+
+class MeasurementMetrics(object):
+
+    def get_mean_crosstrack_error(self, bag, max_steps):
+        """ Calculates mean crosstrack error in absolute value """
+        true_errors = []
+        for i, msg in enumerate(bag):
+            if i == max_steps:
+                break
+            msg = msg.message
+            target_point = vec_to_numpy(msg.path_update.target_point)
+            actual_pos = point_to_numpy(msg.true_odom.pose.pose.position)
+            # since the exactly distance appears to be very unreliable (timing mismatch during data recording => record path target point from a different timestep as current point) buffering is a bloody pain
+            # compute crosstrack distance here         
+            normal = vec_to_numpy(msg.path_update.path_normal)
+            diff_actual = actual_pos - target_point
+            # project onto normal
+            true_errors.append(np.abs(np.dot(normal, diff_actual))) # in absolutes
+        return np.mean(true_errors)
+            
 
 def get_bagfiles_for(experiment_path):
     """ Provide an experiment .json """
@@ -440,32 +465,61 @@ def get_all_bagfiles_below(path):
 
     return bagfiles
 
-def compute_metrics(definition, bagfiles, max_steps):
+def compute_metrics(definition, bagfiles, max_steps, verbose=False):
     metrics = {
-        "mean total trace": 0,
-        "mean final trace": 0,
-        "mean total differential entropy": 0,
-        "mean final differential entropy": 0,
-        "num_bags": len(bagfiles)   # this is for aggregating individual runner's metrics together afterward
+        "means": {
+            "mean total trace": 0,
+            "mean final trace": 0,
+            "mean total differential entropy": 0,
+            "mean final differential entropy": 0,
+            "mean mean crosstrack error": 0,
+            "num_bags": 0
+        },
+        "mean mutual inf": {
+            "mutual inf": 0,
+            "num_bags": 0
+        }
     }
 
     basic_entropy = BasicEntropyMetric()
     trace = CovarianceTraceMetrics()
     mutual_inf = ConditionalEntropyMetric()
+    measurements = MeasurementMetrics() 
 
+    mean_metrics = metrics['means']
     for f in bagfiles:
         bag = rosbag.Bag(f)
-        metrics["mean total trace"] += trace.get_summed_trace(bag, max_steps)
-        metrics["mean final trace"] += trace.get_final_trace(bag, max_steps)
-        metrics["mean total differential entropy"] += basic_entropy.sum_step_entropies(bag, max_steps)
-        metrics["mean final differential entropy"] += basic_entropy.get_final_entropy(bag, max_steps)
-    
-    # average each one 
-    for key in metrics:
-        metrics[key] /= len(bagfiles)
+        if bag.get_message_count() < max_steps:
+            # skip bags without enough messages...
+            continue
+        try:
+            mean_total_trace = trace.get_summed_trace(bag, max_steps)
+            final_trace = trace.get_final_trace(bag, max_steps)
+            stepwise_entropies = basic_entropy.sum_step_entropies(bag, max_steps)
+            final_entropy = basic_entropy.get_final_entropy(bag, max_steps)
+            crosstrack_error = measurements.get_mean_crosstrack_error(bag, max_steps)
+             # increment values if none of them failed
+            mean_metrics["mean total trace"] += mean_total_trace
+            mean_metrics["mean final trace"] += final_trace 
+            mean_metrics["mean total differential entropy"] += stepwise_entropies 
+            mean_metrics["mean final differential entropy"] += final_entropy 
+            mean_metrics["mean mean crosstrack error"] += crosstrack_error
+            mean_metrics['num_bags'] += 1
+        except Exception as e:
+            print(e)
+            print("==> (Skipping)")
+            continue
+         
+    # average each one that is supposed to be a mean
+    for key in mean_metrics:
+        if key == 'num_bags':
+            continue
+        mean_metrics[key] /= mean_metrics['num_bags'] 
 
-    metrics["mean conditional entropy"] = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps)
-
+    # this one does mean internally
+    mutual_inf, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
+    metrics["mean mutual inf"]['mutual inf'] = mutual_inf 
+    metrics['mean mutual inf']['num_bags'] = num_bags_used
     return metrics
 
 

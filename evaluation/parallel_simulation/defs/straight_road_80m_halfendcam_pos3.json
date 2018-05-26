@@ -56,5 +56,9 @@
         "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
         "motion_model_threshold": 0.00001
     },
-    "max_timeout": 60.0
+    "max_timeout": 60.0,
+    "analysis": {
+        "max_steps": 130
+    }
+
 }

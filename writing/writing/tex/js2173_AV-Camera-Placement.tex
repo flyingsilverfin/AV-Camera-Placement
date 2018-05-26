@@ -1142,7 +1142,9 @@ value would pollute the remaining good value).
 
 To fix this, I did two things: firstly, I included a timestamp in the 
 camera's update message, which enabled me to apply a time difference
-correction based on the vehicle's instantaneous velocity. To further
+correction based on the vehicle's instantaneous velocity. This is 
+similar to early approches proposed for handling delayed measurements
+such as To further
 avoid partially stale updates from corrupting the vehicle's state,
 I also made the oval 50\% more circular, as defined by the ratio
 of its major to minor axis lengths. These worked very well in practice.
@@ -1244,17 +1246,14 @@ So, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, resulting in the follow
 \end{flalign}
 
 
-\subsection{Straight Roads}
+\subsection{Optimizing Pitch and Yaw with varying Curvature}
 
-*aggregate basic approach
 
-\subsection{Relation to Curvature}
+%\subsection{Aside: Intersection}
 
-\subsection{Aside: Intersection}
+%*** optional -- examine if time remaining at the end ***
 
-*** optional -- examine if time remaining at the end ***
-
-Because we can in this case! ... may be a pain to implement in current code of piecewise paths...
+%Because we can in this case! ... may be a pain to implement in current code of piecewise paths...
 
 
 \subsection{Varying Pitch, Yaw, and Horizontal and Vertical FoV}
@@ -1266,7 +1265,7 @@ directions.
 To examine this I used a hill-climbing algorithm with random restarts
 to explore the space of options, as described in Section~\ref{sec:impl:optimization}.
 
-Unfortunately, using the Kalman-gain based objective function
+
 
 * hill climbing (put in background?)
 
@@ -1275,8 +1274,8 @@ Unfortunately, using the Kalman-gain based objective function
 The objective function used in this section can be seen as
 a measure of the \textit{instantaneous localization power}
 of the camera. In other words, if a vehicle appeared suddenly, or
-could only be sent a single update, how can the camera best
-be oriented to reduce its localization error, on average.
+could only be sent a single update, how can the camera best be chosen
+to reduce its localization error, on average.
 
 There are several issues with this metric. Biggest of them
 is the embedded assumption that only 1 update can be sent.
@@ -1285,9 +1284,24 @@ field of view if the camera can cover more ground area --
 though the resulting updates sent to the vehicle may be
 less accurate. A useful property of the Kalman
 filter is that the uncertainty (covariance) in the state
-can only shrink as a result of a measurement, so there
-must some utility in taking advantage of sending
-multiple measurements to the vehicle.
+can only shrink as a result of a measurement, so likely some
+utility in sending more udpates over a wider field of view,
+even at reduced accuracy. 
+
+The advantages of the objective function here are twofold:
+firstly, it is cheap to compute, and is the reason I could
+do the hillclimbing optimization in the prior section which
+required hundreds of evaluations of the objective. Secondly,
+it can be used independently of specific trajectories; all
+other obejective functions in this work are centered about
+a single path to take.
+
+Since I am essentially able to perform exhaustive searches
+over the possible pitch and yaw angles, I use this
+as a pre-optimization step for the following sections to discover
+interesting orientations to further explore with expensive objectives.
+
+% TODO attempt an intersection
 
 
 
