@@ -704,7 +704,7 @@ the predicted vehicle location and therefore increases its error by the length o
 I call this combined value $err_{xy}$ and at two standard deviations it is bounded above by
 $\abs{err_{xy}} = 0.03$.
 
-\begin{figure}[hbh]
+\begin{figure}[htb]
 \centering
 \begin{subfigure}[b]{.45\textwidth}
   \centering
@@ -1144,13 +1144,12 @@ To fix this, I did two things: firstly, I included a timestamp in the
 camera's update message, which enabled me to apply a time difference
 correction based on the vehicle's instantaneous velocity. This is 
 similar to early approches proposed for handling delayed measurements
-such as To further
-avoid partially stale updates from corrupting the vehicle's state,
+such as those in~\cite{larsen1998incorporation}\cite{tessier2006real}.
+To further avoid partially stale updates from corrupting the vehicle's state,
 I also made the oval 50\% more circular, as defined by the ratio
-of its major to minor axis lengths. These worked very well in practice.
-
-The issue of timing delays is not considered further, and could
-be dealt with similarly in a physical implementation.
+of its major to minor axis lengths. Together these proved to 
+provide adequate performance. The issue of timing delays is not considered 
+further, though would need to be re-examined in a physical implementation.
  
 \section{Summary}
 
@@ -1248,11 +1247,84 @@ So, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, resulting in the follow
 
 \subsection{Optimizing Pitch and Yaw with varying Curvature}
 
+I perform an exhaustive grid search over the pitch and yaw parameters using the defined
+objective function. The results are presented in Figure~\ref{fig:simpleobjective}.
+
+\begin{figure}[h!]
+    \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_0_curvature_annotated.png}
+    \label{fig:simpleobjective:0curvature}
+    \caption{0 Curvature}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_bestpos_small.png}
+    \caption{Configuration 1}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_pos2_small.png}
+    \caption{Configuration 2}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_pos3_small.png}
+    \caption{Configuration 3}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_at_radius_20_annotated.png}
+    \label{fig:simpleobjective:0curvature}
+    \caption{20m Radius}
+\end{subfigure}
+\begin{subfigure}[b]{0.25\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/radius_20m_pos1_small.png}
+    \caption{Configuration 1}
+\end{subfigure}
+\begin{subfigure}[b]{0.25\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/radius_20m_pos2_small.png}
+    \caption{Configuration 2}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_at_radius_5_annotated.png}
+    \label{fig:simpleobjective:20radius}
+    \caption{5m Radius}
+\end{subfigure}
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/simple_objective/radius_5m_pos1_small.png}
+    \caption{Configuration 1}
+\end{subfigure}
+\caption[Cheaper Objective Function Results]{Results and high scoring orientations from the cheaper objective function.}
+\label{fig:simpleobjective}
+\end{figure}
+
+The first images in a row show the evaluated objective function, the others
+are diagrams of the path and camera's field of view. The displayed
+configurations the top-scoring and distinct orientations (I ignored
+symmetric cases). The filled gray areas are world obstacles
+that I place to imitate walls.
+
+The presented optimal points match what one might intuitively expect 
+for camera placement: ideally, we maximize both the length of the path
+we can spot at once, have the path trace through the highest
+pixel density part of the field of view -- this gives the lowest
+error during location prediction.
+
+As the curvature increases, the number of different ``good'' 
+orientations decreases -- with a highly curved path, there is only
+one best choice - the one observing the most of the path possible.
+
+Going forward into the more expensive objectives in Section REF TODO, I use
+the depicted configurations as the only allowed orientations to restrict
+the search space as much as possible.
 
 %\subsection{Aside: Intersection}
-
 %*** optional -- examine if time remaining at the end ***
-
 %Because we can in this case! ... may be a pain to implement in current code of piecewise paths...
 
 
@@ -1260,14 +1332,45 @@ So, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, resulting in the follow
 
 As mentioned in the introduction of this dissertation, I also attempt
 to optimize the field of view simultaneously with the pitch and yaw
-directions.
+directions, which has not been examined as a variable before.
 
 To examine this I used a hill-climbing algorithm with random restarts
 to explore the space of options, as described in Section~\ref{sec:impl:optimization}.
 
+\subsubsection{Straight Road Results}
+
+Unsurprisingly, for straight roads, all of the best configurations found
+shrunk the field of view as far as was allowed, and oriented themselves to
+view the road as long as possible (the diagonal of the field of view). This makes sense -- 
+when observing a straight line, there is no point wasting pixels
+observing unlikely regions. Additionally, shrinking the field
+of view is akin to increasing the resolution, and decreases
+the error of predictions. The top hillclimbing result
+for straight roads is shown in Figure~\ref{fig:simpleobjective:hillclimb}.
+
+\begin{table}[htb]
+    \centering
+    \caption[Hillclimbing Top Scorers]{Top 3 results from hillclimbing across four parameters}
+    \label{tab:simpleobjective:hillclimb}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        Objective Score & Pitch & Yaw   & H. FoV & V FoV. \\ \midrule
+        8.63            & 56.98 & 47.84 & 20.07  & 20.13  \\
+        8.61            & 51.61 & 39.77 & 20.27  & 20.06  \\
+        8.6             & 56.74 & 48.23 & 20.13  & 20.27  \\ \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/simple_objective/top_hillclimb.png}
+    \caption[Top Hillclimbing Result]{Visualization of Top Hillclimbing Result.}
+    \label{fig:simpleobjective:hillclimb result}
+\end{figure}
+
+\subsection{Varying the Curvature}
 
 
-* hill climbing (put in background?)
 
 \subsection{Discussion}
 
