@@ -353,7 +353,7 @@ if __name__ == "__main__":
 
     
     save_dir = rospy.get_param('/results_dir')
-    path.save_as_fig(save_dir + '/path.png')
+    # path.save_as_fig(save_dir + '/path.png')
 
     line_follow = LineFollowController(path=path)#, positioning=positioning)
 
