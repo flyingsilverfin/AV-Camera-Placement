@@ -391,25 +391,21 @@ class ConditionalEntropyMetric(object):
             camera_network.add_placement(placement)
     
         
-        total_entropy, num_bags_used = 0, 0
-        
+        entropies = [] 
         for i, filename in enumerate(bag_files):
             bag = rosbag.Bag(filename)
             try:
                 log_probability, timesteps, n_skipped = self.calculate_log_probability(bag, camera_network, verbose=verbose, max_steps=max_steps)
                 entropy = -1*bf.exp(log_probability) * (log_probability) # use bigfloat
+                entropies.append(entropy)
+                print("Log Probability of run {0}: {1}, Entropy: {2} from {3} timesteps skipped {4}".format(i, log_probability, entropy, timesteps, n_skipped))
             except Exception as e:
                 print(e)
                 print("(skipping)")
                 continue
-
-            total_entropy += entropy
-            num_bags_used += 1
-                
-            print("Log Probability of run {0}: {1}, Entropy: {2} from {3} timesteps skipped {4}".format(i, log_probability, entropy, timesteps, n_skipped))
     #         total_entropy += probability
-        
-        return total_entropy/num_bags_used, num_bags_used
+       
+        return np.mean(entropies), np.var(entropies), len(entropies)
 
 
 
@@ -430,7 +426,7 @@ class MeasurementMetrics(object):
             diff_actual = actual_pos - target_point
             # project onto normal
             true_errors.append(np.abs(np.dot(normal, diff_actual))) # in absolutes
-        return np.mean(true_errors)
+        return np.mean(true_errors), np.var(true_errors)
             
 
 def get_bagfiles_for(experiment_path):
@@ -469,14 +465,20 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
     metrics = {
         "means": {
             "mean total trace": 0,
+            "var total trace": 0,
             "mean final trace": 0,
+            "var final trace": 0,
             "mean total differential entropy": 0,
+            "var total differential entropy": 0,
             "mean final differential entropy": 0,
+            "var final differential entropy": 0,
             "mean mean crosstrack error": 0,
+            "var crosstrack error": 0,
             "num_bags": 0
         },
         "mean mutual inf": {
             "mutual inf": 0,
+            "variance": 0,
             "num_bags": 0
         }
     }
@@ -485,6 +487,12 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
     trace = CovarianceTraceMetrics()
     mutual_inf = ConditionalEntropyMetric()
     measurements = MeasurementMetrics() 
+
+    total_traces = []
+    final_traces = []
+    total_diff_entropies = []
+    final_diff_entropies = []
+    crosstrack_errors = []
 
     mean_metrics = metrics['means']
     for f in bagfiles:
@@ -498,27 +506,38 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
             stepwise_entropies = basic_entropy.sum_step_entropies(bag, max_steps)
             final_entropy = basic_entropy.get_final_entropy(bag, max_steps)
             crosstrack_error = measurements.get_mean_crosstrack_error(bag, max_steps)
-             # increment values if none of them failed
-            mean_metrics["mean total trace"] += mean_total_trace
-            mean_metrics["mean final trace"] += final_trace 
-            mean_metrics["mean total differential entropy"] += stepwise_entropies 
-            mean_metrics["mean final differential entropy"] += final_entropy 
-            mean_metrics["mean mean crosstrack error"] += crosstrack_error
-            mean_metrics['num_bags'] += 1
+             # save values if none of them failed
+            total_traces.append(mean_total_trace)
+            final_traces.append(final_trace)
+            total_diff_entropies.append(stepwise_entropies)
+            final_diff_entropies.append(final_entropy)
+            crosstrack_errors.append(crosstrack_error)
         except Exception as e:
             print(e)
             print("==> (Skipping)")
             continue
          
+    mean_metrics["mean total trace"] = np.mean(total_traces)
+    mean_metrics["var total trace"] = np.var(total_traces)
+    mean_metrics["mean final trace"] = np.mean(final_traces) 
+    mean_metrics["var final trace"] = np.var(final_trace)
+    mean_metrics["mean total differential entropy"] = np.mean(total_diff_entropies)
+    mean_metrics["var total differential entropy"] = np.var(total_diff_entropies) 
+    mean_metrics["mean final differential entropy"] = np.mean(final_diff_entropies)
+    mean_metrics["var final differential entropy"] = np.var(final_diff_entropies)
+    mean_metrics["mean mean crosstrack error"] = np.mean(crosstrack_errors)
+    mean_metrics["var mean crosstrack error"] = np.var(crosstrack_errors)
+    mean_metrics['num_bags'] = len(total_traces)
+    
     # average each one that is supposed to be a mean
     for key in mean_metrics:
-        if key == 'num_bags':
-            continue
-        mean_metrics[key] /= mean_metrics['num_bags'] 
+        if key.startswith('mean'):
+            mean_metrics[key] /= mean_metrics['num_bags'] 
 
     # this one does mean internally
-    mutual_inf, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
-    metrics["mean mutual inf"]['mutual inf'] = mutual_inf 
+    mean_mi, variance_mi, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
+    metrics["mean mutual inf"]['mutual inf'] = mean_mi 
+    metrics["mean mutual inf"]['variance'] = variance_mi
     metrics['mean mutual inf']['num_bags'] = num_bags_used
     return metrics
 

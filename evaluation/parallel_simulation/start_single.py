@@ -154,6 +154,7 @@ if __name__ == "__main__":
     # need to convert bigfloat mutual information into something JSON serializable
     # can be deseralized from strings again via bf.BigFloat()
     metrics['mean mutual inf']['mutual inf'] = str(metrics['mean mutual inf']['mutual inf'])
+    metrics['mean mutual inf']['variance'] = str(metrics['mean mutual inf']['variance'])
 
     with open(os.path.join(save_dir, "summary.json"), 'w') as f:
         json.dump(metrics, f)

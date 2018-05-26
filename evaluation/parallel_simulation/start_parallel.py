@@ -7,7 +7,7 @@ import json
 from ..LoggingServer import Logger 
 from ..SimulationExperimentRunner import Runner 
 import bigfloat as bf
-
+import numpy as np
 
 # general idea: use Popen to launch a couple of instance launchers
 # pass this instance launcher the config file to use
@@ -128,14 +128,26 @@ if __name__ == "__main__":
     aggregate_metrics = {
         "means": {
             "mean total trace": 0,
+            "var total trace": 0,
+            "stddev total trace": 0,
             "mean final trace": 0,
+            "var final trace": 0,
+            "stddev final trace": 0,
             "mean total differential entropy": 0,
+            "var total differential entropy": 0,
+            "stddev total differential entropy": 0,
             "mean final differential entropy": 0,
+            "var final differential entropy": 0,
+            "stddev final differential entropy": 0,
             "mean mean crosstrack error": 0,
+            "var crosstrack error": 0,
+            "stddev crosstrack error": 0,
             "num_bags": 0
         },
         "mean mutual inf": {
             "mutual inf": 0,
+            "variance": 0,
+            "stddev": 0,
             "num_bags": 0
         }
     }
@@ -148,13 +160,14 @@ if __name__ == "__main__":
             metrics = json.load(f)
         
         means = metrics['means']
-        # multiply partial means by number of bags
+        # multiply partial means and variances by number of bags
         num_bags = means['num_bags']
         for key in agg_means:
             if key == 'num_bags':
                 agg_means[key] += num_bags
-            else:
-                agg_means[key] += num_bags * means[key]
+            elif not key.startswith('stddev'):
+                agg_means[key] += num_bags * means[key] # stddevs will be * 0 so ignore
+
 
         # also expand mutual information same way
         mi = metrics['mean mutual inf']
@@ -162,6 +175,7 @@ if __name__ == "__main__":
         # add how many bags were comptued over
         agg_MI['num_bags'] += mi_num_bags 
         agg_MI['mutual inf'] += mi_num_bags * bf.BigFloat(mi['mutual inf'])
+        agg_MI['variance'] += mi_num_bags * bf.BigFloat(mi['variance']) # since variance is just mean of squared diffs
         
     # re-average to compute overall means
     total_num_bags_means = agg_means['num_bags']
@@ -169,10 +183,18 @@ if __name__ == "__main__":
         if key == 'num_bags':
             continue
         agg_means[key] = agg_means[key]/total_num_bags_means
+        if key.startswith('var'):
+            # also insert a stddev key, should already exist or python complains
+            stddev_key = 'stddev' + key[3:]
+            agg_means[stddev_key] = agg_means[key]**0.5
 
     # re-average MI
     agg_MI['mutual inf'] /= agg_MI['num_bags']
+    agg_MI['variance'] /= agg_MI['num_bags']
+    agg_MI['stddev'] = agg_MI['variance']**0.5
     agg_MI['mutual inf'] = str(agg_MI['mutual inf']) # make serializable
+    agg_MI['variance'] = str(agg_MI['variance'])
+    agg_MI['stddev'] = str(agg_MI['stddev'])
 
     with open(os.path.join(save_dir, "metrics_summary.json"), 'w') as f:
         json.dump(aggregate_metrics, f)
