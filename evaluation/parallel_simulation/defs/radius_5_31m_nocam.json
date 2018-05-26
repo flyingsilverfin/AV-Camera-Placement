@@ -1,0 +1,57 @@
+{
+    "road": {
+        "width": 3.0,
+        "side_offset": 1.5,
+        "path": {
+            "loop": false,
+            "segments": [
+                {
+                    "curvature": 0.2,
+                    "length": 35.0
+                }
+            ]
+        }
+    },
+
+    "cameras": {
+        "update_rate": 10.0, 
+        "errors": {
+            "alg_error": 4.0,
+            "pos_error_stddev": 0.015,
+            "orient_error_stddev": 0.25
+        },
+        "placements": [
+        ]
+    },
+
+
+
+    "controller": {
+        "update_rate": 100,
+        "velocity_controller": {
+            "lookahead_time": 3.0,
+            "lookahead_interval": 0.20,
+            "straight_speed": 20.0,
+            "radius_speed_mult": 0.5,
+            "pid": [0.25, 0.0, 0.01]
+        },
+        "hoffman_steering": {
+            "distance_multiplier": 1.0
+        },
+        "path_tracking": {
+            "max_horizon": 10.0
+        }
+    },
+
+    "ekf": {
+        "update_rate": 25.0,
+        "initial_cov_diagonal": [0.01,0.01,0,0,0,0],
+        "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
+        "motion_model_threshold": 0.00001
+    },
+    "max_timeout": 15.0,
+    "analysis": {
+        "max_steps": 130
+    }
+}
+
