@@ -197,7 +197,7 @@ if __name__ == "__main__":
     agg_MI['stddev'] = str(agg_MI['stddev'])
 
     with open(os.path.join(save_dir, "metrics_summary.json"), 'w') as f:
-        json.dump(aggregate_metrics, f, index=4, sort_keys=True)
+        json.dump(aggregate_metrics, f, indent=4, sort_keys=True)
 
 
 
