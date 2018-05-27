@@ -55,6 +55,7 @@ def do_execution(config, current_placements, exp_name, gen_dir, nparallel, nrepe
         print("\nAlready have enough information on {0}!!!\n".format(this_exp_dir))
         return metrics_summary # already done this experiment!
 
+    nrepeats -= already_completed
     # make the subdir for this experiment
     try:
         os.makedirs(this_exp_dir)
@@ -67,7 +68,7 @@ def do_execution(config, current_placements, exp_name, gen_dir, nparallel, nrepe
     this_experiment_config = generate_config(config, current_placements)
     exp_config_path = os.path.join(this_exp_dir, "{0}.json".format(exp_name))
     with open(exp_config_path, 'w') as f:
-        json.dump(this_experiment_config, f)
+        json.dump(this_experiment_config, f, indent=4, sort_keys=True)
 
 
     # launch run_parallel.py
