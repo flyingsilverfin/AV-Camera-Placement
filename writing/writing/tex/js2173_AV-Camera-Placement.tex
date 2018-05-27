@@ -71,7 +71,7 @@
 \pagenumbering{arabic} 
 \setcounter{page}{1} 
 
-\section{Vision}
+\section{Research Vision}
 
 It is conceivable that, in the near future, private vehicles have been made redundant by an efficient
 fleet of local autonomous vehicles, ferrying passengers on demand between locations in 
@@ -199,7 +199,7 @@ in surveillance, and...
 
 * talk about limits of lateral errors allowable for navigation
 
-\section{External Localisation Sensors}
+\section{Off-board Sensor for Localization}
 * talk about alternative sensors to cameras here
 
 * discuss how cameras can provide very rich information, including pose, but only focus on (x,y) updates
@@ -384,19 +384,19 @@ a target speed for all points in time to create an error function.
 I set target speed policy $s$ based on the curvature $C$ of the 
 closest point on the reference path:
 
-\[
-    s(C) = 
+\begin{flalign}
+    s(C) &= 
     \begin{cases} 
       20.0   & C = 0.0 \\
       \frac{k}{C} & C > 0.0 
    \end{cases}
-\]
+\end{flalign}
 
 Constant $k$ was experimentally found to perform well at $k=0.5$.
 20.0 m/s was also found to be a reasonable straight-line speed, which corresponds
 to about 72 km/h.
 
-However, just using $s(C)$ as the target speed results in massive overshoots
+However, just using $s(C)$ as the target speed results in large overshoots
 at tight corners -- velocity controllers practically require some amount of lookahead
 due to finite decelerations. Therefore, I define a target speed as the mean of 
 $s(C)$ at $n$ equidistant points ahead of the vehicle on the curve.
@@ -416,7 +416,7 @@ once the curvature decreases.
     \label{fig:ekf:calibration plain}
 \end{subfigure}
 \caption[Speed Controller]{Speed Controller Performance over the calibration curve, traversed from (0,0) counter clockwise. Notice the sharp
-corner in the top right corner corresponds to a massive drop in target and actual speed.}
+corner in the top right corner corresponds to a big drop in target and actual speed.}
 \label{fig:impl:speedcontroller}
 \end{figure}
 
@@ -436,9 +436,9 @@ perpendicular distance to the path, as well as the vehicle's speed.
 
 TODO image of crosstrack distance, angles
 
-\[
-    \delta(t) = \Psi(t) + \arctan\frac{ke(t)}{u(t)}
-\]
+\begin{flalign}
+    \delta(t) &= \Psi(t) + \arctan\frac{ke(t)}{u(t)}
+\end{flalign}
 
 The original paper shows that when used with
 with a linear bicycle model, the crosstrack error $e(t)$ converges exponentially to zero. The constant $k$ 
@@ -555,7 +555,7 @@ motion.
 \begin{figure}
     \includegraphics[width=\linewidth]{figures/implementation/ekf/noise_params.png}
 \caption[Noise Parameter Settings]{How various settings of $alpha$'s affect propagation samples. The canonical settings produce the leftmost spread\textsuperscript{1}}
-    \tiny\textsuperscript{1}Borrowed from \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}
+\tiny\textsuperscript{1}{From \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}}
     \label{fig:ekf:noiseparams}
 \end{figure}
 
@@ -597,17 +597,84 @@ Angular Error Accumulation Rate & 0.25 $\degree$/min & $\sim$1$\degree$/min
 
 \section{Objective Functions and Optimization}
 
-* Localization versus Navigation
-* Objection functions used in the past (=> related work? Or into camera placement chapter?) 
+This work models camera placement as an optimization problem, 
+so the objective function needs to be defined clearly.
 
-* grid search, hillclimbing..
-\subsection{Optimization}
-\label{sec:impl:optimization}
+Past work has used a wide range of metrics for landmark placement, ranging from
+maximally reducing the trace of the robot's covariance matrix (an upper bound on location
+uncertainty)~\ref{beinhofer2013robust}, to entropy of the final
+robot state~\ref{beinhofer2013effective}, to the mutual information between
+robot states and observationss~\ref{beinhofer2011near}. Surveillance literature
+has also maximized the observability of a path, essentially defined as
+previously unseen path length in the camera's pixel plane~\cite{bodo2007optimal}.
 
-\section{Submodularity}
-* TODO -- leave to end to see if have time to explore this
+The core difficulty of the multiple-camera placement problem is the exponential
+growth of possible placements. In fact, most variants of the problem are shown to be NP-hard~\cite{beinhofer2014landmark}.
 
-\section{Mutual Information}
+The authors in~\ref{beinhofer2011near} deal with the NP-hardness 
+using \textit{submodularity}, which is a diminishing returns property.
+If the objective function can be proved submodular, the greedy
+algorithm is guaranteed find a value within 63\% of the global optimum.
+Beinhofer et al. show that their formulation of mutual information is submodular --
+I use this measure as my objective function. For comparison, I also
+evaluate the entropy of the final robot state, and the mean
+value of the trace of the covariance matrix.
+
+However, evaluating any of the objective functions even once is expensive, which is why authors have generally
+only optimized one or two camera settings at a time. Since I aim
+to consider two orientational degrees of freedom, as well as field of view of the cameras, 
+I require a means of cutting down the search space. In Section~\ref{cameraplacement:cheap} 
+I present a new objective function which captures the localization power of a single camera placement.
+The best results from this metric are used as parameters
+for the expensive greedy optimization.
+
+TODO rewrite this it's ugly
+
+\subsection{Entropy and Mutual Information}
+Two of the possible objective functions utilize entropy, which can
+be seen as a measure of uncertainty of a random variable. 
+The entropy of a discrete random variable $h(X)$ is maximized when
+every outcome is equally probably (a ``flat'' distribution).
+It is minimized when a specific outcome contains all of the probability.
+
+In mathematical terms, entropy of a discrete random variable $X$ taking on values
+${x_1, x_2..., x_n}$ can be written as:
+
+\begin{flalign}
+    h(X) &= -\sum_{i}^{n} p(X = x_i) log(p(X = x_i))
+\end{flalign}
+
+Differential entropy extends the standard definition to continuous probability 
+distributions:
+\begin{flalign}
+    h(X) &= -\int p(X = x) log(p(X=x)) dx
+\end{flalign}
+
+Joint entropy of a set of continuous random variables $X_1, X_2...X_n$ is defined as
+\begin{flalign}
+\notag    h(X_1,...X_n) &=  \\
+                  &   -\int p(X_1 = x_1,...X_n=x_n) logp(X_1=x_1,...X_n=x_n)d(x_1,...x_n)
+\end{flalign}
+
+Conditional entropy of random variable X, given a random variable Y is calculated as
+\begin{flalign}
+    h(X|Y) &= h(X,Y) - h(X) \\
+           &= -\int \int p(X=x|Y=y)log(p(X=x|Y=y))dx p(Y=y) dy \\
+           &= \int h(X|Y=y) p(Y=y) dy
+\end{flalign}
+ 
+Finally, the mutual information between two random variables $I(X;Y)$ is
+defined as
+\begin{flalign}
+    I(X;Y) &= h(X) - h(X|Y) \\
+           &= h(Y) - h(Y|X)
+\end{flalign}
+
+Notice that this can be interpreted as the reduction in uncertainty of $X$, 
+once $Y$ is known. Or in other words, it is a measure of how
+informative $Y$ is about $X$.
+
+I will refer to these equations in Section~\ref{cameraplacement:mutualinf}.
 
 
 
@@ -1188,6 +1255,7 @@ I split the results in this chapter based on the objective
 function optimized.
 
 \section{A Cheap Objective Function}
+\label{cameraplacement:cheap}
 
 The mutual information measure TODO REF is an extremely expensive to compute,
 but principled, objective function. Due to its cost however, I
@@ -1255,49 +1323,56 @@ objective function. The results are presented in Figure~\ref{fig:simpleobjective
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_0_curvature_annotated.png}
     \label{fig:simpleobjective:0curvature}
-    \caption{0 Curvature}
+    \caption{0 Curvature Scores}
 \end{subfigure}
 \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_bestpos_small.png}
-    \caption{Configuration 1}
+    \caption{Configuration \#1, top score}
 \end{subfigure}
-\begin{subfigure}[b]{0.45\textwidth}
+\begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_pos2_small.png}
-    \caption{Configuration 2}
+    \caption{Configuration \#2}
 \end{subfigure}
-\begin{subfigure}[b]{0.45\textwidth}
+\begin{subfigure}[b]{0.49\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/0_curvature_pos3_small.png}
-    \caption{Configuration 3}
+    \caption{Configuration \#3}
 \end{subfigure}
-\begin{subfigure}[b]{0.45\textwidth}
+\hrule
+\hrule
+\hrule
+
+\begin{subfigure}[b]{0.42\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_at_radius_20_annotated.png}
     \label{fig:simpleobjective:0curvature}
     \caption{20m Radius}
 \end{subfigure}
-\begin{subfigure}[b]{0.25\textwidth}
+\begin{subfigure}[b]{0.28\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/radius_20m_pos1_small.png}
-    \caption{Configuration 1}
+    \caption{Configuration \#1}
 \end{subfigure}
-\begin{subfigure}[b]{0.25\textwidth}
+\begin{subfigure}[b]{0.28\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/radius_20m_pos2_small.png}
-    \caption{Configuration 2}
+    \caption{Configuration \#2}
 \end{subfigure}
+\hrule
+\hrule
+\hrule
 \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_at_radius_5_annotated.png}
     \label{fig:simpleobjective:20radius}
     \caption{5m Radius}
 \end{subfigure}
-\begin{subfigure}[b]{0.45\textwidth}
+\begin{subfigure}[b]{0.25\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/radius_5m_pos1_small.png}
-    \caption{Configuration 1}
+    \caption{Configuration \#1}
 \end{subfigure}
 \caption[Cheaper Objective Function Results]{Results and high scoring orientations from the cheaper objective function.}
 \label{fig:simpleobjective}
@@ -1328,7 +1403,7 @@ the search space as much as possible.
 %Because we can in this case! ... may be a pain to implement in current code of piecewise paths...
 
 
-\subsection{Varying Pitch, Yaw, and Horizontal and Vertical FoV}
+\subsection{Optimizing Pitch, Yaw, and Horizontal and Vertical FoV Simultaneously}
 
 As mentioned in the introduction of this dissertation, I also attempt
 to optimize the field of view simultaneously with the pitch and yaw
@@ -1387,30 +1462,32 @@ field of view if the camera can cover more ground area --
 though the resulting updates sent to the vehicle may be
 less accurate. A useful property of the Kalman
 filter is that the uncertainty (covariance) in the state
-can only shrink as a result of a measurement, so likely some
+can only shrink as a result of a measurement, so there is some
 utility in sending more udpates over a wider field of view,
 even at reduced accuracy. 
 
 The advantages of the objective function here are twofold:
 firstly, it is cheap to compute, and is the reason I could
-do the hillclimbing optimization in the prior section which
+do the hillclimbing optimization which
 required hundreds of evaluations of the objective. Secondly,
 it can be used independently of specific trajectories; all
 other obejective functions in this work are centered about
-a single path to take.
+a single path.
 
 Since I am essentially able to perform exhaustive searches
 over the possible pitch and yaw angles, I use this
-as a pre-optimization step for the following sections to discover
-interesting orientations to further explore with expensive objectives.
+as a pre-optimization step to discover interesting orientations
+to explore further with more expensive objective functions.
+
 
 % TODO attempt an intersection
 
 
+\section{Single Camera Placement using Mutual Information}
 
-\section{Single Camera Placement -- Navigation}
+\subsection{Objective Function}
+\label{cameraplacement:mutualinf}
 
-\subsection{Full Objection Function}
 * Monte Carlo approximation of entropy
 
 * may need to outline maximizing mutual information =>
@@ -1423,8 +1500,6 @@ interesting orientations to further explore with expensive objectives.
 \subsection{Straight Roads}
 
 \subsection{Relation to Curvature}
-
-\subsection{Comparison to Simpler Objection Function}
 
 
 
