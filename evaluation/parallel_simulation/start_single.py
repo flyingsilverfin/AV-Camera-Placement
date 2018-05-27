@@ -104,7 +104,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-rviz', dest='rviz', action='store_false')
     parser.add_argument('--continue', dest='continue_exec', action='store_true')
     parser.add_argument('--restart', dest='continue_exec', action='store_false')
+    parser.add_argument('--compute_MI', dest='compute_MI', action='store_true')
+    parser.add_argument('--no-compute_MI', dest='compute_MI', action='store_false')
 
+    parser.set_defaults(compute_MI=True)
     parser.set_defaults(rviz=True)
     parser.set_defaults(continue_exec=True) # by default, don't overwrite existing runs
 
@@ -148,13 +151,14 @@ if __name__ == "__main__":
     print("found bagfiles: {0}".format(bagfiles))
     definition = config
     max_steps = definition['analysis']['max_steps']
-    metrics = analysis.compute_metrics(definition, bagfiles, max_steps) 
+    metrics = analysis.compute_metrics(definition, bagfiles, max_steps, compute_MI=args.compute_MI) 
    
     
     # need to convert bigfloat mutual information into something JSON serializable
     # can be deseralized from strings again via bf.BigFloat()
-    metrics['mean mutual inf']['mutual inf'] = str(metrics['mean mutual inf']['mutual inf'])
-    metrics['mean mutual inf']['variance'] = str(metrics['mean mutual inf']['variance'])
+    if args.compute_MI:
+        metrics['mean mutual inf']['mutual inf'] = str(metrics['mean mutual inf']['mutual inf'])
+        metrics['mean mutual inf']['variance'] = str(metrics['mean mutual inf']['variance'])
 
     with open(os.path.join(save_dir, "summary.json"), 'w') as f:
         json.dump(metrics, f)

@@ -75,19 +75,23 @@
 
 It is conceivable that, in the near future, private vehicles have been made redundant by an efficient
 fleet of local autonomous vehicles, ferrying passengers on demand between locations in 
-a city. The city's pool of vehicles consists of vehicles from various manufacturers, 
-but are managed by a public-private partnership, much like a utility, and 
-seen as an essential part of the city infrastructure fulfilling the needs of its citizens.
+a city. The details of the implementation could vary -- the current, conventional
+approach is to use highly perceptive vehicles that completely sense their environment independently.
+I propose an alternative direction, where the city manages a public network of
+cameras, helping vehicles localize themselves in the streets.
 
-The utility would manage not only a large selection of vehicles, but also the infrastructure 
-that the autonomous vehicles rely on: a network of cameras, placed along roads to 
-facilitate vehicle navigation. At this point in time the hardware requirements of
-object detection algorithms are miniaturized, and are highly accurate, enabling cameras
+To imagine further what this might look like, a city could offer a pool of robots
+consisting of vehicles from various manufacturers, managed by a public-private partnership. 
+Much like a utility, this service comes to be seen as an essential 
+part of the city infrastructure fulfilling the needs of its citizens.
+
+By the time this vision is be implemented, the hardware requirements of
+object detection algorithms have been substantially reduced, and are highly accurate, enabling cameras
 to identify pedestrians and vehicles to within a few centimeters. These locations are
 transmitted to nearby vehicles. As a result, GPS, radar, and expensive LIDAR systems
 have become largely redundant on the autonomous vehicles.
 
-With this infrastructure, autonomy becomes cheaper to implement,
+As a result, autonomy becomes cheaper to implement,
 and more accessible. Vehicle manufacturers work with the utility to keep the cameras 
 functional and up to date. City GPS canyons are avoided, and autonomy is enabled 
 on everything from bicycles, to small delivery robots, to standard vehicles -- all by 
@@ -106,7 +110,7 @@ provides rich data to perform self-localization and dynamic obstacle avoidance,
 but also costs around \$75,000~\cite{lin2018architectural}. The computational
 power required to fuse and process data from wheel odometry,
 GPS, inertial measurement units (IMUs), cameras, RADAR, LIDAR is also substantial
-and implies only large platforms can be used.
+and generally implies only large platforms can be used.
 
 I propose moving the localization and navigation sensing tasks
 from vehicles to the infrastructure, which is particularly applicable in urban environments.
@@ -127,10 +131,13 @@ lane markings very accurately~\cite{hata2014road}.
 
 In this work, I show that if certain installation and algorithmic constraints
 can be met, cameras mounted at side of roads can provide the required localization
-accuracy without reliance on GPS, LIDAR, or RADAR. Wheel odometry is used to navigate
-between updates received from the infrastructure. I then examine the task of 
-optimal camera placements and configuration for localization and navigational performance.
+accuracy without reliance on GPS, LIDAR, or radar. I also build a simulation
+of an autonomous vehicle which utilizes wheel odometry-based dead reckoning 
+to navigate between updates received from the infrastructure. In this context,
+I then examine the task of optimal camera placements and configuration for localization and navigational performance.
 
+The results explored here could also be useful in other scenarios, such as indoor
+robotic localization (eg. in factories), or in other constrained environments.
 
 \section{Contributions}
 
@@ -144,7 +151,7 @@ The practical questions answered by this work are the following:
     \item How should a set of cameras be placed along a path to optimize navigational performance?
 \end{enumerate}
 
-The first question relates to feasibility of camera-based localization,
+The first question relates to feasibility of direct camera-based localization,
 and is addressed at the end of Chapter~\ref{chap:cameramodel}.
 
 The second and third questions examine the optimal camera placement task 
@@ -153,7 +160,7 @@ on landmark placement for robotic navigation, where the robots observe landmarks
 Here, the use case is inverted to observe the robot as it moves through the environment. 
 Thus, it is also closely related to previous work on surveillance networks.
 
-While literature on surveillance using cameras has explored camera placement, none 
+While literature on surveillance using cameras has explored camera placement, few
 has allowed more degrees of freedom than simply adjusting the tilt (pitch) 
 and choosing one of a limited set of positions. Further, no exploration of 
 properties of cameras has been performed - for instance, the impact
@@ -178,8 +185,9 @@ In summary, I make the following contributions in this work
 \section{Overview}
 
 Chapter~\ref{chap:relatedwork} reviews relevant literature in the fields of
-localization, landmark placement, and surveillance. Chapter~\ref{chap:impl} discusses required background and the simulation
-used for analysis. 
+localization, landmark placement, and surveillance. Chapter~\ref{chap:impl} presents 
+the siulation used for analysis, as well as background material referenced throughout 
+this dissertation.
 
 Chapter \ref{chap:cameramodel} then develops the error model for cameras
 used in simulation, and examines the feasibility of using cameras in the infrastructure for localization.
@@ -252,8 +260,8 @@ and can be implemented as a single matrix multiplication
 
 TODO matrices describing world => pixel transformation
 
-My implementation a raytracing module that only uses
-translation and rotation portions of the matrices above, which bring the world intp place
+My implementation is a raytracing module that only uses the
+translation and rotation portions of the matrices above, which bring the world into place
 in the camera's zero-centered, Z-axis aligned coordinate system. Raytracing
 allows adding parametric geometry into the world, which is used later.
 Additionally, my formulation can also be used to model non-pinhole camera models,
@@ -277,8 +285,8 @@ combined to estimate the geometric center of the vehicle, on the ground plane. T
 the update from the camera is world location $(x,y)$, as I assume a planar surface
 with $z = 0$.
 
-In the following chapter I discuss how I model a localization algorithm. A 
-concrete implementation could be use an object detection or segmentation network,
+In the following chapter I discuss how I model an abstract localization algorithm. A 
+concrete implementation could use an object detection or segmentation network,
 such as YOLO~\cite{redmon2018yolov3} or DeepLab~\cite{chen2017rethinking}, which are constantly
 improving, to determine a bounding box for the vehicle. The center of the box in the pixel plane
 can be seen as an estimate of the volumetric center of the vehicle. 
@@ -337,9 +345,9 @@ and rotation matrices, and unit tested all geometric transformations.
 
 In order to provide road boundaries and 
 maintain compatibility with placement of cameras, I define
-constant-width roads, with an additional side offset that
-might represent pavements. Cameras can be placed beyond the 
-side offset. I then place cylindrical walls
+constant-width roads (3 meters), with an additional side offset that
+might represent pavements (1.5 meters). Cameras can be placed at the 
+side offset. I then place parametric cylindrical walls
 or planes in the ray-tracing space to prevent cameras from
 seeing beyond the edges of roads.
 
@@ -442,20 +450,28 @@ TODO image of crosstrack distance, angles
 
 The original paper shows that when used with
 with a linear bicycle model, the crosstrack error $e(t)$ converges exponentially to zero. The constant $k$ 
-was experimentally determined to perform well at $k = 0.8$ across a wide variety of paths.
+was experimentally determined to perform well at $k = 0.95$ across a wide variety of paths.
+Some overshoot can be found when entering mid-curvature bends, which is a 
+consequence of using two disjoint controllers for steering and
+velocity. A more sophisticated model might use model predictive
+control for all required controls~\cite{borrelli2005mpc}. Vehicle
+control is a complex task in itself with extensive literature, refer to~\cite{paden2016survey}
+for a comprehensive survey. The approaches employed here
+were chosen mostly for their computational simplicity.
 
 
 \subsection{Extended Kalman Filter}
 \label{chap:impl:vehicle:ekf}
 
 The simulated vehicle tracks its position using an Extended Kalman Filter (EKF)
-to integrate camera updates and correct its noisy state~\cite{fujii2013extended}. An EKF
-uses predict and update steps, propagating the vehicle's state
+to integrate camera updates and correct its inaccurate
+dead reckoning~\cite{fujii2013extended}. An EKF
+operates in predict and update steps, propagating the vehicle's state
 according to a motion model in the predict step, and correcting
-the vehicle state during the update step. Like a standard Kalman Filter,
+the vehicle state during the update step if there is a measurement present. Like a standard Kalman Filter,
 every step produces normal distributions, which are efficient to compute over.
- The main difference to a standard Kalman Filter is that non-linear motion models
-can be used by linearizing the model at each timestep using a
+The main difference to a standard Kalman Filter is that non-linear motion models
+can be used by linearizing the model at each timestep with a
 Taylor-like expansion about the estimated mean.
 
 Formally, if the previous state of the vehicle is $\bm{x}_{t-1} = (x_{t-1}, y_{t-1}, \theta_{t-1})$ and
@@ -502,10 +518,10 @@ in Chapter~\ref{chap:cameraplacement}.
 \subsubsection{Odometry Motion Models}
 \label{sec:impl:motion model}
 
-I describe the probabilistic odometry motion model $f(\bm{x}, \bm{u})$
+I describe the probabilistic motion model $f(\bm{x}, \bm{u})$
 that is used as the basis of the EKF predict step~\cite{thrun2005probabilistic}.
 Here, the control commands $\bm{u}$ are not actually the commands sent to the vehicle,
-but taken from the "wheel odometry", which is just the simuation's ground
+but taken from the ``wheel odometry'', which is just the simuation's ground
 truth state (a common formulation). So, $\bm{u}_t = (\bar{x}_t, \bar{y}_t, \bar{\theta}_t)$ is the vehicle's
 true state at time t.
 
@@ -628,7 +644,7 @@ I present a new objective function which captures the localization power of a si
 The best results from this metric are used as parameters
 for the expensive greedy optimization.
 
-TODO rewrite this it's ugly
+***TODO rewrite this it's ugly**
 
 \subsection{Entropy and Mutual Information}
 Two of the possible objective functions utilize entropy, which can
@@ -1412,7 +1428,7 @@ directions, which has not been examined as a variable before.
 To examine this I used a hill-climbing algorithm with random restarts
 to explore the space of options, as described in Section~\ref{sec:impl:optimization}.
 
-\subsubsection{Straight Road Results}
+\subsubsection{Hillclimbing -- Straight Road}
 
 Unsurprisingly, for straight roads, all of the best configurations found
 shrunk the field of view as far as was allowed, and oriented themselves to
@@ -1443,7 +1459,7 @@ for straight roads is shown in Figure~\ref{fig:simpleobjective:hillclimb}.
     \label{fig:simpleobjective:hillclimb result}
 \end{figure}
 
-\subsection{Varying the Curvature}
+\subsubsection{Hillclimbing -- Curved Roads}
 
 
 

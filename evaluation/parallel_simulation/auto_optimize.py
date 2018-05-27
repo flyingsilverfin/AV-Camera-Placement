@@ -26,7 +26,10 @@ def num_already_completed(exp_dir, optimization_metric):
         with open(os.path.join(exp_dir, "metrics_summary.json")) as f:
             metrics = json.load(f)
         if optimization_metric == 'mutual information':
-            num_completed = metrics['mean mutual inf']['num_bags']
+            if 'mean mutual inf' in metrics:
+                num_completed = metrics['mean mutual inf']['num_bags']
+            else: # IE. prior metrics did not compute MI
+                return 0, None # will force recalculation with MI
         else:
             num_completed = metrics['means']['num_bags']
         print("metrics_summary.json indicates already completed {0} runs".format(num_completed))
@@ -100,9 +103,12 @@ def do_execution(config, current_placements, exp_name, gen_dir, nparallel, nrepe
     # wait until finished
     # read in the metrics_summary.json
     # return that
-
-
-    call_string = "python -m {4}.start_parallel --config={0} --nparallel={1} --repeats={2} --out={3} --no-rviz --continue".format(exp_config_path, nparallel, nrepeats, gen_dir, __package__) # start_parallel generates own subdir from config name!
+    
+    if optimization_metric == 'mutual information':
+        compute_MI_string = '--compute_MI'
+    else:
+        compute_MI_string = '--no-compute_MI'
+    call_string = "python -m {4}.start_parallel --config={0} --nparallel={1} --repeats={2} --out={3} --no-rviz --continue {5}".format(exp_config_path, nparallel, nrepeats, gen_dir, __package__, compute_MI_string) # start_parallel generates own subdir from config name!
     runner = subprocess.Popen([call_string], shell=True)
 
 

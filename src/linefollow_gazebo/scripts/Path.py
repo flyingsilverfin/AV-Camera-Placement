@@ -193,22 +193,35 @@ class Path(object):
         return segment.curvature
 
 
-    def discretize_points(self, resolution=0.5):
+    def discretize_points(self, resolution=0.5, width_boundaries=None):
         """ Discretizes entire curve at the given meter resolution. Useful for debugging/plotting. loop is ignored. """
         if self.segments[-1].get_length() == -1:
             print("Give last segment a length before discretizing.")
             return None
+
+        # also computes boundaries of path if width_boundaries is not none
             
         points = []
+        boundary_left = []
+        boundary_right = []
         i, segment = 0, self.segments[0]
         for t in np.arange(0.0, self.end_time, resolution):
             if not self._in_segment(t, segment):
                 i += 1
                 segment = self.segments[i]
 
-            points.append(segment.point_at(t))
+            pt = segment.point_at(t)
+            points.append(pt)
+
+            if width_boundaries is not None:
+                normal = segment.normal_at(t)
+                boundary_left.append(pt + width_boundaries * normal)
+                boundary_right.append(pt - width_boundaries * normal)
         
-        return np.array(points)
+        if width_boundaries is None:
+            return np.array(points)
+        else:
+            return np.array([points, boundary_left,boundary_right])
 
 
     def get_tracker(self, start_dist=0.0, max_horizon=10.0):

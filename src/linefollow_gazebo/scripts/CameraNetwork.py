@@ -365,28 +365,28 @@ if __name__ == "__main__":
 
     def draw_line(img, start, end, color=(0,0,0), thickness=1):
         height = img.shape[0]
-        start = np.round(start).astype(np.int64).tolist()
-        start[0] = height - start[0]
-        end = np.round(end).astype(np.int64).tolist()
-        end[0] = height - end[0]
+        start = np.round(start + ctr).astype(np.int64).tolist()
+        # start[0] = height - start[0]
+        end = np.round(end + ctr).astype(np.int64).tolist()
+        # end[0] = height - end[0]
         cv2.line(img, tuple(start), tuple(end), color=color, thickness=thickness)
 
     def draw_circle(img, center, radius, thickness=3, color=(0,0,0)):
         height = img.shape[0]
-        center = np.round(center).astype(np.int64).tolist()
-        center[0] = height - center[0]
+        center = np.round(center + ctr).astype(np.int64).tolist()
+        # center[0] = height - center[0]
         cv2.circle(img, tuple(center), int(radius), thickness=thickness, color=color)
 
     resolution = 5 # pixels per meter
     height, width = 200, 200
     image = blank_image = np.ones((height*resolution,width*resolution,3), np.uint8)*255
     ctr = ctr_y, ctr_x = np.array([resolution*height/2.0, resolution*width/2.0]).astype(np.int64)
-    blue, green, red, black = (255,0,0), (0,255,0), (0,0,255), (0,0,0)
+    blue, green, red, black, gray = (255,0,0), (0,255,0), (0,0,255), (0,0,0), (108, 108, 108)
+    darkred, lightred, orange, darkgreen = (0, 0, 150), (70, 70, 240), (2, 106, 253), (0, 175, 0)
     # draw some axes for reference
-    draw_line(image, [0, ctr_y], [height*resolution, ctr_y], color=black, thickness=2)
-    draw_line(image, [-ctr_x, 0], [width*resolution, 0], color=black, thickness=2)
+    # draw_line(image, [0, ctr_y], [width*resolution, ctr_y], color=black, thickness=2)
+    # draw_line(image, [ctr_x, 0], [ctr_x, height*resolution], color=black, thickness=2)
 
-    #TODO come back to this to create graphics!!
 
 
     # create a camera network
@@ -421,11 +421,15 @@ if __name__ == "__main__":
   
    
     # draw path onto image 
-    path_points = path.discretize_points() * resolution #scale from meters to resolution*meters
+    path_points, left_boundary, right_boundary = path.discretize_points(width_boundaries=road_width/2.0)*resolution #scale from meters to resolution*meters
     print(path_points)
     for i in range(path_points.shape[0]-1):
         print("Connecting: {0}, {1}".format(path_points[i,:2], path_points[i+1,:2]))
-        draw_line(image, path_points[i,:2], path_points[i+1,:2], color=green)
+        draw_line(image, path_points[i,:2], path_points[i+1,:2], color=blue)
+        
+        # draw road boundaries
+        draw_line(image, left_boundary[i, :2], left_boundary[i+1, :2], color=gray)
+        draw_line(image, right_boundary[i, :2], right_boundary[i+1, :2], color=gray)
 
 
 
@@ -446,12 +450,14 @@ if __name__ == "__main__":
         print("Cylinder center: {0}".format(cylinder_center))
         # draw this onto the image
         draw_circle(image, cylinder_center[:2]*resolution, 2, color=blue)
-        draw_circle(image, cylinder_center[:2]*resolution, cylinder_radius*resolution, color=blue)
+        draw_circle(image, cylinder_center[:2]*resolution, cylinder_radius*resolution, thickness=-1, color=gray)
 
     
     camera_defs = rospy.get_param('/cameras/placements')
+    colors = [red, darkred, lightred, darkgreen, orange]
     for i, conf in enumerate(camera_defs):
-
+        index = int((conf['position'][0] + conf['position'][1] + 3.0)/20.0)
+        pos_color = colors[index%len(colors)]
         placement = CameraPlacement(i, np.array(conf['position']), 
                      conf['pitch_degrees'], 
                      conf['yaw_degrees'], 
@@ -469,15 +475,15 @@ if __name__ == "__main__":
         corners = placement.get_catchment_corners()
         if None not in corners:
             corners = corners[:, :2]*resolution
-            for i in range(corners.shape[0]):
-                draw_line(image, corners[i][:2], corners[(i+1)%corners.shape[0]][:2], color=red)
+            for j in range(corners.shape[0]):
+                draw_line(image, corners[j][:2], corners[(j+1)%corners.shape[0]][:2], color=pos_color)
         
-        draw_circle(image, placement.ideal_camera.position[:2]*5, 3, thickness=-1, color=red)
+        draw_circle(image, placement.ideal_camera.position[:2]*resolution, 2, thickness=4, color=red)
 
     # save image to out dir
     save_dir = rospy.get_param('/results_dir')
     # TODO make this image work
-    # cv2.imwrite(os.path.join(save_dir, "world.png"), image)
+    cv2.imwrite(os.path.join(save_dir, "world.png"), np.flip(image, 0))
 
 
     ros_camera_network = ROSCameraNetwork(camera_network,

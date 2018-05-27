@@ -482,7 +482,7 @@ def get_all_bagfiles_below(path):
 
     return bagfiles
 
-def compute_metrics(definition, bagfiles, max_steps, verbose=False):
+def compute_metrics(definition, bagfiles, max_steps, compute_MI=True, verbose=False):
     metrics = {
         "means": {
             "mean total trace": 0,
@@ -496,13 +496,14 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
             "mean mean crosstrack error": 0,
             "var crosstrack error": 0,
             "num_bags": 0
-        },
-        "mean mutual inf": {
+        }
+    }
+    if compute_MI:
+        metrics["mean mutual inf"] = {
             "mutual inf": 0,
             "variance": 0,
             "num_bags": 0
         }
-    }
 
     basic_entropy = BasicEntropyMetric()
     trace = CovarianceTraceMetrics()
@@ -560,10 +561,11 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
             # mean_metrics[key] /= mean_metrics['num_bags'] 
 
     # this one does mean internally
-    mean_mi, variance_mi, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
-    metrics["mean mutual inf"]['mutual inf'] = mean_mi 
-    metrics["mean mutual inf"]['variance'] = variance_mi
-    metrics['mean mutual inf']['num_bags'] = num_bags_used
+    if compute_MI:
+        mean_mi, variance_mi, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
+        metrics["mean mutual inf"]['mutual inf'] = mean_mi 
+        metrics["mean mutual inf"]['variance'] = variance_mi
+        metrics['mean mutual inf']['num_bags'] = num_bags_used
     return metrics
 
 
