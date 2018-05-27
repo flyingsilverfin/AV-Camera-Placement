@@ -10,6 +10,13 @@ import bigfloat as bf
 import numpy as np
 
 
+def count_bagfiles_below(directory):
+    count = 0
+    for (_, _, files) in os.walk(directory):
+        for f in files:
+            if f == 'sim_data.bag':
+                count += 1
+    return count
 
 def num_already_completed(exp_dir, optimization_metric):
     if not os.path.exists(exp_dir):
@@ -51,17 +58,33 @@ def do_execution(config, current_placements, exp_name, gen_dir, nparallel, nrepe
     this_exp_dir = os.path.join(gen_dir, exp_name)
     already_completed, metrics_summary = num_already_completed(this_exp_dir, optimization_metric)
 
-    if already_completed >= nrepeats:
-        print("\nAlready have enough information on {0}!!!\n".format(this_exp_dir))
-        return metrics_summary # already done this experiment!
-
-    nrepeats -= already_completed
     # make the subdir for this experiment
     try:
         os.makedirs(this_exp_dir)
     except Exception:
         # already made
         pass
+
+    # decrease by number indicated in metrics
+    # or number of bagfiles found
+    if metrics_summary is None:
+        num_bagfiles = count_bagfiles_below(this_exp_dir)
+        if num_bagfiles > 0:
+            nrepeats -= num_bagfiles
+    else:
+        nrepeats -= already_completed
+
+    if already_completed >= nrepeats and metrics_summary is not None:
+        print("\nAlready have enough information on {0}!!!\n".format(this_exp_dir))
+        return metrics_summary # already done this experiment!
+
+    # force regeneneration of metrics_summary if we already have enough
+    # by generating 1 more
+    nrepeats = max(nparallel, nrepeats)
+
+
+
+
 
     # modify auto-opt config and generate one for this experiment
     # write experiment definition to a file
