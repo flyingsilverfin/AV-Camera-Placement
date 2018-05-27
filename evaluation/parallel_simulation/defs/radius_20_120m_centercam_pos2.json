@@ -33,7 +33,6 @@
     },
 
 
-
     "controller": {
         "update_rate": 100,
         "velocity_controller": {
@@ -53,13 +52,14 @@
 
     "ekf": {
         "update_rate": 25.0,
-        "initial_cov_diagonal": [0.01,0.01,0,0,0,0],
-        "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
+        "initial_cov_diagonal": [0.02,0.02,0,0,0,0],
+        "model_step_noise": [0.0001, 0.00019, 0.00019, 0.0001],
         "motion_model_threshold": 0.00001
     },
     "max_timeout": 15.0,
     "analysis": {
-        "max_steps": 130
+        "max_steps": 300
     }
 }
+
 

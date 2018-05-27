@@ -30,6 +30,10 @@ sudo apt-get install -y ros-lunar-robot-state-publisher
 sudo apt-get install -y ros-lunar-tf-conversions ros-lunar-tf2-geometry-msgs
 sudo apt-get install python-scipy python-matplotlib ipython # last one is just for convenience...
 
+# install bigfloat and deps
+sudo apt-get install libmpfr-dev
+sudo apt-get install python-pip
+pip install bigfloat
 
 # set up catkin workspace
 mkdir -p ~/catkin_ws/src
@@ -43,7 +47,7 @@ git init .
 git remote add -t \* -f origin https://github.com/flyingsilverfin/AV-Camera-Placement.git
 git pull origin master
 
-# make
+# make messages etc
 catkin_make
 
 # on use will still need to run source ~/catkin_ws/devel/setup.bash

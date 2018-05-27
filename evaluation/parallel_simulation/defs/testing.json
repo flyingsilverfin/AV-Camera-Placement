@@ -22,11 +22,11 @@
         },
         "placements": [
             {
-                "position": [40.0, -6.0, 6.0],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
+                "position": [20.0, -3.0, 6.0],
+                "yaw_degrees": 47.8,
+                "pitch_degrees": 56.9,
                 "resolution": [900,900],
-                "fov": [60.0, 60.0],
+                "fov": [20.1, 20.7],
                 "model": "perspective"
             }
         ]

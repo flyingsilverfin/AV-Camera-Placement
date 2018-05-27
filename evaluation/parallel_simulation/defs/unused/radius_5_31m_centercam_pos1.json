@@ -6,8 +6,8 @@
             "loop": false,
             "segments": [
                 {
-                    "curvature": 0.0,
-                    "length": 80.0
+                    "curvature": 0.2,
+                    "length": 35.0
                 }
             ]
         }
@@ -22,9 +22,9 @@
         },
         "placements": [
             {
-                "position": [40.0, -6.0, 6.0],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
+                "position": [0, 13, 6.0],
+                "yaw_degrees": 270.0,
+                "pitch_degrees": 37.0,
                 "resolution": [900,900],
                 "fov": [60.0, 60.0],
                 "model": "perspective"

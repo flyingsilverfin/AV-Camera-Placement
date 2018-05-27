@@ -7,7 +7,7 @@
             "segments": [
                 {
                     "curvature": 0.0,
-                    "length": 80.0
+                    "length": 1800.0
                 }
             ]
         }
@@ -21,17 +21,8 @@
             "orient_error_stddev": 0.25
         },
         "placements": [
-            {
-                "position": [40.0, -6.0, 6.0],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
-                "resolution": [900,900],
-                "fov": [60.0, 60.0],
-                "model": "perspective"
-            }
         ]
     },
-
 
 
     "controller": {
@@ -53,13 +44,10 @@
 
     "ekf": {
         "update_rate": 25.0,
-        "initial_cov_diagonal": [0.01,0.01,0,0,0,0],
-        "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
-        "motion_model_threshold": 0.00001
+        "initial_cov_diagonal": [0.18,0.18,0,0,0,0],
+        "model_step_noise": [0.0001, 0.0001, 0.0001, 0.0001],
+        "motion_model_threshold": 0.0001
     },
-    "max_timeout": 15.0,
-    "analysis": {
-        "max_steps": 130
-    }
+    "max_timeout": 80.0
 }
 
