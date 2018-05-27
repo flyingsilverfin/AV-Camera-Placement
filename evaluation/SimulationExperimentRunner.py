@@ -23,7 +23,7 @@ class Runner(object):
     def launch_core(self):
         print("Lauching core")
         self.roscore = subprocess.Popen(["roscore", "--port", str(self.port)])
-        time.sleep(1)
+        time.sleep(1.5)
 
     def shutdown_core(self):
         # need to SIGINT not SIGKILL otherwise it doesn't kill master with it!
