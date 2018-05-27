@@ -413,6 +413,9 @@ class MeasurementMetrics(object):
 
     def get_mean_crosstrack_error(self, bag, max_steps):
         """ Calculates mean crosstrack error in absolute value """
+        # NAVIGATION error
+        # this can be quite off to start with, so need to view
+        # it as a REDUCTION (%?)
         true_errors = []
         for i, msg in enumerate(bag):
             if i == max_steps:
@@ -427,6 +430,24 @@ class MeasurementMetrics(object):
             # project onto normal
             true_errors.append(np.abs(np.dot(normal, diff_actual))) # in absolutes
         return np.mean(true_errors), np.var(true_errors)
+
+    def get_mean_belief_error(self, bag, max_steps):
+        # compute the mean absolute difference between the belief and 
+        # the true location (this should be easy + accurate)
+        # LOCALIZATION error
+
+        differences = []
+        for i, msg in enumerate(bag):
+            if i == max_steps:
+                break
+            msg = msg.message
+            true_pos = point_to_numpy(msg.true_odom.pose.pose.position)
+            ekf_pos = point_to_numpy(msg.ekf_odom.pose.pose.position)
+            distance = np.linalg.norm(true_pos - ekf_pos)
+            differences.append(distance)
+
+        return np.mean(differences), np.var(differences)
+
             
 
 def get_bagfiles_for(experiment_path):
@@ -516,7 +537,11 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
             print(e)
             print("==> (Skipping)")
             continue
-         
+    
+    print("Total traces: ")
+    print(total_traces)
+    print("Final traces: ")
+    print(final_traces)
     mean_metrics["mean total trace"] = np.mean(total_traces)
     mean_metrics["var total trace"] = np.var(total_traces)
     mean_metrics["mean final trace"] = np.mean(final_traces) 
@@ -530,9 +555,9 @@ def compute_metrics(definition, bagfiles, max_steps, verbose=False):
     mean_metrics['num_bags'] = len(total_traces)
     
     # average each one that is supposed to be a mean
-    for key in mean_metrics:
-        if key.startswith('mean'):
-            mean_metrics[key] /= mean_metrics['num_bags'] 
+    # for key in mean_metrics:
+        # if key.startswith('mean'):
+            # mean_metrics[key] /= mean_metrics['num_bags'] 
 
     # this one does mean internally
     mean_mi, variance_mi, num_bags_used = mutual_inf.calculate_mean_entropy_of_runs(definition, bagfiles, max_steps=max_steps, verbose=False)
