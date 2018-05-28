@@ -147,18 +147,35 @@ def generate_blocks(specification):
 
     blocks = []
 
-    for placement_spec in specification:
-        blocks.append([])
-        # copy the single-location specification
-        for (yaw,pitch) in placement_spec['allowed_yaw_pitch']:
-            copy = json.loads(json.dumps(placement_spec))
-            # strip out 'allowed_yaw_pitch' in the copy
-            del copy['allowed_yaw_pitch']
-            # add in "yaw_degrees": "pitch_degrees":
-            copy['yaw_degrees'] = yaw
-            copy['pitch_degrees'] = pitch
-            blocks[-1].append(copy)
-    return blocks
+    # may be old or new version, handle both
+    if 'allowed_yaw_pitch' in specification[0]:
+        for placement_spec in specification:
+            blocks.append([])
+            # copy the single-location specification
+            for (yaw,pitch) in placement_spec['allowed_yaw_pitch']:
+                copy = json.loads(json.dumps(placement_spec))
+                # strip out 'allowed_yaw_pitch' in the copy
+                del copy['allowed_yaw_pitch']
+                # add in "yaw_degrees": "pitch_degrees":
+                copy['yaw_degrees'] = yaw
+                copy['pitch_degrees'] = pitch
+                blocks[-1].append(copy)
+        return blocks
+    
+    elif 'allowed_yaw_pitch_hfov_vfov' in specification[0]:
+        
+        for placement_spec in specification:
+            blocks.append([])
+            for (yaw, pitch, hfov, vfov) in placement_spec['allowed_yaw_pitch_hfov_vfov']:
+                copy = json.loads(json.dumps(placement_spec))
+                del copy['allowed_yaw_pitch_hfov_vfov']
+                copy['yaw_degrees'] = yaw
+                copy['pitch_degrees'] = pitch
+                copy['fov'] = [hfov, vfov]
+                blocks[-1].append(copy)
+        return blocks
+
+
 
 def get_metrics_summary_for(gen_dir, name):
     summary_path = os.path.join(gen_dir, name, "metrics_summary.json")
