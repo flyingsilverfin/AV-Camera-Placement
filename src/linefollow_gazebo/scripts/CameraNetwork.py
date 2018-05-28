@@ -118,13 +118,19 @@ class ROSCameraNetwork(object):
             covariance[0,0] = variance
             covariance[1,1] = variance
         else:
+            #http://simbad.u-strasbg.fr/Pages/guide/errell.htx
+            # assumes 0 degrees is at Y =0 
             major, minor, angle = error # these represent approximately 3 stddevs!
+            angle = angle - np.pi/2.0 # now x-axis aligned
+            # just shift into 0->pi in case
+            if angle < 0:
+                angle += np.pi
             major = major/3.0
             minor = minor/3.0
             maj_sq, minor_sq, cos_a_sq, sin_a_sq = major**2, minor**2, np.cos(angle)**2, np.sin(angle)**2
-            varx = maj_sq*cos_a_sq + minor_sq*sin_a_sq
-            vary = maj_sq*sin_a_sq + minor_sq*cos_a_sq
-            covxy = (maj_sq - minor_sq) * cos_a_sq * sin_a_sq
+            varx = maj_sq*sin_a_sq + minor_sq*cos_a_sq
+            vary = maj_sq*cos_a_sq + minor_sq*sin_a_sq
+            covxy = (maj_sq - minor_sq) * np.cos(angle) * np.sin(angle)
             covariance[0,0] = varx
             covariance[1,0] = covxy
             covariance[0,1] = covxy
@@ -276,7 +282,6 @@ class CameraNetwork(object):
             # minor_axis_length = np.linalg.norm(dy)
             ratio = minor_axis_length/major_axis_length
 
-
             # *** This is often TOO oval and gets severely messed up by time differences in the simulation!
             # => make the ratio half close to a circle
             ratio = ratio + (1.0 - ratio)/2.0
@@ -288,6 +293,12 @@ class CameraNetwork(object):
            
             # convert direction into an angle!
             angle = np.arctan2(direction[1], direction[0])
+
+            # print("Camera update ellipse angle, major axis, minor axis: {0}, {1}, {2}".format(np.rad2deg(angle), major, minor))
+            # print("Estimated position: {0}".format(c))
+            # print("Camera position: {0}".format(camera_pos))
+            # print("camera -> position: {0}".format(direction))
+
             
             return (location, (major, minor, angle))
         else:
