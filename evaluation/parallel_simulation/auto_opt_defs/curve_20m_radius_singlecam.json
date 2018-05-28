@@ -7,6 +7,10 @@
             "segments": [
                 {
                     "curvature": 0.0,
+                    "length": 20.0
+                },
+                {
+                    "curvature": 0.05,
                     "length": 80.0
                 }
             ]
@@ -22,48 +26,15 @@
         },
         "placement_groups": [
             {
-                "position": [40.0, -3.0, 6.0],
+                "position": [20.0, 43.0, 6.0],
                 "allowed_yaw_pitch": [
-                    [140.0, 52.0],
-                    [40.0, 52.0],
-                    [90.0, 40.0],
-                    [180.0, 80.0],
-                    [0.0, 80.0],
-                    [170.0, 60.0],
-                    [10.0, 60.0]
+                    [270.0, 40.0],
+                    [300.0, 46.0],
+                    [340.0, 36.0],
+                    [340.0, 52.0],
+                    [240.0, 52.0]
                 ],
-                "yaw_degrees": 140.0,
                 "pitch_degrees": 52.0,
-                "resolution": [900,900],
-                "fov": [60.0, 60.0],
-                "model": "perspective"
-            },
-            {
-                "position": [20.0, -3.0, 6.0],
-                "allowed_yaw_pitch": [
-                    [90.0, 40.0],
-                    [180.0, 80.0],
-                    [0.0, 80.0],
-                    [40.0, 52.0],
-                    [10.0, 60.0]
-                ],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
-                "resolution": [900,900],
-                "fov": [60.0, 60.0],
-                "model": "perspective"
-            },
-            {
-                "position": [60.0, -3.0, 6.0],
-                "allowed_yaw_pitch": [
-                    [90.0, 40.0],
-                    [180.0, 80.0],
-                    [0.0, 80.0],
-                    [140.0, 52.0],
-                    [170.0, 60.0]
-                ],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
                 "resolution": [900,900],
                 "fov": [60.0, 60.0],
                 "model": "perspective"

@@ -142,6 +142,29 @@ def get_score_for_metric(metric, metrics_summary):
     else:
         raise Exception("Unknown metric: {0}".format(metric))
 
+def generate_blocks(specification):
+    """ Expands a location with multiple allowed orientations into the old format"""
+
+    blocks = []
+
+    for placement_spec in specification:
+        blocks.append([])
+        # copy the single-location specification
+        for (yaw,pitch) in placement_spec['allowed_yaw_pitch']:
+            copy = json.loads(json.dumps(placement_spec))
+            # strip out 'allowed_yaw_pitch' in the copy
+            del copy['allowed_yaw_pitch']
+            # add in "yaw_degrees": "pitch_degrees":
+            copy['yaw_degrees'] = yaw
+            copy['pitch_degrees'] = pitch
+            blocks[-1].append(copy)
+    return blocks
+
+def get_metrics_summary_for(gen_dir, name):
+    summary_path = os.path.join(gen_dir, name, "metrics_summary.json")
+    with open(summary_path) as f:
+        blob = json.load(f)
+    return blob
 
 def optimize(config, gen_dir):
     """ Greedily optimize a given metric """
@@ -158,6 +181,9 @@ def optimize(config, gen_dir):
     logfile = os.path.join(gen_dir, "optimization_log_{0}.txt".format(opt_criterion))
 
     possible_placement_blocks = config['cameras']['placement_groups']
+
+    possible_placement_blocks = generate_blocks(config['cameras']['placement_groups'])
+
    
     remaining_blocks = list(range(len(possible_placement_blocks))) # will remove indices
     current_placements = []
@@ -173,11 +199,10 @@ def optimize(config, gen_dir):
                 current_placements.append(placement)
                 name = current_name + "_block_{0}_orient_{1}".format(blocknum, orient_num)
 
-                print("Testing placements: {0}".format(current_placements))
 
                 # run optimization, save score
                 metrics = do_execution(config, current_placements, name, gen_dir, nparallel, nrepeats, opt_criterion)
-
+                log.append("Metrics for placement: \n {0} \n ===> \n {1}".format(placement, metrics))
                 score = get_score_for_metric(opt_criterion, metrics)
                 current_scores[-1].append(score)
     
@@ -198,7 +223,7 @@ def optimize(config, gen_dir):
         # choose the best placement and append it to the chosen ones
         best_placement = possible_placement_blocks[best_block_num][best_orient_num]
         current_placements.append(best_placement)
-        current_name += "__block_{0}_orient{1}".format(best_block_num, best_orient_num)
+        current_name += "__block_{0}_orient_{1}".format(best_block_num, best_orient_num)
 
         #find index of the chosen block and remove it, no longer allowed
         index = remaining_blocks.index(best_block_num)
@@ -206,6 +231,9 @@ def optimize(config, gen_dir):
 
         log.append("All scores from this iteration {0} using {1} metric: {2}".format(iteration, opt_criterion, current_scores)) 
         log.append("Chose placement block {0}, index {1}: {2}".format(best_block_num, best_orient_num, best_placement))
+
+        metrics = get_metrics_summary_for(gen_dir, current_name)
+        log.append("---Metrics for current placement---: \n {0}".format(json.dumps(metrics, indent=4, sort_keys=True)))
 
         # overwrite each iteration
         with open(logfile, 'w') as f:
