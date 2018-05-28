@@ -23,7 +23,7 @@ class Runner(object):
     def launch_core(self):
         print("Lauching core")
         self.roscore = subprocess.Popen(["roscore", "--port", str(self.port)])
-        time.sleep(1.5)
+        time.sleep(1.7)
 
     def shutdown_core(self):
         # need to SIGINT not SIGKILL otherwise it doesn't kill master with it!
@@ -32,6 +32,16 @@ class Runner(object):
         self.roscore.wait()
     
     def set_param(self, name, value):
+#        timeout = 15.0
+#        t0 = time.time()
+#        while time.time() - t0 < timeout:
+#            try:
+#                rospy.set_param(name, value)
+#            except Exception:
+#                time.sleep(0.1)
+#                continue
+#        #if hit timeout, raise exception
+#        raise Exception("Could not set params!")
         rospy.set_param(name, value)
 
     def launch_nodes(self, launch_params_dict):

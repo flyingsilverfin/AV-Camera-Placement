@@ -494,7 +494,7 @@ if __name__ == "__main__":
     # save image to out dir
     save_dir = rospy.get_param('/results_dir')
     # TODO make this image work
-    cv2.imwrite(os.path.join(save_dir, "world.png"), np.flip(image, 0))
+#    cv2.imwrite(os.path.join(save_dir, "world.png"), np.flip(image, 0))
 
 
     ros_camera_network = ROSCameraNetwork(camera_network,

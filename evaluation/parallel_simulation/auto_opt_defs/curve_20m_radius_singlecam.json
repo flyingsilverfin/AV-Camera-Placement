@@ -65,13 +65,13 @@
         "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
         "motion_model_threshold": 0.00001
     },
-    "max_timeout": 15.0,
+    "max_timeout": 25.0,
     "analysis": {
-        "max_steps": 350,
+        "max_steps": 345,
         "optimize": "mutual information",
-        "nrepeats": 50,
-        "nparallel": 1,
-        "budget": 2
+        "nrepeats": 500,
+        "nparallel": 11,
+        "budget": 1
     }
 }
 

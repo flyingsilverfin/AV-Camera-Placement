@@ -223,7 +223,7 @@ def optimize(config, gen_dir):
         # choose the best placement and append it to the chosen ones
         best_placement = possible_placement_blocks[best_block_num][best_orient_num]
         current_placements.append(best_placement)
-        current_name += "__block_{0}_orient_{1}".format(best_block_num, best_orient_num)
+        current_name += "_block_{0}_orient_{1}".format(best_block_num, best_orient_num)
 
         #find index of the chosen block and remove it, no longer allowed
         index = remaining_blocks.index(best_block_num)
