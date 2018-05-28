@@ -12,7 +12,8 @@ from matplotlib.patches import Ellipse
 from custom_messages.msg import SimulationDataMsg
 
 import sys
-sys.path.append("/home/joshua/Documents/Uni/Year4/dissertation/catkin_ws/src/linefollow_gazebo/scripts/")
+#sys.path.append("/home/joshua/Documents/Uni/Year4/dissertation/catkin_ws/src/linefollow_gazebo/scripts/")
+sys.path.append("/home/ubuntu/catkin_ws/src/linefollow_gazebo/scripts/")
 import CameraNetwork
 import Path 
 import RoadModel

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-gen_dir=evaluation/parallel_simulation/gen
+gen_dir=$1
+#evaluation/parallel_simulation/gen
 
 for expdir in `ls $gen_dir`; do
   find $gen_dir/$expdir -maxdepth 1 -type d -print0 | while read -d '' -r dir; 

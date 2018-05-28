@@ -98,10 +98,10 @@
     },
     "max_timeout": 15.0,
     "analysis": {
-        "max_steps": 130,
-        "optimize": "total trace",
-        "nrepeats": 50,
-        "nparallel": 1,
+        "max_steps": 120,
+        "optimize": "mutual information",
+        "nrepeats": 660,
+        "nparallel": 11,
         "budget": 2
     }
 }
