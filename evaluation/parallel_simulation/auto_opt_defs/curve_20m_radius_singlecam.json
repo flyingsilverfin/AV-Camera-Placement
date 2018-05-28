@@ -11,7 +11,7 @@
                 },
                 {
                     "curvature": 0.05,
-                    "length": 80.0
+                    "length": 115.0
                 }
             ]
         }
@@ -28,11 +28,9 @@
             {
                 "position": [20.0, 43.0, 6.0],
                 "allowed_yaw_pitch": [
-                    [270.0, 40.0],
-                    [300.0, 46.0],
-                    [340.0, 36.0],
-                    [340.0, 52.0],
-                    [240.0, 52.0]
+                    [270.0, 44.0],
+                    [305.0, 46.0],
+                    [235.0, 46.0]
                 ],
                 "pitch_degrees": 52.0,
                 "resolution": [900,900],
@@ -50,11 +48,11 @@
             "lookahead_time": 3.0,
             "lookahead_interval": 0.20,
             "straight_speed": 20.0,
-            "radius_speed_mult": 0.5,
+            "radius_speed_mult": 0.45,
             "pid": [0.25, 0.0, 0.01]
         },
         "hoffman_steering": {
-            "distance_multiplier": 1.0
+            "distance_multiplier": 1.9
         },
         "path_tracking": {
             "max_horizon": 10.0
@@ -69,8 +67,8 @@
     },
     "max_timeout": 15.0,
     "analysis": {
-        "max_steps": 130,
-        "optimize": "total trace",
+        "max_steps": 350,
+        "optimize": "mutual information",
         "nrepeats": 50,
         "nparallel": 1,
         "budget": 2
