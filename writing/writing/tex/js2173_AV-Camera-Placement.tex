@@ -1553,11 +1553,11 @@ as depicted in red and purple in Figure~\ref{fig:simpleobjective:hillclimbing st
     \begin{tabular}{@{}lllll@{}}
         \toprule
         Objective Score & Pitch & Yaw   & H. FoV & V FoV. \\ \midrule
-        8.63 (green)            & 56.98 & $90\pm43$ & 20.07  & 20.13  \\
+        8.63 (green)            & 57 & $90\pm43$ & 20.1  & 20.1  \\
         ... \\
-        6.6787 (red)          & 67.98 & 85.92 & 47.21  & 22.89 \\
+        6.6787 (red)          & 68 & 90 & 47.2  & 22.9 \\
         ... \\
-        3.0710 (purple)          & 39.31 & 87.66 & 25.01  & 53.56  \\ 
+        3.0710 (purple)          & 39.3 & 90 & 25.1  & 53.5  \\ 
         \bottomrule
     \end{tabular}
 \end{table}
@@ -1585,10 +1585,10 @@ we see more diverse solutions with high scores.
     \begin{tabular}{@{}lllll@{}}
         \toprule
         Objective Score & Pitch & Yaw        & H. FoV & V FoV. \\ \midrule
-        8.58  (green)   & 56.56 & $270\pm25$ & 21.07  & 20.4  \\
-        7.98  (red)     & 61.01 & 296.23     & 98.13  & 22.1  \\ 
+        8.58  (green)   & 56.5 & $270\pm25$ & 21.1  & 20.4  \\
+        7.98  (red)     & 61.0 & 270     & 98.2  & 22.1  \\ 
         ... \\
-        3.72  (purple)  & 43.3  &  $270\pm45.0$ & 38.8   & 50.75   \\ \bottomrule
+        3.72  (purple)  & 43.3  &  $270\pm45.0$ & 38.8   & 50.8   \\ \bottomrule
     \end{tabular}
 \end{table}
 
@@ -1657,7 +1657,7 @@ regions. A flat distribution is maximally uncertain.
 
 The robot's belief of its own state is estimated by
 the EKF running on board. It captures, via the mean state $x_t$
-and covariance matrix $\Sigma_t$, the distribution $p(x_t | u_{1:t}, z^{A}_{1:t}$.
+and covariance matrix $\Sigma_t$, the distribution $p(x_t | u_{1:t}, z^{A}_{1:t})$.
 
 At the end of an execution of a path, we can measure the
 differential entropy of this distribution as follows:
@@ -1758,7 +1758,7 @@ It is interesting to note that the determinant of the covariance,
 the trace of the covariance, and the graphical uncertainty ellipse
 of the EKF are all related to the eigenvalues of $\Sigma$: the ellipse's major
 and minor axes are the eigenvectors scaled by
-the square root of the eigennvalues; $tr(\Sigma)$ is the sum of the eigenvalues,
+the square root of the eigenvalues; $tr(\Sigma)$ is the sum of the eigenvalues,
 and the determinant is the product of the eigenvalues. Thus,
 these measures can interpreted measuring the sum of the radii (squared),
 and the approximate area of the ellipse (squared), respectively.

@@ -6,23 +6,37 @@
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 
-\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Speed Controller}}{16}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Noise Parameter Settings}}{20}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Calibration Circuit}}{21}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.1}{\ignorespaces The generic model given by Kannala \textit {et al.}\nobreakspace {}\cite {kannala2006generic}.}}{17}
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Example Predictions about a World Point}}{27}
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.2}{\ignorespaces Bound Minus True Distance}}{24}
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Bound Minus True Distance}}{32}
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.3}{\ignorespaces Bound Minus True Distance as a Proportion}}{25}
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Bound Minus True Distance as a Proportion}}{33}
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.4}{\ignorespaces $r$ as a Function of Pitch Angle}}{26}
+\contentsline {figure}{\numberline {4.5}{\ignorespaces $r$ as a Function of Pitch Angle}}{34}
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.5}{\ignorespaces Effect of Algorithmic Inaccuracy}}{27}
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Effect of Algorithmic Inaccuracy}}{35}
 \defcounter {refsection}{0}\relax 
-\contentsline {figure}{\numberline {5.6}{\ignorespaces Resolution Limits}}{28}
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Resolution Limits}}{36}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Distribution of Estimates}}{38}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {4.9}{\ignorespaces elliptical versus circular error}}{39}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Cheaper Objective Function Results}}{46}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Top Hillclimbing Result}}{48}
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Top Hillclimbing Result}}{48}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 

@@ -380,20 +380,20 @@ if __name__ == "__main__":
         # start[0] = height - start[0]
         end = np.round(end + ctr).astype(np.int64).tolist()
         # end[0] = height - end[0]
-        cv2.line(img, tuple(start), tuple(end), color=color, thickness=thickness)
+        cv2.line(img, tuple(start), tuple(end), color=color, thickness=1+thickness)
 
     def draw_circle(img, center, radius, thickness=3, color=(0,0,0)):
         height = img.shape[0]
         center = np.round(center + ctr).astype(np.int64).tolist()
         # center[0] = height - center[0]
-        cv2.circle(img, tuple(center), int(radius), thickness=thickness, color=color)
+        cv2.circle(img, tuple(center), int(radius), thickness=1+thickness, color=color)
 
-    resolution = 5 # pixels per meter
-    height, width = 200, 200
+    resolution = 10 # pixels per meter
+    height, width = 300, 300
     image = blank_image = np.ones((height*resolution,width*resolution,3), np.uint8)*255
     ctr = ctr_y, ctr_x = np.array([resolution*height/2.0, resolution*width/2.0]).astype(np.int64)
     blue, green, red, black, gray = (255,0,0), (0,255,0), (0,0,255), (0,0,0), (108, 108, 108)
-    darkred, lightred, orange, darkgreen = (0, 0, 150), (70, 70, 240), (2, 106, 253), (0, 175, 0)
+    darkred, lightred, orange, darkgreen, purple = (0, 0, 150), (70, 70, 240), (2, 106, 253), (0, 175, 0), (255, 0, 255)
     # draw some axes for reference
     # draw_line(image, [0, ctr_y], [width*resolution, ctr_y], color=black, thickness=2)
     # draw_line(image, [ctr_x, 0], [ctr_x, height*resolution], color=black, thickness=2)
@@ -461,11 +461,11 @@ if __name__ == "__main__":
         print("Cylinder center: {0}".format(cylinder_center))
         # draw this onto the image
         draw_circle(image, cylinder_center[:2]*resolution, 2, color=blue)
-        draw_circle(image, cylinder_center[:2]*resolution, cylinder_radius*resolution, thickness=-1, color=gray)
+        draw_circle(image, cylinder_center[:2]*resolution, cylinder_radius*resolution, thickness=-2, color=gray)
 
     
     camera_defs = rospy.get_param('/cameras/placements')
-    colors = [red, darkred, lightred, darkgreen, orange]
+    colors = [darkgreen, darkgreen, red, red, purple, darkred, darkred] 
     for i, conf in enumerate(camera_defs):
         index = int((conf['position'][0] + conf['position'][1] + 3.0)/20.0)
         pos_color = colors[index%len(colors)]
@@ -489,12 +489,12 @@ if __name__ == "__main__":
             for j in range(corners.shape[0]):
                 draw_line(image, corners[j][:2], corners[(j+1)%corners.shape[0]][:2], color=pos_color)
         
-        draw_circle(image, placement.ideal_camera.position[:2]*resolution, 2, thickness=4, color=red)
+        draw_circle(image, placement.ideal_camera.position[:2]*resolution, 3, thickness=-2, color=red)
 
     # save image to out dir
     save_dir = rospy.get_param('/results_dir')
     # TODO make this image work
-#    cv2.imwrite(os.path.join(save_dir, "world.png"), np.flip(image, 0))
+    cv2.imwrite(os.path.join(save_dir, "world.png"), np.flip(image, 0))
 
 
     ros_camera_network = ROSCameraNetwork(camera_network,

@@ -6,15 +6,27 @@
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 
-\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Noise Calibration Results}}{21}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 
-\contentsline {table}{\numberline {5.1}{\ignorespaces $r$ as an ErrorBound}}{23}
+\contentsline {table}{\numberline {4.1}{\ignorespaces $r$ as an Error Bound}}{31}
 \defcounter {refsection}{0}\relax 
-\contentsline {table}{\numberline {5.2}{\ignorespaces Sampled Prediction Error Bounds using 2000x2000 resolution}}{27}
+\contentsline {table}{\numberline {4.2}{\ignorespaces Sampled Prediction Error Bounds using 2000x2000 resolution\relax }}{36}
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {4.3}{\ignorespaces Median Localization Bound for 70$\ensuremath {^\circ }$ pitch, 2000x2000 pixels\relax }}{37}
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {4.4}{\ignorespaces Median 99\% Localization Bound for 45$\ensuremath {^\circ }$ pitch, 2000x2000 pixels\relax }}{37}
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {4.5}{\ignorespaces Median Localization Bound for 45$\ensuremath {^\circ }$ pitch, 2000x2000 pixels with increasing algorithmic errors\relax }}{38}
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {4.6}{\ignorespaces Elliptical versus Circular Error Bound}}{40}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {5.1}{\ignorespaces Hillclimbing Top Scorers}}{47}
+\defcounter {refsection}{0}\relax 
+\contentsline {table}{\numberline {5.2}{\ignorespaces Hillclimbing Top Scorers}}{48}
 \defcounter {refsection}{0}\relax 
 \addvspace {10\p@ }
 \defcounter {refsection}{0}\relax 

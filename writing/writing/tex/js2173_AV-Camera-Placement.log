@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.10.23)  18 MAY 2018 13:23
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.10.23)  29 MAY 2018 13:34
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1728,41 +1728,80 @@ Package: booktabs 2016/04/27 v1.618033 publication quality tables
 \@thisruleclass=\count406
 \@lastruleclass=\count407
 \@thisrulewidth=\dimen284
+) (/usr/local/texlive/2017/texmf-dist/tex/latex/caption/caption.sty
+Package: caption 2016/02/21 v3.3-144 Customizing captions (AR)
+ (/usr/local/texlive/2017/texmf-dist/tex/latex/caption/caption3.sty
+Package: caption3 2016/05/22 v1.7-166 caption3 kernel (AR)
+Package caption3 Info: TeX engine: e-TeX on input line 67.
+\captionmargin=\dimen285
+\captionmargin@=\dimen286
+\captionwidth=\dimen287
+\caption@tempdima=\dimen288
+\caption@indent=\dimen289
+\caption@parindent=\dimen290
+\caption@hangindent=\dimen291
+)
+\c@ContinuedFloat=\count408
+Package caption Info: wrapfig package is loaded.
+) (/usr/local/texlive/2017/texmf-dist/tex/latex/caption/subcaption.sty
+Package: subcaption 2016/05/22 v1.1-161 Sub-captions (AR)
+\c@subfigure=\count409
+\c@subtable=\count410
+) (/usr/local/texlive/2017/texmf-dist/tex/latex/tools/bm.sty
+Package: bm 2017/01/16 v1.2c Bold Symbol Support (DPC/FMi)
+\symboldoperators=\mathgroup4
+\symboldletters=\mathgroup5
+\symboldsymbols=\mathgroup6
+LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 141.
+LaTeX Info: Redefining \bm on input line 207.
 )
 Package biblatex Info: Trying to load language 'english'...
 Package biblatex Info: ... file 'english.lbx' found.
  (/usr/local/texlive/2017/texmf-dist/tex/latex/biblatex/lbx/english.lbx
 File: english.lbx 2016/12/05 v3.7 biblatex localization (PK/JW/AB)
 )
-\@quotelevel=\count408
-\@quotereset=\count409
- (./js2173_AV-Camera-Placement.aux)
+\@quotelevel=\count411
+\@quotereset=\count412
+ (./js2173_AV-Camera-Placement.aux
+
+LaTeX Warning: Label `fig:ekf:noiseparams' multiply defined.
+
+
+LaTeX Warning: Label `fig:simpleobjective:0curvature' multiply defined.
+
+
+LaTeX Warning: Label `sub@fig:simpleobjective:0curvature' multiply defined.
+
+
+LaTeX Warning: Label `tab:simpleobjective:hillclimb' multiply defined.
+
+)
 \openout1 = `js2173_AV-Camera-Placement.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 42.
-LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 47.
+LaTeX Font Info:    ... okay on input line 47.
  (/usr/local/texlive/2017/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count410
-\scratchdimen=\dimen285
+\scratchcounter=\count413
+\scratchdimen=\dimen292
 \scratchbox=\box57
-\nofMPsegments=\count411
-\nofMParguments=\count412
+\nofMPsegments=\count414
+\nofMParguments=\count415
 \everyMPshowfont=\toks39
-\MPscratchCnt=\count413
-\MPscratchDim=\dimen286
-\MPnumerator=\count414
-\makeMPintoPDFobject=\count415
+\MPscratchCnt=\count416
+\MPscratchDim=\dimen293
+\MPnumerator=\count417
+\makeMPintoPDFobject=\count418
 \everyMPtoPDFconversion=\toks40
 ) (/usr/local/texlive/2017/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
 Package: epstopdf-base 2016/05/15 v2.6 Base part for package epstopdf
@@ -1786,23 +1825,33 @@ Package biblatex Info: Automatic encoding selection.
 
 Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'js2173_AV-Camera-Placement.bbl' found.
- (./js2173_AV-Camera-Placement.bbl)
-Package biblatex Info: Reference section=0 on input line 42.
-Package biblatex Info: Reference segment=0 on input line 42.
-LaTeX Info: Redefining \celsius on input line 42.
-Package gensymb Info: Faking symbols for \degree and \celsius on input line 42.
+ (./js2173_AV-Camera-Placement.bbl
+
+Package biblatex Warning: The following entry could not be found
+(biblatex)                in the database:
+(biblatex)                russel2016artificial
+(biblatex)                Please verify the spelling and rerun
+(biblatex)                LaTeX afterwards.
+
+)
+Package biblatex Info: Reference section=0 on input line 47.
+Package biblatex Info: Reference segment=0 on input line 47.
+LaTeX Info: Redefining \celsius on input line 47.
+Package gensymb Info: Faking symbols for \degree and \celsius on input line 47.
 
 
 Package gensymb Warning: Not defining \perthousand.
 
-LaTeX Info: Redefining \ohm on input line 42.
-Package gensymb Info: Using \Omega for \ohm on input line 42.
+LaTeX Info: Redefining \ohm on input line 47.
+Package gensymb Info: Using \Omega for \ohm on input line 47.
 
 Package gensymb Warning: Not defining \micro.
 
 ABD: EveryShipout initializing macros
 Package pgfplots notification 'compat/show suggested version=true': you might benefit from \pgfplotsset{compat=1.15} (current compat level: 1.3).
 
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: End \AtBeginDocument code.
 (./titlepage.tex
 Package epstopdf Info: Source file: <CUni3.eps>
 (epstopdf)                    date: 2010-05-17 13:27:03
@@ -1849,101 +1898,278 @@ LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
 
 ]
 Chapter 1.
-[1] [2] [3] [4]
+[1] [2] [3] [4] [5] [6
+
+]
 Chapter 2.
-[5
-
-] [6
-
-]
+[7] [8] [9] [10]
 Chapter 3.
-[7] [8] [9] [10
 
-]
-Chapter 4.
-[11] [12] [13] [14
+Underfull \vbox (badness 4441) has occurred while \output is active []
 
-]
-Chapter 5.
-[15]
-<figures/camera/generic_model.png, id=109, 509.905pt x 697.60625pt>
-File: figures/camera/generic_model.png Graphic file (type png)
-<use figures/camera/generic_model.png>
-Package pdftex.def Info: figures/camera/generic_model.png  used on input line 402. on input line 402.
-Package pdftex.def Info: Requested size: 195.0pt x 266.78561pt on input line 402.
- [16]
-Underfull \hbox (badness 1297) in paragraph at lines 430--436
-\OT1/cmr/m/n/12 cam-era model should closely ap-
+ [11
+
+] [12] [13]
+Overfull \hbox (6.06256pt too wide) in paragraph at lines 436--439
+[]\OT1/cmr/m/n/12 Alternative rep-re-sen-ta-tions were con-sid-ered, in-clud-ing splines and Eu-ler curves
+ []
+
+[14]
+Underfull \vbox (badness 1394) has occurred while \output is active []
+
+ [15] (./figures/implementation/velocity_controller.pgf)
+Overfull \hbox (46.51044pt too wide) in paragraph at lines 1307--521
+ [][] 
+ []
+
+(./figures/implementation/calibration_circuit_plain.pgf)
+Overfull \hbox (13.56383pt too wide) in paragraph at lines 506--526
+ [][] 
  []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [17 <./figures/camera/generic_model.png>] [18] [19] [20] [21] [22] (./figures/camera/diff_radius_true_error.pgf)
-Overfull \hbox (36.39255pt too wide) in paragraph at lines 12061--642
+ [16] [17] [18]
+Underfull \vbox (badness 4713) has occurred while \output is active []
+
+ [19]
+<figures/implementation/ekf/noise_params.png, id=130, 1253.68375pt x 346.29375pt>
+File: figures/implementation/ekf/noise_params.png Graphic file (type png)
+<use figures/implementation/ekf/noise_params.png>
+Package pdftex.def Info: figures/implementation/ekf/noise_params.png  used on input line 673. on input line 673.
+Package pdftex.def Info: Requested size: 390.0pt x 107.72511pt on input line 673.
+ [20 <./figures/implementation/ekf/noise_params.png>] (./figures/implementation/calibration_circuit.pgf) [21]
+
+LaTeX Warning: Reference `beinhofer2013robust' on page 22 undefined on input line 722.
+
+
+LaTeX Warning: Reference `beinhofer2013effective' on page 22 undefined on input line 723.
+
+
+LaTeX Warning: Reference `beinhofer2011near' on page 22 undefined on input line 724.
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [22]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [23] [24]
+Chapter 4.
+[25
+
+] (./figures/camera/a_estimate_example.pgf) [26] [27] (./figures/camera/xyz_error.pstex_t
+Package epstopdf Info: Source file: <figures/camera/xyz_error.eps>
+(epstopdf)                    date: 2018-05-21 18:14:34
+(epstopdf)                    size: 5532 bytes
+(epstopdf)             Output file: <figures/camera/xyz_error-eps-converted-to.pdf>
+(epstopdf)                    date: 2018-05-21 18:14:34
+(epstopdf)                    size: 4056 bytes
+(epstopdf)             Command: <repstopdf --outfile=figures/camera/xyz_error-eps-converted-to.pdf figures/camera/xyz_error.eps>
+(epstopdf)             \includegraphics on input line 2.
+Package epstopdf Info: Output file is already uptodate.
+<figures/camera/xyz_error-eps-converted-to.pdf, id=162, pagebox=cropbox, 260.975pt x 173.64874pt>
+File: figures/camera/xyz_error-eps-converted-to.pdf Graphic file (type pdf)
+<use figures/camera/xyz_error-eps-converted-to.pdf>
+Package pdftex.def Info: figures/camera/xyz_error-eps-converted-to.pdf  used on input line 2. on input line 2.
+Package pdftex.def Info: Requested size: 260.97437pt x 173.64832pt on input line 2.
+) (./figures/camera/orient_error.pstex_t
+Package epstopdf Info: Source file: <figures/camera/orient_error.eps>
+(epstopdf)                    date: 2018-05-21 18:14:34
+(epstopdf)                    size: 4648 bytes
+(epstopdf)             Output file: <figures/camera/orient_error-eps-converted-to.pdf>
+(epstopdf)                    date: 2018-05-21 18:14:34
+(epstopdf)                    size: 3841 bytes
+(epstopdf)             Command: <repstopdf --outfile=figures/camera/orient_error-eps-converted-to.pdf figures/camera/orient_error.eps>
+(epstopdf)             \includegraphics on input line 2.
+Package epstopdf Info: Output file is already uptodate.
+<figures/camera/orient_error-eps-converted-to.pdf, id=163, pagebox=cropbox, 235.88126pt x 139.52126pt>
+File: figures/camera/orient_error-eps-converted-to.pdf Graphic file (type pdf)
+<use figures/camera/orient_error-eps-converted-to.pdf>
+Package pdftex.def Info: figures/camera/orient_error-eps-converted-to.pdf  used on input line 2. on input line 2.
+Package pdftex.def Info: Requested size: 235.88068pt x 139.5209pt on input line 2.
+) [28 <./figures/camera/xyz_error-eps-converted-to.pdf> <./figures/camera/orient_error-eps-converted-to.pdf>] [29] [30]
+<figures/camera/diff_radius_true_error.pdf, id=184, pagebox=cropbox, 281.85298pt x 209.58301pt>
+File: figures/camera/diff_radius_true_error.pdf Graphic file (type pdf)
+<use figures/camera/diff_radius_true_error.pdf>
+Package pdftex.def Info: figures/camera/diff_radius_true_error.pdf  used on input line 1034. on input line 1034.
+Package pdftex.def Info: Requested size: 281.8523pt x 209.58249pt on input line 1034.
+ (./figures/camera/proportion_radius_true_error.pgf) [31] (./figures/camera/mean_error_pitch_variation.pgf)
+Overfull \hbox (31.37392pt too wide) in paragraph at lines 916--1075
  [] 
  []
 
-(./figures/camera/proportion_radius_true_error.pgf)
-Overfull \hbox (36.39255pt too wide) in paragraph at lines 2561--650
+[32 <./figures/camera/diff_radius_true_error.pdf>] (./figures/camera/algorithm_influence.pgf) [33] (./figures/camera/resolution_angle_effects_mean.pgf)
+Overfull \hbox (36.39255pt too wide) in paragraph at lines 1106--1126
  [] 
  []
 
-[23] (./figures/camera/mean_error_pitch_variation.pgf)
-Overfull \hbox (31.37392pt too wide) in paragraph at lines 916--683
- [] 
+[34] [35]
+Overfull \hbox (14.58878pt too wide) in paragraph at lines 1204--1217
+ [][] 
  []
 
-[24] (./figures/camera/algorithm_influence.pgf)
-Overfull \hbox (36.39255pt too wide) in paragraph at lines 1061--708
- [] 
+[36]
+Overfull \hbox (15.97745pt too wide) in paragraph at lines 1225--1238
+ [][] 
  []
 
-[25] (./figures/camera/resolution_angle_effects_mean.pgf)
-Overfull \hbox (36.39255pt too wide) in paragraph at lines 1106--732
- [] 
- []
 
-[26] [27] [28] [29] [30
+Underfull \vbox (badness 5288) has occurred while \output is active []
+
+ [37] (./figures/camera/actual_position_estimate_distributions.pgf) (./figures/camera/ovals_vs_circles.pgf) [38] [39]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [40] [41] [42
 
 ]
-Chapter 6.
+Chapter 5.
+[43] [44]
+Overfull \hbox (9.1305pt too wide) in paragraph at lines 1427--1429
+[]\OT1/cmr/m/n/12 A sim-ple one di-men-sional Kalman Fil-ter com-putes the gain $\OML/cmm/m/it/12 K \OT1/cmr/m/n/12 = []$.
+ []
 
-Underfull \vbox (badness 1490) has occurred while \output is active []
+<figures/simple_objective/pitch_yaw_0_curvature_annotated.png, id=254, 273.02pt x 122.4575pt>
+File: figures/simple_objective/pitch_yaw_0_curvature_annotated.png Graphic file (type png)
+<use figures/simple_objective/pitch_yaw_0_curvature_annotated.png>
+Package pdftex.def Info: figures/simple_objective/pitch_yaw_0_curvature_annotated.png  used on input line 1443. on input line 1443.
+Package pdftex.def Info: Requested size: 175.49881pt x 78.71632pt on input line 1443.
+<figures/simple_objective/0_curvature_bestpos_small.png, id=255, 436.63126pt x 236.885pt>
+File: figures/simple_objective/0_curvature_bestpos_small.png Graphic file (type png)
+<use figures/simple_objective/0_curvature_bestpos_small.png>
+Package pdftex.def Info: figures/simple_objective/0_curvature_bestpos_small.png  used on input line 1449. on input line 1449.
+Package pdftex.def Info: Requested size: 175.49881pt x 95.21136pt on input line 1449.
+<figures/simple_objective/0_curvature_pos2_small.png, id=256, 449.68pt x 130.4875pt>
+File: figures/simple_objective/0_curvature_pos2_small.png Graphic file (type png)
+<use figures/simple_objective/0_curvature_pos2_small.png>
+Package pdftex.def Info: figures/simple_objective/0_curvature_pos2_small.png  used on input line 1454. on input line 1454.
+Package pdftex.def Info: Requested size: 191.10214pt x 55.45346pt on input line 1454.
+<figures/simple_objective/0_curvature_pos3_small.png, id=257, 432.61626pt x 149.55875pt>
+File: figures/simple_objective/0_curvature_pos3_small.png Graphic file (type png)
+<use figures/simple_objective/0_curvature_pos3_small.png>
+Package pdftex.def Info: figures/simple_objective/0_curvature_pos3_small.png  used on input line 1459. on input line 1459.
+Package pdftex.def Info: Requested size: 191.10214pt x 66.06621pt on input line 1459.
 
- [31]
-Overfull \hbox (6.75421pt too wide) in paragraph at lines 890--892
+Underfull \hbox (badness 10000) in paragraph at lines 1441--1462
+[][] []
+ []
+
+<figures/simple_objective/pitch_yaw_at_radius_20_annotated.png, id=258, 273.02pt x 122.4575pt>
+File: figures/simple_objective/pitch_yaw_at_radius_20_annotated.png Graphic file (type png)
+<use figures/simple_objective/pitch_yaw_at_radius_20_annotated.png>
+Package pdftex.def Info: figures/simple_objective/pitch_yaw_at_radius_20_annotated.png  used on input line 1468. on input line 1468.
+Package pdftex.def Info: Requested size: 163.79929pt x 73.46945pt on input line 1468.
+<figures/simple_objective/radius_20m_pos1_small.png, id=259, 276.03125pt x 275.0275pt>
+File: figures/simple_objective/radius_20m_pos1_small.png Graphic file (type png)
+<use figures/simple_objective/radius_20m_pos1_small.png>
+Package pdftex.def Info: figures/simple_objective/radius_20m_pos1_small.png  used on input line 1474. on input line 1474.
+Package pdftex.def Info: Requested size: 109.19952pt x 108.80463pt on input line 1474.
+<figures/simple_objective/radius_20m_pos2_small.png, id=260, 281.05pt x 276.03125pt>
+File: figures/simple_objective/radius_20m_pos2_small.png Graphic file (type png)
+<use figures/simple_objective/radius_20m_pos2_small.png>
+Package pdftex.def Info: figures/simple_objective/radius_20m_pos2_small.png  used on input line 1479. on input line 1479.
+Package pdftex.def Info: Requested size: 109.19952pt x 107.2474pt on input line 1479.
+<figures/simple_objective/pitch_yaw_at_radius_5_annotated.png, id=261, 273.02pt x 122.4575pt>
+File: figures/simple_objective/pitch_yaw_at_radius_5_annotated.png Graphic file (type png)
+<use figures/simple_objective/pitch_yaw_at_radius_5_annotated.png>
+Package pdftex.def Info: figures/simple_objective/pitch_yaw_at_radius_5_annotated.png  used on input line 1487. on input line 1487.
+Package pdftex.def Info: Requested size: 175.49881pt x 78.71632pt on input line 1487.
+<figures/simple_objective/radius_5m_pos1_small.png, id=262, 199.74625pt x 201.75375pt>
+File: figures/simple_objective/radius_5m_pos1_small.png Graphic file (type png)
+<use figures/simple_objective/radius_5m_pos1_small.png>
+Package pdftex.def Info: figures/simple_objective/radius_5m_pos1_small.png  used on input line 1493. on input line 1493.
+Package pdftex.def Info: Requested size: 97.5pt x 98.48154pt on input line 1493.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[45] [46 <./figures/simple_objective/pitch_yaw_0_curvature_annotated.png> <./figures/simple_objective/0_curvature_bestpos_small.png> <./figures/simple_objective/0_curvature_pos2_small.png> <./figures/simple_objective/0_curvature_pos3_small.png> <./figures/simple_objective/pitch_yaw_at_radius_20_annotated.png> <./figures/simple_objective/radius_20m_pos1_small.png> <./figures/simple_objective/radius_20m_pos2_small.png> <./figures/simple_objective/pitch_yaw_at_radius_5_annotated.png> <./figures/simple_objective/radius_5m_pos1_small.png>]
+Overfull \hbox (34.62602pt too wide) in paragraph at lines 1531--1535
+[]\OT1/cmr/m/n/12 To ex-am-ine this I used a hill-climbing op-ti-miza-tion al-go-rithm [[]]
+ []
+
+<figures/simple_objective/top_hillclimb.png, id=279, 592.2125pt x 270.00874pt>
+File: figures/simple_objective/top_hillclimb.png Graphic file (type png)
+<use figures/simple_objective/top_hillclimb.png>
+Package pdftex.def Info: figures/simple_objective/top_hillclimb.png  used on input line 1568. on input line 1568.
+Package pdftex.def Info: Requested size: 216.81pt x 98.85106pt on input line 1568.
+<figures/simple_objective/hillclimb_curvature.png, id=280, 465.74pt x 224.84pt>
+File: figures/simple_objective/hillclimb_curvature.png Graphic file (type png)
+<use figures/simple_objective/hillclimb_curvature.png>
+Package pdftex.def Info: figures/simple_objective/hillclimb_curvature.png  used on input line 1597. on input line 1597.
+Package pdftex.def Info: Requested size: 216.81pt x 104.66615pt on input line 1597.
+[47] [48 <./figures/simple_objective/top_hillclimb.png> <./figures/simple_objective/hillclimb_curvature.png>] [49]
+Underfull \vbox (badness 2600) has occurred while \output is active []
+
+ [50] [51]
+Overfull \hbox (9.9678pt too wide) in paragraph at lines 1768--1768
+[]\OT1/cmr/bx/n/17.28 Placing Sin-gle Cam-eras With Nav-i-ga-tional
+ []
+
+[52]
+Overfull \hbox (6.75421pt too wide) in paragraph at lines 1785--1787
 []\OT1/cmr/m/n/12 * pro-pose cas-caded op-ti-miza-tion -- choose pos-si-ble sen-sor lo-ca-tions, use cheaper
  []
 
-[32] [33] [34
+[53] [54
+
+]
+Chapter 6.
+[55] [56
 
 ]
 Chapter 7.
-[35] [36
+[57] [58
 
 ]
-Chapter 8.
-[37] [38
+Overfull \hbox (5.16676pt too wide) in paragraph at lines 1806--1806
+\OT1/cmr/m/it/12 1998. Pro-ceed-ings., 1998 IEEE/RSJ In-ter-na-tional Con-fer-ence on\OT1/cmr/m/n/12 . Vol. 2.
+ []
 
-] [39] [40] (./js2173_AV-Camera-Placement.aux)
+
+Overfull \hbox (12.81218pt too wide) in paragraph at lines 1806--1806
+[]\OT1/cmr/m/n/12 Sebastian Thrun, Wol-fram Bur-gard, and Di-eter Fox. \OT1/cmr/m/it/12 Prob-a-bilis-tic robotics\OT1/cmr/m/n/12 .
+ []
+
+[59]
+Overfull \hbox (9.97815pt too wide) in paragraph at lines 1806--1806
+[]\OT1/cmr/m/n/12 Maximilian Bein-hofer, J^^?org M^^?uller, and Wol-fram Bur-gard. ``Near-optimal
+ []
+
+
+Overfull \hbox (2.41821pt too wide) in paragraph at lines 1806--1806
+\OT1/cmr/m/it/12 toma-tion (ICRA), 2011 IEEE In-ter-na-tional Con-fer-ence on\OT1/cmr/m/n/12 . IEEE. 2011,
+ []
+
+[60]
+Overfull \hbox (16.08884pt too wide) in paragraph at lines 1806--1806
+\OT1/cmr/m/n/12 how cam-era con-fig-u-ra-tion and en-vi-ron-men-tal con-di-tions af-fect appearance-
+ []
+
+[61] (./js2173_AV-Camera-Placement.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: There were multiply-defined labels.
+
 Package logreq Info: Writing requests to 'js2173_AV-Camera-Placement.run.xml'.
 \openout1 = `js2173_AV-Camera-Placement.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 37164 strings out of 492990
- 868039 string characters out of 6132620
- 1370764 words of memory out of 5000000
- 40214 multiletter control sequences out of 15000+600000
- 538263 words of font info for 50 fonts, out of 8000000 for 9000
+ 38550 strings out of 492990
+ 896464 string characters out of 6132620
+ 4973471 words of memory out of 5000000
+ 41536 multiletter control sequences out of 15000+600000
+ 544563 words of font info for 71 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 62i,10n,96p,10423b,1172s stack positions out of 5000i,500n,10000p,200000b,80000s
-</usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on js2173_AV-Camera-Placement.pdf (52 pages, 329603 bytes).
+ 62i,14n,96p,10423b,1266s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb>
+Output written on js2173_AV-Camera-Placement.pdf (73 pages, 760204 bytes).
 PDF statistics:
- 250 PDF objects out of 1000 (max. 8388607)
- 174 compressed objects within 2 object streams
+ 402 PDF objects out of 1000 (max. 8388607)
+ 267 compressed objects within 3 object streams
  0 named destinations out of 1000 (max. 500000)
- 23 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 93 words of extra memory for PDF output out of 10000 (max. 10000000)
 

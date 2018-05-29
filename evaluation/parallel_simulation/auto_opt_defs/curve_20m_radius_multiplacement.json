@@ -1,0 +1,126 @@
+{
+    "road": {
+        "width": 3.0,
+        "side_offset": 1.5,
+        "path": {
+            "loop": false,
+            "segments": [
+                {
+                    "curvature": 0.0,
+                    "length": 20.0
+                },
+                {
+                    "curvature": 0.05,
+                    "length": 115.0
+                }
+            ]
+        }
+    },
+
+    "cameras": {
+        "update_rate": 10.0, 
+        "errors": {
+            "alg_error": 4.0,
+            "pos_error_stddev": 0.015,
+            "orient_error_stddev": 0.25
+        },
+        "placement_groups": [
+            {
+                "position": [20.0, 43.0, 6.0],
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [270.0, 63.0, 98.0, 21.0],
+                    [306.0, 56.5, 21.0, 21.0],
+                    [234.0, 56.5, 21.0, 21.0],
+                    [318.0, 47.0, 38.0, 51.0],
+                    [222.0, 47.0, 38.0, 51.0]
+                ],
+                "resolution": [900,900],
+                "model": "perspective"
+            },
+            {
+                "position": [42.0, 13.0, 6.0],
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [162.0, 63.0, 98.0, 21.0],
+                    [198.0, 56.5, 21.0, 21.0],
+                    [126.0, 56.5, 21.0, 21.0],
+                    [210.0, 47.0, 38.0, 51.0],
+                    [114.0, 47.0, 38.0, 51.0]
+                ],
+                "resolution": [900,900],
+                "model": "perspective"
+            },
+            {
+                "position": [38.5, 33.5, 6.0],
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [215.0, 63.0, 98.0, 21.0],
+                    [252.0, 56.5, 21.0, 21.0],
+                    [179.0, 56.5, 21.0, 21.0],
+                    [263.0, 47.0, 38.0, 51.0],
+                    [167.0, 47.0, 38.0, 51.0]
+                ],
+                "resolution": [900,900],
+                "model": "perspective"
+            },
+            {
+                "position": [1.5, 33.5, 6.0],
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [324.4, 63.0, 98.0, 21.0],
+                    [361.4, 56.5, 21.0, 21.0],
+                    [290.4, 56.5, 21.0, 21.0],
+                    [12.4, 47.0, 38.0, 51.0],
+                    [276.4, 47.0, 38.0, 51.0]
+                ],
+                "resolution": [900,900],
+                "model": "perspective"
+            },
+
+            {
+                "position": [-2.0, 13.0, 6.0],
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [17.4, 63.0, 98.0, 21.0],
+                    [52.4, 56.5, 21.0, 21.0],
+                    [341.4, 56.5, 21.0, 21.0],
+                    [65.4, 47.0, 38.0, 51.0],
+                    [329.4, 47.0, 38.0, 51.0]
+                ],
+                "resolution": [900,900],
+                "model": "perspective"
+            }
+        ]
+    },
+
+
+
+    "controller": {
+        "update_rate": 100,
+        "velocity_controller": {
+            "lookahead_time": 3.0,
+            "lookahead_interval": 0.20,
+            "straight_speed": 20.0,
+            "radius_speed_mult": 0.5,
+            "pid": [0.25, 0.0, 0.01]
+        },
+        "hoffman_steering": {
+            "distance_multiplier": 1.0
+        },
+        "path_tracking": {
+            "max_horizon": 10.0
+        }
+    },
+
+    "ekf": {
+        "update_rate": 25.0,
+        "initial_cov_diagonal": [0.01,0.01,0,0,0,0],
+        "model_step_noise": [0.0001, 0.00015, 0.00015, 0.0001],
+        "motion_model_threshold": 0.00001
+    },
+    "max_timeout": 15.0,
+    "analysis": {
+        "max_steps": 345,
+        "optimize": "mutual information",
+        "nrepeats": 2000,
+        "nparallel": 1,
+        "budget": 1
+    }
+}
+

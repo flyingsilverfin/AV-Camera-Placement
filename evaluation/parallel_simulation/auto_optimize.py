@@ -188,6 +188,12 @@ def get_metrics_summary_for(gen_dir, name):
 def optimize(config, gen_dir):
     """ Greedily optimize a given metric """
 
+    # create experiment dir if doesn't exist
+    try:
+        os.makedirs(gen_dir)
+    except Exception:
+        pass
+
     opt_params = config['analysis']
     budget = opt_params['budget']
     nrepeats = opt_params['nrepeats']
@@ -199,9 +205,13 @@ def optimize(config, gen_dir):
     log = []
     logfile = os.path.join(gen_dir, "optimization_log_{0}.txt".format(opt_criterion))
 
-    possible_placement_blocks = config['cameras']['placement_groups']
-
     possible_placement_blocks = generate_blocks(config['cameras']['placement_groups'])
+
+    # generate 1 config file with all the blocks merged to generate visualizations with
+    all_placements = [placement for block_placement in possible_placement_blocks for placement in block_placement]
+    all_placement_config = generate_config(config, all_placements)
+    with open(os.path.join(gen_dir, "conf_all_placements.json"), 'w') as f:
+        json.dump(all_placement_config, f, indent=4, sort_keys=True)
 
    
     remaining_blocks = list(range(len(possible_placement_blocks))) # will remove indices

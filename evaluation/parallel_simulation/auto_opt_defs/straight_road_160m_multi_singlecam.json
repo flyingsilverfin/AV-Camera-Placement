@@ -22,11 +22,11 @@
         },
         "placement_groups": [
             {
-                "position": [40.0, -3.0, 6.0],
+                "position": [80.0, -3.0, 6.0],
                 "allowed_yaw_pitch_hfov_vfov": [
-                    [140.0, 52.0, 60.0, 60.0],
-                    [40.0, 52.0, 60.0, 60.0],
-                    [140.0, 52.0, 20.0, 20.0],
+                    [139.0, 52.0, 60.0, 60.0],
+                    [39.0, 52.0, 60.0, 60.0],
+                    [139.0, 52.0, 20.0, 20.0],
                     [40.0, 52.0, 20.0, 20.0],
                     [90.0, 66.0, 47.0, 23.0],
                     [155.0, 55.0, 45.0, 80.0],
@@ -66,8 +66,8 @@
     "max_timeout": 15.0,
     "analysis": {
         "max_steps": 210,
-        "optimize": "mutual information",
-        "nrepeats": 2000,
+        "optimize": "total trace",
+        "nrepeats": 20,
         "nparallel": 1,
         "budget": 1
     }
