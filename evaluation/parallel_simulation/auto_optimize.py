@@ -360,7 +360,7 @@ def test_submodularity(config, gen_dir, n_trials=1000):
         # got all four scores now!
         # check for submodularity property
         n_tested += 1
-        submodular =  score_A - score_B > score_A_unit_c - score_C
+        submodular =  score_A - score_A_unit_c > score_B - score_C
         if submodular:
             n_submodular += 1
         print("*** Submodular: {0} ***".format(submodular))
