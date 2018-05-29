@@ -1,15 +1,24 @@
 [0] Config.pm:354> INFO - This is Biber 2.7
 [0] Config.pm:357> INFO - Logfile is 'js2173_AV-Camera-Placement.blg'
-[36] biber:303> INFO - === Fri May 18, 2018, 12:03:05
-[64] Biber.pm:359> INFO - Reading 'js2173_AV-Camera-Placement.bcf'
-[177] Biber.pm:835> INFO - Found 14 citekeys in bib section 0
-[192] Biber.pm:3670> INFO - Processing section 0
-[208] Biber.pm:3840> INFO - Looking for bibtex format file 'bibliography.bib' for section 0
-[210] bibtex.pm:1435> INFO - Decoding LaTeX character macros into UTF-8
-[216] bibtex.pm:1292> INFO - Found BibTeX data source 'bibliography.bib'
-[263] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[264] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[264] Biber.pm:3499> INFO - Sorting list 'ynt/global/' of type 'entry' with scheme 'ynt' and locale 'en-US'
-[264] Biber.pm:3505> INFO - No sort tailoring available for locale 'en-US'
-[284] bbl.pm:608> INFO - Writing 'js2173_AV-Camera-Placement.bbl' with encoding 'ascii'
-[290] bbl.pm:712> INFO - Output to js2173_AV-Camera-Placement.bbl
+[32] biber:303> INFO - === Tue May 29, 2018, 00:03:36
+[54] Biber.pm:359> INFO - Reading 'js2173_AV-Camera-Placement.bcf'
+[155] Biber.pm:835> INFO - Found 36 citekeys in bib section 0
+[171] Biber.pm:3670> INFO - Processing section 0
+[186] Biber.pm:3840> INFO - Looking for bibtex format file 'bibliography.bib' for section 0
+[190] bibtex.pm:1435> INFO - Decoding LaTeX character macros into UTF-8
+[199] bibtex.pm:1292> INFO - Found BibTeX data source 'bibliography.bib'
+[264] Utils.pm:164> WARN - I didn't find a database entry for 'russel2016artificial' (section 0)
+[306] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[306] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[306] Biber.pm:3499> INFO - Sorting list 'ynt/global/' of type 'entry' with scheme 'ynt' and locale 'en-US'
+[306] Biber.pm:3505> INFO - No sort tailoring available for locale 'en-US'
+[344] bbl.pm:608> INFO - Writing 'js2173_AV-Camera-Placement.bbl' with encoding 'ascii'
+[347] Utils.pm:164> WARN - The entry 'aastrom1995pid' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[348] Utils.pm:164> WARN - The entry 'larsen1998incorporation' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[351] Utils.pm:164> WARN - The entry 'horster2006optimal' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[353] Utils.pm:164> WARN - The entry 'tessier2006real' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[357] Utils.pm:164> WARN - The entry 'beinhofer2011near' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[359] Utils.pm:164> WARN - The entry 'bansal2014understanding' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[362] Utils.pm:164> WARN - The entry 'paden2016survey' has characters which cannot be encoded in 'ascii'. Recoding problematic characters into macros.
+[364] bbl.pm:712> INFO - Output to js2173_AV-Camera-Placement.bbl
+[365] Biber.pm:109> INFO - WARNINGS: 8

@@ -22,7 +22,7 @@
         },
         "placements": [
             {
-                "position": [40.0, -6.0, 6.0],
+                "position": [40.0, -3.0, 6.0],
                 "yaw_degrees": 90.0,
                 "pitch_degrees": 40.0,
                 "resolution": [900,900],

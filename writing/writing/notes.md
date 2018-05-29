@@ -66,3 +66,9 @@ https://vimeo.com/142624091
 * note: the standard implementation uses a unicycle model...
 https://answers.ros.org/question/221837/robot_localization-ekf-internal-motion-model/
 
+
+
+# Presentation
+
+* Implementation Overview
+  * Quaternions are cool but a massive pain to get 100% right!

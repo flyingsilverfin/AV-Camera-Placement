@@ -6,6 +6,10 @@
             "loop": false,
             "segments": [
                 {
+                    "curvature": 0.0,
+                    "length": 20.0
+                },
+                {
                     "curvature": 0.05,
                     "length": 125.0
                 }
@@ -22,8 +26,8 @@
         },
         "placements": [
             {
-                "position": [0, 43, 6.0],
-                "yaw_degrees": 310.0,
+                "position": [20.0, 43, 6.0],
+                "yaw_degrees": 315.0,
                 "pitch_degrees": 40.0,
                 "resolution": [900,900],
                 "fov": [60.0, 60.0],
@@ -40,11 +44,11 @@
             "lookahead_time": 3.0,
             "lookahead_interval": 0.20,
             "straight_speed": 20.0,
-            "radius_speed_mult": 0.5,
+            "radius_speed_mult": 0.45,
             "pid": [0.25, 0.0, 0.01]
         },
         "hoffman_steering": {
-            "distance_multiplier": 1.2
+            "distance_multiplier": 1.7
         },
         "path_tracking": {
             "max_horizon": 10.0

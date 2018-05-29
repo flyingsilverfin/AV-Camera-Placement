@@ -7,7 +7,7 @@
             "segments": [
                 {
                     "curvature": 0.0,
-                    "length": 80.0
+                    "length": 160.0
                 }
             ]
         }
@@ -22,11 +22,109 @@
         },
         "placements": [
             {
-                "position": [20.0, -3.0, 6.0],
-                "yaw_degrees": 47.8,
-                "pitch_degrees": 56.9,
+                "position": [40.0, -3.0, 6.0],
+                "yaw_degrees": 140.0,
+                "pitch_degrees": 52.0,
                 "resolution": [900,900],
-                "fov": [20.1, 20.7],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [40.0, -3.0, 6.0],
+                "yaw_degrees": 40.0,
+                "pitch_degrees": 52.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+
+            {
+                "position": [40.0, -3.0, 6.0],
+                "yaw_degrees": 90.0,
+                "pitch_degrees": 40.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },  
+            {
+                "position": [40.0, -3.0, 6.0],
+                "yaw_degrees": 180.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [40.0, -3.0, 6.0],
+                "yaw_degrees": 0.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+
+            {
+                "position": [20.0, -3.0, 6.0],
+                "yaw_degrees": 90.0,
+                "pitch_degrees": 40.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [20.0, -3.0, 6.0],
+                "yaw_degrees": 180.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [20.0, -3.0, 6.0],
+                "yaw_degrees": 0.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [20.0, -3.0, 6.0],
+                "yaw_degrees": 40.0,
+                "pitch_degrees": 52.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [60.0, -3.0, 6.0],
+                "yaw_degrees": 90.0,
+                "pitch_degrees": 40.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [60.0, -3.0, 6.0],
+                "yaw_degrees": 180.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [60.0, -3.0, 6.0],
+                "yaw_degrees": 0.0,
+                "pitch_degrees": 80.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
+                "model": "perspective"
+            },
+            {
+                "position": [60.0, -3.0, 6.0],
+                "yaw_degrees": 140.0,
+                "pitch_degrees": 52.0,
+                "resolution": [900,900],
+                "fov": [60.0, 60.0],
                 "model": "perspective"
             }
         ]
