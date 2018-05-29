@@ -1523,6 +1523,7 @@ the search space as much as possible.
 
 
 \subsection{Optimizing Pitch, Yaw, and Horizontal and Vertical FoV Simultaneously}
+\label{sec:simpleobjective:hillclimbing}
 
 As mentioned in the introduction of this dissertation, I also attempt
 to optimize the field of view simultaneously with the pitch and yaw
@@ -1767,23 +1768,125 @@ and the approximate area of the ellipse (squared), respectively.
 
 \section{Placing Single Cameras With Navigational Metrics}
 
+I present selected results from many experiments with the mutual informaton
+and mean trace of the covariance as placement metrics and use
+these to motivate discussion of metrics and conclusions about
+camera placements.
+
 \subsection{Straight Roads}
 
+I first use the mutual information maximization/conditional entropy
+minimization measure to compute the best orientation, with a fixed 
+field of view, of a selection of possibilities discovered by 
+the cheaper optimization algorithm.
 
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/straightroad_80m_singlecamera.png}
+    \caption[Single Camera Optimization Using MI]{Visualization of camera orientations and rankings.}
+    \label{fig:miplacement:straightroad80m}
+\end{figure}
+
+
+The two highest scoring orientationa are the diagonally orientations, labeled 1 and 2 in Figure~\ref{fig:miplacement:straightroad80m}.
+These were among the middle of the range of predicted orientations by the previous
+objective. Table~\ref{tab:straightroad80m} ranks the choices and shows some other possible measures,
+such as the lateral error and total trace. 
+
+\begin{table}[htb]
+    \centering
+    \caption{Mean values of various metrics for each allowed orientation. Vehicle travels left to right.}
+    \label{tab:straightroad80m}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        Rank & $h(X|U, Z)$ & Total Trace & Lateral Error & Localization Error \\ \midrule
+        1    & \textbf{4e-549}    & \textbf{1.788}       & \testbf{0.0151}        & TODO (4x server)   \\
+        2    & 5e-546    & 2.05        & 0.0163        &                    \\
+        3    & 6e-540    & 2.14        & 0.0168        &                    \\
+        4    & 2e-537    & 2.11        & 0.0165        &                    \\
+        5    & 9e-537    & 2.16        & 0.0154        &                    \\
+        6    & 2e-536    & 2.18        & 0.0174        &                    \\
+        7    & 5e-534    & 2.28        & 0.0165        &                   
+    \end{tabular}
+\end{table}
+
+We can recognize the mutual information has ranked the choices according to how 
+a human might intuitively expect the best placements to be. Also note that
+the trace and mutual information measure generally agree on placements, but don't
+necessarily imply the lowest lateral error from the path. Although not shown here,
+I also tested variations on these orientations and established that
+using the diagonal of the field of view is in fact one of the best orientations
+possible in all metrics.
+
+I also used results from the hillclimbing joint optimization of field of view and
+orientation, which I visualize and rank in Figure~\ref{fig:straightroad160multi}.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/straightroad_160m_singlecamera_multifov.png}
+    \caption[Single Camera Optimization Using MI]{Visualization of camera orientations and rankings.}
+    \label{fig:straightroad160multi}
+\end{figure}
+
+The result of this evaluation yielded some interesting results. Firstly, the hillclimbing
+algorithm from Section~\ref{sec:simpleobjective:hillclimbing} consistently decreased
+the field of view to obtain a better score -- that seems to be detrimental
+for mutual information and covariance trace measures. Even a wide field of view
+along the path (rank 5, purple) scores badly in these respects. This stems
+from firstly being able to send multiple updates to the vehicle, as well as
+not being perpendicular to the path. This is discused in more detail
+in Section REF TODO DISCUSSION. Lastly, I purposely chose to provide symmetric
+choices in the optimization process. Here labels 1 and 2 are identical in
+parameters except being flipped about the perpendicular to the road. In all
+of the symmetric cases, the optimization ranks the left-facing option higher.
+This makes sense, since these all face the vehicle's incoming direction, 
+and it is beneficial to reduce the vehicle's uncertainty or error as 
+early in the navigation as possible to decrease all of the objective scores.
+This is a trend we will continue to see in the following examples.
 
 \subsection{Curved Roads}
 
-
+* curve 20m singlecam, fixed fov (finished)
+* curve 20m singlecam, multi fov (c5.large4x computation, restarted 3:30PM)
 
 \section{Multiple Camera Placement}
+
+The prior sections used more sophisticated metrics than my cheap objective function
+to select the best of a set of possible orientations. I showed that the
+hillclimbing variant, which generally minimizes field of view, produces unreliable
+results for the navigation of the vehicle. TODO DOUBLE CHECK 
+
+I now test the placement of several cameras along a straight path using
+the mutual information metric.
+
+straight road 80m -- rerunning!
+
+
+\section{Submodularity}
+
+TODO discuss how none of these are submodular, but we can empirically
+test how submodular they are -- do this with mean trace.
+
+Discuss how mean trace has agreed with MI most of the time in these tests.
+
+If trace is highly submodular, discuss how the greedy algorithm gives good results
+Discuss overlap of camera regions and its affect
+
+If have time: Do a gradient ascent using trace??
+
+
+
 * Discuss submodularity
 
 * test submodularity by sampling -- make sure minimum overlap of camera ground areas!
 
 * straight roads + 1 curvature
 
-* propose cascaded optimization -- choose possible sensor locations, use cheaper objective to find top 1 or 2 
-positions or orientations, add these to the set of possible locations and orientations
+
+
+* straight road 80m 3/2 positions, fixed FoV (finished)
+* curve multi-fov placement 3/5 positions, (c5.9x, probably finished tomorrow)
+
 
 
 \section{Conclusion}
