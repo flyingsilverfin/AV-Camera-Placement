@@ -145,6 +145,9 @@ if __name__ == "__main__":
             "mean mean crosstrack error": 0,
             "var crosstrack error": 0,
             "stddev crosstrack error": 0,
+            "mean mean belief error": 0,
+            "var mean belief error": 0,
+            "stddev mean belief error": 0,
             "num_bags": 0
         }
     }

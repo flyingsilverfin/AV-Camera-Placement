@@ -516,6 +516,7 @@ def compute_metrics(definition, bagfiles, max_steps, compute_MI=True, verbose=Fa
     total_diff_entropies = []
     final_diff_entropies = []
     crosstrack_errors = []
+    belief_errors = []
 
     mean_metrics = metrics['means']
     for f in bagfiles:
@@ -529,12 +530,14 @@ def compute_metrics(definition, bagfiles, max_steps, compute_MI=True, verbose=Fa
             stepwise_entropies = basic_entropy.sum_step_entropies(bag, max_steps)
             final_entropy = basic_entropy.get_final_entropy(bag, max_steps)
             crosstrack_error = measurements.get_mean_crosstrack_error(bag, max_steps)
+            belief_error = measurements.get_mean_belief_error(bag, max_steps)
              # save values if none of them failed
             total_traces.append(mean_total_trace)
             final_traces.append(final_trace)
             total_diff_entropies.append(stepwise_entropies)
             final_diff_entropies.append(final_entropy)
             crosstrack_errors.append(crosstrack_error)
+            belief_errors.append(belief_error)
         except Exception as e:
             print(e)
             print("==> (Skipping)")
@@ -554,6 +557,9 @@ def compute_metrics(definition, bagfiles, max_steps, compute_MI=True, verbose=Fa
     mean_metrics["var final differential entropy"] = np.var(final_diff_entropies)
     mean_metrics["mean mean crosstrack error"] = np.mean(crosstrack_errors)
     mean_metrics["var mean crosstrack error"] = np.var(crosstrack_errors)
+    mean_metrics["mean mean belief error"] = np.mean(belief_errors)
+    mean_metrics["var mean belief error"] = np.var(belief_errors)
+
     mean_metrics['num_bags'] = len(total_traces)
     
     # average each one that is supposed to be a mean
