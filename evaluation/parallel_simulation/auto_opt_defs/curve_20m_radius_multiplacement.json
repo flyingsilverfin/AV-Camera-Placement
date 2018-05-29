@@ -97,11 +97,11 @@
             "lookahead_time": 3.0,
             "lookahead_interval": 0.20,
             "straight_speed": 20.0,
-            "radius_speed_mult": 0.5,
+            "radius_speed_mult": 0.45,
             "pid": [0.25, 0.0, 0.01]
         },
         "hoffman_steering": {
-            "distance_multiplier": 1.0
+            "distance_multiplier": 1.9
         },
         "path_tracking": {
             "max_horizon": 10.0
@@ -117,8 +117,8 @@
     "max_timeout": 15.0,
     "analysis": {
         "max_steps": 345,
-        "optimize": "mutual information",
-        "nrepeats": 2000,
+        "optimize": "total trace",
+        "nrepeats": 5,
         "nparallel": 1,
         "budget": 1
     }

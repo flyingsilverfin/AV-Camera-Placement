@@ -7,7 +7,7 @@
             "segments": [
                 {
                     "curvature": 0.0,
-                    "length": 80.0
+                    "length": 160.0
                 }
             ]
         }
@@ -23,47 +23,16 @@
         "placement_groups": [
             {
                 "position": [40.0, -3.0, 6.0],
-                "allowed_yaw_pitch": [
-                    [90.0, 40.0],
-                    [170.0, 60.0],
-                    [40.0, 52.0],
-                    [140.0, 52.0],
-                    [10.0, 60.0] 
+                "allowed_yaw_pitch_hfov_vfov": [
+                    [140.0, 52.0, 60.0, 60.0],
+                    [40.0, 52.0, 60.0, 60.0],
+                    [140.0, 52.0, 20.0, 20.0],
+                    [40.0, 52.0, 20.0, 20.0],
+                    [90.0, 67.0, 47.0, 23.0],
+                    [165.0, 60.0, 45.0, 80.0],
+                    [15.0, 60.0, 45.0, 80.0]
                 ],
-                "yaw_degrees": 140.0,
-                "pitch_degrees": 52.0,
                 "resolution": [900,900],
-                "fov": [60.0, 60.0],
-                "model": "perspective"
-            },
-            {
-                "position": [20.0, -3.0, 6.0],
-                "allowed_yaw_pitch": [
-                    [90.0, 40.0],
-                    [170.0, 60.0],
-                    [40.0, 52.0],
-                    [140.0, 52.0],
-                    [10.0, 60.0]
-                ],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
-                "resolution": [900,900],
-                "fov": [60.0, 60.0],
-                "model": "perspective"
-            },
-            {
-                "position": [60.0, -3.0, 6.0],
-                "allowed_yaw_pitch": [
-                    [90.0, 40.0],
-                    [170.0, 60.0],
-                    [40.0, 52.0],
-                    [140.0, 52.0],
-                    [10.0, 60.0] 
-                ],
-                "yaw_degrees": 90.0,
-                "pitch_degrees": 40.0,
-                "resolution": [900,900],
-                "fov": [60.0, 60.0],
                 "model": "perspective"
             }
         ]
@@ -98,9 +67,9 @@
     "analysis": {
         "max_steps": 120,
         "optimize": "total trace",
-        "nrepeats": 20,
+        "nrepeats": 1,
         "nparallel": 1,
-        "budget": 2
+        "budget": 1
     }
 }
 
