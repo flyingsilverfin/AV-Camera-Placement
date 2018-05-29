@@ -272,14 +272,116 @@ def optimize(config, gen_dir):
         
 
 
+def test_submodularity(config, gen_dir, n_trials=1000):
+    
+    # create experiment dir if doesn't exist
+    try:
+        os.makedirs(gen_dir)
+    except Exception:
+        pass
 
+    opt_params = config['analysis']
+    budget = opt_params['budget']
+    nrepeats = opt_params['nrepeats']
+    nparallel = opt_params['nparallel']
+    opt_criterion = opt_params["optimize"]
+    if opt_criterion == 'mutual information':
+        print("********* WARNING: testing mutual information for submodularity will be VERY slow **********")
+
+    # this is all expensive so probably want to
+    # save some progress if we can
+    possible_placement_blocks = generate_blocks(config['cameras']['placement_groups'])
+
+    # check if total number of possibilities is lower/more than half of than n_trials
+    # if so, do approximate exhaustive test
+    num_blocks = len(possible_placement_blocks)
+    min_choices = 3
+    max_choices = num_blocks
+
+    # TODO this check
+    # for now just make sure the number of possibilities much larger than sample size
+
+    n_tested = 0
+    n_submodular = 0
+    log = []
+    logfile = os.path.join(gen_dir, "submodularity_test_log_{0}.txt".format(opt_criterion.replace(' ', '-')))
+
+    for j in range(n_trials):
+        print(" ----- Running submodularity test {0} -----".format(j))
+        set_size = np.random.randint(min_choices, max_choices+1)
+        remaining_blocks = list(range(len(possible_placement_blocks))) # will remove indices
+        current_placements = []
+        current_name = "conf_" 
+
+        for i in range(set_size-2): # generate set A
+            index = np.random.randint(0, len(remaining_blocks))
+            block_index = remaining_blocks[index]
+            block = possible_placement_blocks[remaining_blocks[index]] # note double indirection here
+            # make a random choice within that block
+            orientation_index = np.random.randint(0, len(block))
+            current_placements.append(block[orientation_index])
+            remaining_blocks.pop(index) # remove chosen block
+            current_name += "_block_{0}_orient_{1}".format(block_index, orientation_index)
+
+        # evaluate the smallest set A
+        metrics = do_execution(config, current_placements, current_name, gen_dir, nparallel, nrepeats, opt_criterion)
+        score_A = get_score_for_metric(opt_criterion, metrics)
+         
+
+        # set B
+        # choose one more block and orientation
+        index = np.random.randint(0, len(remaining_blocks))
+        block_index = remaining_blocks[index]
+        block = possible_placement_blocks[block_index]
+        orientation_index = np.random.randint(0, len(block))
+        remaining_blocks.pop(index) # remove chosen block
+        placements_B = current_placements + [block[orientation_index]]
+        name_B = current_name + "_block_{0}_orient_{1}".format(block_index, orientation_index)
+        metrics_B = do_execution(config, placements_B, name_B, gen_dir, nparallel, nrepeats, opt_criterion)
+        score_B = get_score_for_metric(opt_criterion, metrics_B)
+
+        # set C (largest)
+        index = np.random.randint(0, len(remaining_blocks))
+        block_index_unit_c = remaining_blocks[index]
+        block_c = possible_placement_blocks[block_index_unit_c]
+        orientation_index_unit_c = np.random.randint(0, len(block_c))
+        # don't bother poppping from remaining blocks
+        placements_C = placements_B + [block_c[orientation_index_unit_c]]
+        name_C = name_B + "_block_{0}_orient_{1}".format(block_index_unit_c, orientation_index_unit_c)
+        metrics_C = do_execution(config, placements_C, name_C, gen_dir, nparallel, nrepeats, opt_criterion)
+        score_C = get_score_for_metric(opt_criterion, metrics_C)
+
+        # Add unit set C to A and compute core
+        placements_A_unit_c = current_placements + [block_c[orientation_index_unit_c]]
+        name_A_unit_c = current_name + "_block_{0}_orient_{1}".format(block_index_unit_c, orientation_index_unit_c)
+        metrics_A_unit_c = do_execution(config, placements_A_unit_c, name_A_unit_c, gen_dir, nparallel, nrepeats, opt_criterion)
+        score_A_unit_c = get_score_for_metric(opt_criterion, metrics_A_unit_c)
+
+        # got all four scores now!
+        # check for submodularity property
+        n_tested += 1
+        submodular =  score_A - score_B > score_A_unit_c - score_C
+        if submodular:
+            n_submodular += 1
+        print("*** Submodular: {0} ***".format(submodular))
+        log.append("Score A: {0}, Score B: {1}, Score A+c: {2}, Score B+c: {3} -- submodular: {4}".format(score_A, score_B, score_A_unit_c, score_C, submodular))
+        log.append("\t A: {0}, B: {1}, A+c:{2}, B+c:{3}".format(current_name, name_B, name_A_unit_c, name_C))
+
+        # overwrite log each time why not
+        with open(logfile, 'w') as f:
+            for line in log:
+                f.write("{0}\n".format(line))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Launch auto-optimization, with a specified config file')
 
     parser.add_argument("--config", required=True, help="Config file that defines experiment to greedily optimize")
     parser.add_argument("--out", required=True, help="Root Directory to save intermediate simulation results/data to")
-
+    parser.add_argument('--test-submodularity', dest='test_submodularity', action='store_true')
+    parser.add_argument('--no-test-submodularity', dest='test_submodularity', action='store_false')
+    
+    parser.set_defaults(test_submodularity=False)
+    parser.set_defaults(compute_MI=True)
 
     args = parser.parse_args()
 
@@ -291,7 +393,10 @@ if __name__ == "__main__":
 
     save_dir = os.path.join(args.out, config_name) 
 
-    optimize(blob, save_dir) 
+    if args.test_submodularity:
+        test_submodularity(blob, save_dir)
+    else:
+        optimize(blob, save_dir) 
 
 
 
