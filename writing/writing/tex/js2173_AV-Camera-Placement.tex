@@ -97,6 +97,7 @@ on everything from bicycles, to small delivery robots, to standard vehicles -- a
 shifting the sensing task from the individual user to the infrastructure.
 
 \section{Motivation}
+\label{sec:intro:motivation}
 
 The core task of an autonomous vehicle is to navigate correctly and safely from a start
 to a destination. This process can be split into major subtasks consisting
@@ -615,7 +616,7 @@ in Chapter~\ref{chap:cameraplacement}.
 
 
 
-\subsubsection{Odometry Motion Models}
+\subsubsection{Odometry Motion Model}
 \label{sec:impl:motion model}
 
 I describe the probabilistic motion model $f(\bm{x}, \bm{u})$
@@ -797,10 +798,9 @@ I will refer to these equations in Section~\ref{sec:cameraplacement:mutualinform
 \chapter{Camera Model}
 \label{chap:cameramodel}
 
-The analysis presented in the following chapter is based on the navigation of an
-autonomous vehicle guided only by its own wheel odometry. 
-This implies that errors accumulate over time, and
-occasional updates need to be provided to reduce the positional 
+The analysis presented in the Chapter~\ref{chap:cameraplacement} is based on the navigation of an
+autonomous vehicle guided only by dead reckoning. Errors accumulate over time need
+occasional updates to reduce the positional 
 uncertainty of the robot. The sensor selected to provide this
 information is the camera, which is already widely deployed
 in modern city infrastructure.
@@ -1182,7 +1182,7 @@ and across various world vehicle positions).
 \end{table}
 
 
-As discussed in the related works chapter, allowable lateral deviations are generally
+As discussed in Section~\ref{sec:intro:motivation}, allowable lateral deviations are generally
 quoted at $\pm$10-25cm. The table above shows in bold which camera placements would be 
 within these limits. Note that even though the mean and 95\% percentile error bounds
 at lower pitch angles are high, the median tells us that most measurements
