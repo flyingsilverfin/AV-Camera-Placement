@@ -11,7 +11,7 @@
                 },
                 {
                     "curvature": 0.05,
-                    "length": 115.0
+                    "length": 120.0
                 }
             ]
         }
@@ -32,7 +32,7 @@
                     [295.0, 56.5, 21.0, 21.0],
                     [245.0, 56.5, 21.0, 21.0],
                     [315.0, 43.0, 38.0, 51.0],
-                    [225.0, 52.0, 38.0, 51.0]
+                    [225.0, 43.0, 38.0, 51.0]
                 ],
                 "resolution": [900,900],
                 "model": "perspective"
@@ -67,7 +67,7 @@
     },
     "max_timeout": 15.0,
     "analysis": {
-        "max_steps": 345,
+        "max_steps": 340,
         "optimize": "mutual information",
         "nrepeats": 2000,
         "nparallel": 11,
