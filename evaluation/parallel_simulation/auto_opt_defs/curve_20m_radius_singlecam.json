@@ -69,7 +69,7 @@
     "analysis": {
         "max_steps": 345,
         "optimize": "mutual information",
-        "nrepeats": 500,
+        "nrepeats": 2000,
         "nparallel": 11,
         "budget": 1
     }
