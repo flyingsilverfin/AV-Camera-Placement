@@ -138,6 +138,8 @@ def get_score_for_metric(metric, metrics_summary):
         return mean_metrics['mean final trace']
     elif metric == 'final differential entropy':
         return mean_metrics['mean final differential entropy']
+    elif metric == 'total differential entropy':
+        return mean_metrics['mean total differential entropy']
 
     else:
         raise Exception("Unknown metric: {0}".format(metric))
