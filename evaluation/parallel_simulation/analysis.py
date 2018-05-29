@@ -394,8 +394,8 @@ class ConditionalEntropyMetric(object):
         
         entropies = [] 
         for i, filename in enumerate(bag_files):
-            bag = rosbag.Bag(filename)
             try:
+                bag = rosbag.Bag(filename)
                 log_probability, timesteps, n_skipped = self.calculate_log_probability(bag, camera_network, verbose=verbose, max_steps=max_steps)
                 entropy = -1*bf.exp(log_probability) * (log_probability) # use bigfloat
                 entropies.append(entropy)
@@ -519,11 +519,11 @@ def compute_metrics(definition, bagfiles, max_steps, compute_MI=True, verbose=Fa
 
     mean_metrics = metrics['means']
     for f in bagfiles:
-        bag = rosbag.Bag(f)
-        if bag.get_message_count() < max_steps:
-            # skip bags without enough messages...
-            continue
         try:
+            bag = rosbag.Bag(f)
+            if bag.get_message_count() < max_steps:
+                # skip bags without enough messages...
+                continue
             mean_total_trace = trace.get_summed_trace(bag, max_steps)
             final_trace = trace.get_final_trace(bag, max_steps)
             stepwise_entropies = basic_entropy.sum_step_entropies(bag, max_steps)
