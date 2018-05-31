@@ -73,7 +73,7 @@
 
 \section{Research Vision}
 
-It is conceivable that, in the near future, private vehicles have been made redundant by an efficient
+It is conceivable that, in the near future, private vehicles would have been made redundant by an efficient
 fleet of local autonomous vehicles, ferrying passengers on demand between locations in 
 a city. The details of the implementation could vary -- the current, conventional
 approach is to use highly perceptive vehicles that completely sense their environment independently.
@@ -115,17 +115,18 @@ and generally implies only large platforms can be used.
 I propose moving the localization and navigation sensing tasks
 from vehicles to the infrastructure, which is particularly applicable in urban environments.
 I examine a static environment containing a single vehicle, with dynamic components and safety
-as future research avenues.
+to be pursued in future work. 
 
 Most current localization approaches utilize global satellite navigations systems,
-such as GPS and its augmentations like real-time kinematic (RTK)~\cite{scherzinger2000precise}.
-The US government reports a global 95\% accuracy of 0.715 meters~\cite{USGPSPerformance}. 
+such as GPS and its augmentations like real-time kinematic positioning (RTK)~\cite{scherzinger2000precise}.
+The US government reports a consumer-grade GPS accuracy of 0.715 meters 95\% of the time~\cite{USGPSPerformance}. 
 However, GPS errors are introduced in urban environments -- according to~\citeauthor{miura2015gps}, even with the
-authors' proposed correction steps, the mean localization error was around 5.2 meters in urban canyons. 
+authors' proposed correction steps, the mean localization error was around 5.2 meters in urban canyons, where
+multipath effects or buildings block signals from multiple satellites. 
 In contrast, most authors agree autonomous vehicles can tolerate 0.2 to 0.35 meters lateral error
 ~\cite{vivacqua2017low}\cite{ziegler2014video}\cite{mattern2010high}.
 
-To achieve these error bounds, current techniques may use computationally heavy visual odometry~\cite{ziegler2014video},
+To achieve these error targets, current techniques may use computationally heavy visual odometry~\cite{ziegler2014video},
 very high precision maps~\cite{mattern2010high}, or expensive LIDAR to localize
 lane markings very accurately~\cite{hata2014road}.  
 
@@ -148,8 +149,8 @@ The practical questions answered by this work are the following:
     \item How accurately do offboard cameras need to be installed to provide good vehicle localization? How accurate do the computer vision
     algorithms recognizing vehicles need to be to provide good vehicle localization?
     \item In which direction should an offboard camera be facing and what should its properties be (for instance, field of view)
-          to optimally aid vehicle localization and navigation, and how is related to road curvature?
-    \item How should a set of cameras be placed along a path to optimize navigational performance?
+          to optimally aid vehicle localization and navigation, and how are they related to road curvature?
+    \item Given a road or path to follow, how should a set of cameras be placed along the path to optimize navigational performance?
 \end{enumerate}
 
 The first item relates to the feasibility of offboard camera-based localization
@@ -166,7 +167,7 @@ have allowed more degrees of freedom than simply adjusting the tilt (pitch)
 and choosing one of a limited set of positions. Further, no exploration of 
 properties of cameras has been performed - for instance, the impact
 of allowing a larger field of view in the observation task. Lastly, surveillance
-tasks normally seek to maximize different objective functions than robotic
+tasks normally seek to maximize objective functions other than robotic
 navigational performance.
 
 Finally, throughout this work, I examine the impact of the environment, specifically
@@ -196,7 +197,7 @@ the simulation used for analysis, as well as background material referenced thro
 this dissertation.
 
 Chapter \ref{chap:cameramodel} then develops the error model for cameras
-used in simulation, and examines the feasibility of using cameras in the infrastructure for localization.
+used in simulations, and examines the feasibility of using cameras in the infrastructure for localization.
 Chapter ~\ref{chap:cameraplacement} optimizes single and multiple camera placements
 in various environments and using different objective functions. This is followed by concluding remarks.
 
@@ -225,11 +226,10 @@ navigation, and tracking.
 
 The choice of sensor, however, varies widely. Many researchers
 have used bearing or distance-based triangulation methods combined
-with ultra-wide band (UWB), sonar, angle-of-arrival or other wireless
-signals to perform localization~\cite{wang2010survey}. These all suffer
+with ultra-wide band (UWB), infrared, or even sonar to perform localization~\cite{wang2010survey}. These all suffer
 from the same drawbacks: measurements can be unreliable
-due to delayed signals or multipath effects, and plugging
-into these systems requires specialized hardware. Received-signal-strength techniques, 
+due to delayed signals or multipath effects, and interfacing with 
+these systems requires specialized hardware. Received-signal-strength techniques, 
 may also use triangulation, and suffer from similar problems and
 degrade further in dynamic environments~\cite{goldoni2010experimental}.
 
@@ -237,9 +237,9 @@ Some passive approaches have been attempted as well, such as
 providing the vehicle or the environment with RFID tags that
 can be scanned and matched to a premade map, sometimes 
 further combined with signal strength techniques~\cite{bouet2008rfid}. According to 
-civil engineering researchers at the Cambridge Department of Engineering,
-these approaches have generally been deemed a failure due to 
-maintenance issues, and lack of adaptability. 
+Dr Ioannis Brilakis [personal communications, March 2018] at the Cambridge Department of Engineering,
+these approaches have generally been deemed a practical failure due to 
+maintenance issues. 
 
 External, vision-based monitoring systems found some support
 in the 90s and early 2000s. The best-known work might be
@@ -251,14 +251,14 @@ positional error. Later,~\citeauthor{menegatti2005distributed}\cite{menegatti200
 use a slightly different approach to matching images taken
 by the infrastructural cameras to those taken by the robot to
 perform localization. However, since that 2005 paper external 
-camera-based localization appears to have fallen out of favor,
+camera-based localization appears to have fallen out of favour,
 only recently appearing slightly differently
 in the context of surveillance tasks (see the following section).
 
 The lack of further development of offboard camera localization
 is likely to be caused by two main difficulties: 
 firstly, the cost of instrumenting the environment -- but note
-that many cities already have extensive camera networks.
+that many cities already have traffic or security cameras installed throughout.
 Secondly, a major problem in the past was the inability to acquire
 the agent without visual markers on the robot. From~\cite{menegatti2005distributed}, 
 ``... visual features are not stable and it is not easy to correctly detect the robots...''. 
@@ -322,10 +322,10 @@ on camera-based coverage models. Common to these works is their 2D treatment of 
 problem, optimizing for coverage rather than localization power,
 as well as using expensive linear programming-like optimizations.
 
-Lastly, it the work from~\citeauthor{bansal2014understanding}~\cite{bansal2014understanding}, 
+Lastly, the work from~\citeauthor{bansal2014understanding}~\cite{bansal2014understanding}, 
 considers the problem of orientation for cameras mounted on autonomous vehicles.
 They show that the most informative orientation (defined by entropy) is given when the 
-camera maximizes useful pixels -- ie. focuses the most pixels on informative regions
+camera maximizes useful pixels -- i.e., focuses the most pixels on informative regions
 that have distinguishing characteristics, mostly along the edge of roads.
 
 
@@ -334,7 +334,7 @@ that have distinguishing characteristics, mostly along the edge of roads.
 
 This section outlines the work completed during the development
 of this dissertation, and provides mathematical background
-referenced to throughout the report.
+referenced throughout the report.
 
 
 \section{Approach}
@@ -362,7 +362,7 @@ and models to examine a greater range of tasks.
 
 The standard model for cameras is the pinhole projective model. This model 
 retains lines in the real world as straight lines in the pixel plane,
-and can be implemented full as a series of matrix multiplications using
+and can be implemented fully as a series of matrix multiplications using
 homogenous coordinate representations~\cite{cipollaCV}.
 
 \begin{flalign}
@@ -421,7 +421,7 @@ machine learning algorithms specifically trained for this task.
 For reference, Figure~\ref{fig:impl:rpy} shows the orientations
 associated with camera placements. I only allow pitch and yaw
 to be modified during my optimizations (in green), as it simplifies
-the geometric modeling performed in following chapters. 
+the geometric modeling performed in the following chapters. 
 
 \begin{figure}[htb]
     \centering
@@ -471,7 +471,7 @@ but these were deemed overly complex for the purpose of this work.
 \subsection{Implementation}
 
 I began representation of rotations as
-quaternions and translations as vectors, but this was very error prone. 
+quaternions and translations as vectors, but this proved difficult to implement perfectly. 
 In the end, I used homogenous coordinates to jointly store translation
 and rotation matrices, and unit tested all geometric transformations.
 
@@ -486,7 +486,7 @@ seeing beyond the edges of roads.
 \begin{figure}[htb]
     \centering
     \includegraphics[width=0.4\textwidth]{figures/dubins_walls.png}
-    \caption[Dubins Curve with Boundaries]{A Dubins curve with cylindrical wall boundaries and road boundaries in gray.}
+    \caption[Dubins Curve with Boundaries]{A Dubins curve with cylindrical wall boundaries and road boundaries in grey.}
     \label{fig:impl:dubinswalls}
 \end{figure}
 
@@ -561,8 +561,8 @@ once the curvature decreases.
     \input{figures/implementation/calibration_circuit_plain.pgf}
     \label{fig:ekf:calibration plain}
 \end{subfigure}
-\caption[Speed Controller]{Speed Controller Performance over the calibration curve, traversed from (0,0) counterclockwise. Notice the sharp
-corner in the top right corner corresponds to a big drop in target and actual speed.}
+\caption[Speed Controller]{Speed Controller Performance over the calibration road traversed from (0,0) counterclockwise. Notice the sharp
+corner (5 meter radius) in the top right corner corresponds to a big drop in target and actual speed.}
 \label{fig:impl:speedcontroller}
 \end{figure}
 
@@ -572,13 +572,13 @@ corner in the top right corner corresponds to a big drop in target and actual sp
 
 The steering controller must minimize deviation from the desired trajectory
 as much as possible. PID controllers are difficult to use for this task
-since they tend to oscillate or underreact, or perform well at once
+since they tend to oscillate or underreact, or perform well at one
 constant speed but not others.
 
 Instead, I implement the steering controller published in~\cite{thrun2006stanley}, which
 was used by the autonomous vehicle that won the 2006 DARPA Grand Challenge. They define
 a controller that directly computes the desired steering angle using only the 
-perpendicular distance to the path, as well as the vehicle's speed.
+perpendicular distance to the path, as well as the vehicle's speed $u(t)$.
 
 \begin{figure}
     \centering
@@ -614,12 +614,12 @@ dead reckoning~\cite{fujii2013extended}. An EKF
 operates in predict and update steps, propagating the vehicle's state
 according to a motion model in the predict step, and correcting
 the vehicle state during the update step if there is a measurement present. Like a standard Kalman Filter,
-every step produces normal distributions, which are efficient to compute over.
+every step produces three dimensional normal distributions over the mean belief of the robot $(x, y, \theta)$
 The main difference to a standard Kalman Filter is that non-linear motion models
 can be used by linearizing the model at each timestep with a
 Taylor-like expansion about the estimated mean.
 
-Formally, if the previous state of the vehicle is $\bm{x}_{t-1} = (x_{t-1}, y_{t-1}, \theta_{t-1})$ and
+Formally, if the previous mean belief (i.e., its state) of the vehicle is $\bm{x}_{t-1} = (x_{t-1}, y_{t-1}, \theta_{t-1})$ and
 covariance is $\bm{\Sigma}_{t-1}$, the predict step is given as
 
 \begin{flalign}
@@ -627,7 +627,7 @@ covariance is $\bm{\Sigma}_{t-1}$, the predict step is given as
     \bm{\hat{\Sigma}}_{t} &= \bm{F}_t \bm{\Sigma}_{t-1} \bm{F}_k^T + \bm{Q}_k
 \end{flalign}
 
-Here, $f$ is the vehicle motion model described in the following section, $u$ are control commands,
+Here, $f$ is the vehicle motion model described in the following section, $\bm{u}$ are control commands,
 and $\bm{Q}$ represents process noise. $\bm{F}$ is the Jacobian of the motion model, 
 evaluated at the prior timestep -- this is the linearization step of the EKF
 that distinguishes it from a normal Kalman Filter.
@@ -648,7 +648,7 @@ the relationship between a state and a produced measurement.
 $\bm{H}$ is the Jacobian of $h(\bm{x})$, which for my 
 purposes I set as the identity (ie. a linear relationship,
 which works well enough in practice). Finally, $\bm{R}$ is
-the covariance of the measurement.
+the covariance of the measurement. 
 
 An interesting value is the \textit{Kalman Gain}, $\bm{K}$.
 In an intuitive sense, the update step can be seen as
@@ -665,10 +665,10 @@ in Chapter~\ref{chap:cameraplacement}.
 
 I describe the probabilistic motion model $f(\bm{x}, \bm{u})$
 that is used as the basis of the EKF predict step~\cite{thrun2005probabilistic}.
-Here, the control commands $\bm{u}$ are not actually the commands sent to the vehicle,
+The control commands $\bm{u}$ are not actually the commands sent to the vehicle,
 but taken from the ``wheel odometry'', which is just the simulation's ground
-truth state (a common formulation). So, $\bm{u}_t = (\bar{x}_t, \bar{y}_t, \bar{\theta}_t)$ is the vehicle's
-true state at time t.
+truth state and influenced by the vehicle controller (a common formulation). So, let 
+$\bm{u}_t = (\bar{x}_t, \bar{y}_t, \bar{\theta}_t)$ be the vehicle's true state at time t.
 
 The high-level explanation of the motion model is as follows: I use the vehicle's ground truth movement 
 between timesteps to calculate a series of deltas, namely
@@ -678,8 +678,8 @@ are perturbed slightly and used to update the EKF's current state.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/implementation/motion_model.png}
-    \caption[Motion Model Deltas]{From one timestep to the next, the vehicle's true motion
-    is diagrammatically shown in terms of an initial rotation, a translation, and a final rotation}
+    \caption[Motion Model Deltas]{From one discrete simulated timestep to the next, the vehicle's true motion
+    is modeled in terms of an initial rotation, a translation, and a final rotation}
     \label{fig:impl:motionmodel}
 \end{figure}
 
@@ -691,7 +691,7 @@ are perturbed slightly and used to update the EKF's current state.
 
 This calculates the ground truth changes to orientations and distance.
 
-We next add noise to these deltas using a function $norm(\mu, \sigma^2)$ which 
+Next, noise is added to these deltas using a function $norm(\mu, \sigma^2)$ which 
 samples the indicated normal distribution. 
 
 \begin{flalign}
@@ -700,7 +700,7 @@ samples the indicated normal distribution.
 \hat{\delta}^{rot1}_t &= \delta^{rot2}_t + norm(0, \alpha_1|\delta^{rot2}_t| + \alpha_2|\delta^{trans}_t|) 
 \end{flalign}
 
-Lastly, given current mean belief state $(x_t, y_t, \theta_t)$, we generate
+Lastly, given current mean belief state $(x_t, y_t, \theta_t)$, generate the next EKF mean state as
 
 \begin{flalign}
 x_{t+1} &= x_t + \hat{\delta}^{trans}_t\cos(\theta_t + \hat{\delta}^{rot1}_t) \\
@@ -721,7 +721,7 @@ motion.
 
 \begin{figure}
     \includegraphics[width=\linewidth]{figures/implementation/ekf/noise_params.png}
-\caption[Noise Parameter Settings]{How various settings of $\alpha$'s affect the motion model. The canonical settings produce the leftmost spread\textsuperscript{1}}
+\caption[Noise Parameter Settings]{How various settings of $\alpha$'s affect the motion model. The canonical settings produce the leftmost spread\textsuperscript{1}.}
 \tiny\textsuperscript{1}{From \url{http://ais.informatik.uni-freiburg.de/teaching/ss11/robotics/slides/06-motion-models.pdf}}
     \label{fig:ekf:noiseparams}
 \end{figure}
@@ -778,7 +778,7 @@ previously unseen path length in the camera's pixel plane~\cite{bodor2007optimal
 Most authors discretize the space of possible sensor placements, since analytic or
 even differential solutions amenable to gradient descent are rare. The discretized
 problem is therefore categorized as an instance of the \textit{constrained set size} problem,
-wherein the $n$ best elements from a set of possibilities must be selected to maximize an objective.
+wherein the $n$ best elements from a set of possibilities must be selected to maximize an objective function.
 Naturally, we are faced with exponential growth in the number of ways of placing
 $n$ sensors: if the set of possibilities is $V$, the number of subsets of $V$ with cardinality
 $n$ is $|V| \choose n$, which is bounded below by $(\frac{|V|}{n})^n$. In fact, most variants 
@@ -847,6 +847,20 @@ informative $Y$ is about $X$.
 
 I will refer to these equations in Section~\ref{sec:cameraplacement:mutualinformation}.
 
+\section{Bringing it Together}
+
+TODO talk about how vehicle can simulation utilizes all of these components
+in one big system.
+
+Everything described in this section was programmed from scratch,
+except the Gazebo vehicle model. This resulted in a rather large
+code base, which due to using Python was not as efficient as it could be.
+Combined with the computational cost of Gazebo itself, I eventually
+decided to run all computations on Amazon AWS. To take full
+advantage of this I modified the system to be 
+parallelizable, running many instances concurrently, collecting
+logs from each, and analyzing them to extract whichever metrics
+are defined.
 
 \chapter{Camera Model}
 \label{chap:cameramodel}
@@ -854,7 +868,9 @@ I will refer to these equations in Section~\ref{sec:cameraplacement:mutualinform
 This chapter develops the simulated camera which is used to report vehicle 
 location and uncertainty. After validating the model, I use it to analyze
 absolute feasibility of off-board localization with cameras, and
-illustrate installation and algorithmic accuracy requirements.
+illustrate installation and algorithmic accuracy requirements. These
+steps do not require the full simulation, and only the ray tracing
+world and camera components.
  
 \section{Localization and Error}
 
@@ -864,7 +880,7 @@ In a real-world implementation of the proposed system, a camera would wirelessly
 transmit estimated vehicle positions and associated uncertainty to vehicles in its field of view.
 
 To enable position estimation, the camera needs to know its own world position and orientation, 
-as well as the position and orientation of the ground plane. In in this work,
+as well as the position and orientation of the ground plane. In this work,
 I assume the ground plane to be flat (a locally reasonable assumption, especially along roads), 
 and equal to the $Z = 0$ plane. I report the position $(x,y)$ of the vehicle
 as the estimated geometric center of the vehicle on the ground plane. 
@@ -873,8 +889,9 @@ may be a more consistent reference between vehicles.
 
 Once the computer vision algorithm running on the camera estimates the center of the vehicle,
 we must derive an uncertainty in the form of a covariance.  To start with, I develop a
-circular error radius, $r$, which I show to contain
-the true error 99\% of the time. While circular error radii are more amenable to analysis and are good
+circular error radius, $r$, which I construct to contain the true error 95\% of the time, but
+actually is about 99\% accurate. 
+While circular error radii are more amenable to analysis and are good
 estimates at steeper pitch angles, error ellipses are more realistic at low pitch angles and are an 
 even more accurate error bound. Therefore, I also transform the circular error bounds into error ellipses at the end of this chapter.
 
@@ -930,7 +947,7 @@ I assume that the position and orientation error is normally distributed, with
 and orientation within a $\sigma_{orientation}$ degree conical radius about the principal axis 95\% of the time.
 In mathematical terms, this means $\Delta_{x}$, $\Delta_{y}$, and $\Delta_{z}$ 
 are all sampled from $\mathcal{N}(0, \sigma_{xyz}^2)$. The orientation error is given as
-$\Delta_{orientation} \sim \mathcal{N}(0, \sigma_{orientation}\degree2)$.
+$\Delta_{orientation} \sim \mathcal{N}(0, \sigma_{orientation}^2)$.
 Unless otherwise mentioned, I throughout this report default to an installation accuracy of
 $\sigma_{xyz} = 0.015m$ and $\sigma_{orientation} = 0.25\degree$. These relatively
 tight bounds could be achieved using a post-installation calibration.
@@ -959,7 +976,7 @@ will (95\% of the time) be bounded by $(err_{xy} + err_{z}(d, h))$, which evalua
 \[ err_{xyz}(h, d) = 2\sigma_{xyz} + \frac{2\sigma_{xyz}d}{h} \]
 
 Similarly, it can be shown that using a conical error region about the desired principal axis
-of magnitude $\Delta_{orientation} \sim \mathcal{N}(0,\sigma_{orientation}\degree2)$, 
+of magnitude $\Delta_{orientation} \sim \mathcal{N}(0,\sigma_{orientation}^2)$, 
 for a camera at height $h$, and ground distance to the vehicle $d$, the
 error induced in the estimation of the vehicle's center is 
 
@@ -973,7 +990,8 @@ error induced in the estimation of the vehicle's center is
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.6\textwidth]{figures/camera/alg_error.png}
-    \caption[Algorithmic Error]{Illustration of Algorithmic Error in the camera's pixel plane.}
+    \caption[Algorithmic Error]{Illustration of Algorithmic Error in the camera's pixel plane. The radius is a 95\% bound
+    with length $2\eta_{alg}$}
 \end{figure}
 
 The vehicle localization algorithm needs to scan the pixel plane for vehicles,
@@ -985,8 +1003,8 @@ computer vision algorithms are very good at this task, but may still
 be wrong by several pixels. I analyze the effect of this inaccuracy
 in the model validation Section~\ref{sec:camera:validation} and refer to the Euclidean distance
 in the pixel plane from the true center pixel to the calculated one
-as $\Delta_{alg} \sim \mathcal{N}(0, (\eta_{alg}/2)^2)$. Unless otherwise specified,
-I default to a 95\% radius of 4 pixels.
+as $\Delta_{alg} \sim \mathcal{N}(0, (\eta_{alg}^2)$. Unless otherwise specified,
+I default to a 95\% radius of 4 pixels, setting $\eta_{alg}=2$.
 
 \subsection{Error from Camera Limitations}
 
@@ -1074,7 +1092,7 @@ its actual position is within the calculated error radius. This
 is actually better than intended, since the construction was for 95\% accuracy.
 
 It is easy to achieve an error bound that is always valid: simply set it very high.
-Figure \ref{fig:camera:diff bound error} shows two important characteristics. Firstly, the difference between
+Figure \ref{fig:camera:diff} shows two important characteristics. Firstly, the difference between
 the predicted error radius and the actual error distance is small, meaning
 it is not an excessively high bound. Secondly, when the bound is \textit{incorrect} (very small region less than zero in blue)
 the true error only slightly exceeds the error bound.
@@ -1182,17 +1200,17 @@ to reason about fundamental limits of the proposed system.
 
 \subsection{Effect of Resolution}
 
-One interesting questions to ask is: if we had infinite resolution,
+One interesting question to ask is: if we had infinite resolution,
 how well could we perform? Alternatively, how much accuracy do we gain from increasing resolution?
 
 \begin{figure}[htb]
     \begin{center}
-        \input{figures/camera/resolution_angle_effects_mean.pgf}
+        \resizebox{\linewidth}{!}{\input{figures/camera/resolution_angle_effects_mean.pgf}}
     \end{center}
     \caption[Resolution Limits]{How increased resolution can increase the error bound at different pitch angles. Error bars left out for clarity.}
     \label{fig:camera:resolution}
 \end{figure}
-
+ 
 Figure~\ref{fig:camera:resolution} shows that the mean error bound stops decreasing
 significantly beyond a resolution of 2000 by 2000 pixels. A smaller pitch 
 angle gains further from higher resolution, which is in line with what we 
@@ -1404,16 +1422,6 @@ of its major to minor axis lengths. Together these
 provide adequate performance. The issue of timing delays is not considered 
 further, though would need to be re-examined in a physical implementation.
 
-\section{Final Implementation Comments}
-Everything described in this section was programmed from scratch,
-except the Gazebo vehicle model. This resulted in a rather large
-code base, which due to using Python was not as efficient as it could be.
-Combined with the computational cost of Gazebo itself, I eventually
-decided to run all computations on Amazon AWS. To take full
-advantage of this I modified the system to be 
-parallelizable, running many instances concurrently, collecting
-logs from each, and analyzing them to extract whichever metrics
-are defined.
 
 \section{Summary}
 
