@@ -105,11 +105,11 @@ of path planning, localization, and safe navigation.
 
 Current autonomous vehicle projects use a large set of sensors, combined with
 maps, to solve each of those complex tasks. This comes at a cost: current
-Level 3 attempts for example use LIDAR, which 
+Level 3 attempts, for example, use LIDAR, which 
 provides rich data to perform self-localization and dynamic obstacle avoidance,
 but also costs around \$75,000~\cite{lin2018architectural}. The computational
 power required to fuse and process data from wheel odometry,
-GPS, inertial measurement units (IMUs), cameras, RADAR, LIDAR is also substantial
+GPS, inertial measurement units (IMUs), cameras, radar, LIDAR is also substantial
 and generally implies only large platforms can be used.
 
 I propose moving the localization and navigation sensing tasks
@@ -118,7 +118,7 @@ I examine a static environment containing a single vehicle, with dynamic compone
 as future research avenues.
 
 Most current localization approaches utilize global satellite navigations systems,
-such as GPS and its augmentations like real time kinematic (RTK)~\cite{scherzinger2000precise}.
+such as GPS and its augmentations like real-time kinematic (RTK)~\cite{scherzinger2000precise}.
 The US government reports a global 95\% accuracy of 0.715 meters~\cite{USGPSPerformance}. 
 However, GPS errors are introduced in urban environments -- according to~\citeauthor{miura2015gps}, even with the
 authors' proposed correction steps, the mean localization error was around 5.2 meters in urban canyons. 
@@ -130,13 +130,13 @@ very high precision maps~\cite{mattern2010high}, or expensive LIDAR to localize
 lane markings very accurately~\cite{hata2014road}.  
 
 In this work, I show that if certain installation and algorithmic constraints
-can be met, cameras mounted at side of roads can provide the required localization
+can be met, offboard cameras mounted at the side of roads can provide the required localization
 accuracy without reliance on GPS, LIDAR, or radar. I also build a simulation
 of an autonomous vehicle which utilizes wheel odometry-based dead reckoning 
 to navigate between updates received from the infrastructure. In this context,
-I then examine the task of optimal camera placements and configuration for localization and navigational performance.
+I then examine the task of optimizing off-board camera placements and configurations for localization and navigational performance.
 
-The results explored here could also be useful in other scenarios, such as indoor
+The ideas explored here could also be useful in other scenarios, such as indoor
 robotic localization (eg. in factories), or in other constrained environments.
 
 \section{Contributions}
@@ -145,39 +145,45 @@ The practical questions answered by this work are the following:
 %in the context of the vision presented previously, are
 %the ones asked by city planners when designing camera placements: 
 \begin{enumerate}
-    \item How accurate can offboard (ie. in the environment) cameras be for localization tasks?
-    \item In which direction should the camera be facing and what should its properties be (for instance, field of view)
+    \item How accurately do offboard cameras need to be installed to provide good vehicle localization? How accurate do the computer vision
+    algorithms recognizing vehicles need to be to provide good vehicle localization?
+    \item In which direction should an offboard camera be facing and what should its properties be (for instance, field of view)
           to optimally aid vehicle localization and navigation, and how is related to road curvature?
     \item How should a set of cameras be placed along a path to optimize navigational performance?
 \end{enumerate}
 
-The first question relates to feasibility of direct camera-based localization,
+The first item relates to the feasibility of offboard camera-based localization
 and is addressed at the end of Chapter~\ref{chap:cameramodel}.
 
-The second and third questions examine the optimal camera placement task 
+The second and third points examine the optimal camera placement task 
 for localization and navigation performance. This is related to past work 
 on landmark placement for robotic navigation, where the robots observe landmarks fixed to the environment. 
-Here, the use case is inverted to observe the robot as it moves through the environment. 
+Here, the use case is inverted to observe the robot as it moves through the environment instead. 
 Thus, it is also closely related to previous work on surveillance networks.
 
 While literature on surveillance using cameras has explored camera placement, few
-has allowed more degrees of freedom than simply adjusting the tilt (pitch) 
+have allowed more degrees of freedom than simply adjusting the tilt (pitch) 
 and choosing one of a limited set of positions. Further, no exploration of 
 properties of cameras has been performed - for instance, the impact
 of allowing a larger field of view in the observation task. Lastly, surveillance
 tasks normally seek to maximize different objective functions than robotic
 navigational performance.
 
-Finally, throughout this work I examine the impact of the environment, specifically
+Finally, throughout this work, I examine the impact of the environment, specifically
 road curvature, on the various tasks presented. To my knowledge, this variable has not been
 analysed previously.
 
-In summary, I make the following contributions in this work
+The overall novelty of this work is as follows: analyzing installation and algorithmic requirements
+for offboard cameras to localize vehicles, and exploring more degrees of freedom in
+the sensor placement task than prior work, including characterizing the 
+effect of the environment shape on camera placement. During the development of these topics,
+I make the following specific contributions:
 \begin{itemize}
-    \item An error model for vehicle localization using infrastructure-mounted cameras, which is motivated by physical properties such as installation uncertainty
-    \item A feasibility analysis for using cameras for localization, using the developed error model
-    \item An analysis of placement of a single camera camera along roads, and the relationship to road curvature
-    \item An analysis of placement of sets of cameras along roads, and the relationship to road curvature
+    \item An error model for vehicle localization using offboard, infrastructure-mounted cameras, which is
+    specifically motived by physical properties such as installation uncertainties and algorithmic error
+    \item Using the developed error model, a feasibility analysis for using cameras for localization
+    \item An analysis of placement of a single camera along roads, and the relationship to road curvature
+    \item An analysis of placement of sets of cameras along roads
 \end{itemize}
 
 
@@ -211,37 +217,38 @@ on selected works which motivate the problem being tackled here.
 \section{Offboard Localization}
 
 A core idea underlying this dissertation is the use of
-external sensors to correct the localization of a mobile robot. 
+external sensors to correct the localization of a mobile robot which otherwise
+primarily uses dead reckoning to navigate. 
 This is hardly a new idea -- sources dating back to the 90s and before have looked at 
 using infrastructure-based sensors for localization,
-navigation and tracking.
+navigation, and tracking.
 
-The choice of sensor however varies widely. Many researchers
+The choice of sensor, however, varies widely. Many researchers
 have used bearing or distance-based triangulation methods combined
 with ultra-wide band (UWB), sonar, angle-of-arrival or other wireless
-signals to perform localization TODO CITE. These all suffer
+signals to perform localization~\cite{wang2010survey}. These all suffer
 from the same drawbacks: measurements can be unreliable
 due to delayed signals or multipath effects, and plugging
 into these systems requires specialized hardware. Received-signal-strength techniques, 
-which usually map the environment beforehand, then look up the current
-signal fingerprint, are limited to well mapped environments
-and suffer badly in dynamic environments. TODO CITE
+may also use triangulation, and suffer from similar problems and
+degrade further in dynamic environments~\cite{goldoni2010experimental}.
 
 Some passive approaches have been attempted as well, such as
 providing the vehicle or the environment with RFID tags that
-can be scanned and matched to a premade map. According to 
+can be scanned and matched to a premade map, sometimes 
+further combined with signal strength techniques~\cite{bouet2008rfid}. According to 
 civil engineering researchers at the Cambridge Department of Engineering,
 these approaches have generally been deemed a failure due to 
-maintenance issues, and lack of adaptability. CITE TODO
+maintenance issues, and lack of adaptability. 
 
 External, vision-based monitoring systems found some support
-in the 90s and early 2000s. The best known work might be
-from~\citeauthor{kruse1998camera}\cite{kruse1998camera}, who implement a network
+in the 90s and early 2000s. The best-known work might be
+from~\citeauthor{kruse1998camera}~\cite{kruse1998camera}, who implement a network
 of cameras in an indoor environment to track and localize robots.
 They utilize a set of LED's mounted on the corners of the robot
 to aid in this, and show that they can reduce the robot's
 positional error. Later,~\citeauthor{menegatti2005distributed}\cite{menegatti2005distributed}
-use a slightly different approach of matching images taken
+use a slightly different approach to matching images taken
 by the infrastructural cameras to those taken by the robot to
 perform localization. However, since that 2005 paper external 
 camera-based localization appears to have fallen out of favor,
@@ -253,15 +260,14 @@ is likely to be caused by two main difficulties:
 firstly, the cost of instrumenting the environment -- but note
 that many cities already have extensive camera networks.
 Secondly, a major problem in the past was the inability to acquire
-the agent without visual markers on the robot. In the authors
-own words ``... it is not easy to correctly detect the
-robots in dynamic environments''. I believe with the recent 
-breakthroughs in machine learning-based object recognition 
+the agent without visual markers on the robot. From~\cite{menegatti2005distributed}, 
+``... visual features are not stable and it is not easy to correctly detect the robots...''. 
+I believe with the recent breakthroughs in machine learning-based object recognition 
 and segmentation, it is time to revisit the option of external cameras for localization. 
 
 There are added benefits to using cameras as well: they are more immune
 to crosstalk and interference than radio-based techniques, and provide
-a large amounts of salient information. This can include 
+a large amount of salient information. This can include 
 information about other objects in the scene, such as pedestrians,
 bicycles, etc. And, even though in this work I only consider
 the $(x,y)$ world coordinates of the vehicle, images could also be used
@@ -283,51 +289,44 @@ A second theme is the optimization of sensor placement. This problem is addresse
 in surveillance literature, computational geometry, and robotics, among other fields.
 
 Perhaps the most direct predecessor to this work is the PhD thesis of~\citeauthor{beinhofer2014landmark}\cite{beinhofer2014landmark},
-which focuses on landmark placement for mobile robots. The key difference
-is the use of an external sensor rather than a camera mounted on the robot.
-Additionally, he primarily considers circular fields of view on the robot, looking
+which focuses on landmark placement for mobile robots. The key difference to my work
+is that he uses the conventional approach of a robot-mounted camera.
+Additionally, he primarily considers cameras with circular fields of view, looking
 straight up, whereas I consider optimizing for position, orientation,
-and to an extend field of view. However, many of the formulations, including
+and field of view. However, I utilize many of his formulations, including
 the Monte Carlo approach to evaluating mutual information (Section~\ref{sec:cameraplacement:mutualinformation}).
-A noteworthy contribution of this work is the use of submodularity (diminishing returns
-on placements) to prove good approximations to the NP-hard landmark placement problem.
+A noteworthy idea of his thesis is the use of submodularity (provably diminishing returns
+on each additional landmark) to guarantee good approximations to the NP-hard landmark placement problem 
+using greedy optimization.
 
 Another relevant paper from the surveillance literature is~\cite{bodor2007optimal}.
 Although the authors formulate a completely different objective function intended
 to maximize the observed length of piecewise-linear paths,
-their ideas inspired my computationally cheap objective function presented 
+their ideas inspired my heuristic function presented 
 in Section~\ref{cameraplacement:cheap}. The authors use their objective
 to place a series of cameras with two degrees of freedom (location
-on the border of a region, and pitch). I use my metric to reduce 
-the search space across four degrees of freedom (pitch, yaw, and vertical and
-horizontal field of view) into a few interesting points, 
-which are then passed onto a more complex metric based on~\citeauthor{beinhofer2014landmark}'s thesis.
+on the border of a region, and pitch). In this work, I use my heuristic
+to search four degrees of freedom (pitch, yaw, and vertical and
+horizontal field of view), retaining parameters of interest. 
+These are then passed onto a more complex metric based on~\citeauthor{beinhofer2014landmark}'s thesis.
 
-In~\cite{horster2006optimal}, the authors optimize camera coverage of a map,
-modeling camera coverage as a 2D triangular region. They propose using binary
-mixed integer programming to find the global optimum of multiple camera orientations.
-In~\cite{wang2013achieving} the authors optimize directional coverage, that is
-the fraction of the time cameras can achieve a specific view of the object, defined
-by an orientation and an allowed angle about it.~\cite{osais2010directional} defines
-a general sensor network coverage problem, which optimizes generic directional sensors'
+In~\cite{horster2006optimal}, the authors optimize infrastructure-based camera coverage of a map,
+modeling coverage as a 2D triangular region. They propose using binary
+mixed integer programming to find the optimum of multiple camera orientations.
+In~\cite{wang2013achieving} the authors optimize the fraction of the time cameras
+can achieve a specific view of the object, defined by an orientation and an allowed angle about it.
+~\cite{osais2010directional} defines a general sensor network coverage problem, which optimizes generic directional sensors'
 field of view and yaw using linear programming, but specifically consider ground-based
-sensors rather than cameras. Please refer to~\cite{guvensan2011coverage} for more work
-on camera-based coverage models. Common to these works it their 2D treatment of the placement
+sensors rather than cameras. The reader is referred to~\cite{guvensan2011coverage} for more work
+on camera-based coverage models. Common to these works is their 2D treatment of the placement
 problem, optimizing for coverage rather than localization power,
-as well as using expensive linear programming-like optimizers.
+as well as using expensive linear programming-like optimizations.
 
-
-Lastly, it is worth mentioning the work from~\citeauthor{bansal2014understanding}\cite{bansal2014understanding}, 
-who consider the problem of camera orientation on autonomous vehicles themselves.
-They show that the most informative region (defined by entropy) is given when the 
+Lastly, it the work from~\citeauthor{bansal2014understanding}~\cite{bansal2014understanding}, 
+considers the problem of orientation for cameras mounted on autonomous vehicles.
+They show that the most informative orientation (defined by entropy) is given when the 
 camera maximizes useful pixels -- ie. focuses the most pixels on informative regions
 that have distinguishing characteristics, mostly along the edge of roads.
-
-
-***** TODO *****
-Double check to make sure no one's looked at curvature and effect on sensor placement
-
-Maybe an image in here? It's a bit full of text
 
 
 \chapter{Design and Implementation}
@@ -337,15 +336,21 @@ This section outlines the work completed during the development
 of this dissertation, and provides mathematical background
 referenced to throughout the report.
 
-TODO insert image of Prius model to break up the text a bit
- 
+
 \section{Approach}
+
+\begin{wrapfigure}{r}{1.5in}
+    \centering
+    \includegraphics[width=1.45in]{figures/prius.png}
+    \caption[Prius]{Render of the Ackermann drive model used in simulation.}
+\end{wrapfigure}
 
 The basis of this work is a simulation developed using industry-standard tools.
 The Gazebo~\cite{koenig2004design} robotics simulator is used in conjunction with ROS,
 the Robot Operating System~\cite{quigley2009ros}, to model a non-holonomic Ackermann drive vehicle
 following predefined paths. A camera is modeled using standard formulations
 discussed in Section~\ref{impl:sensors}.
+
 
 An expensive, high fidelity simulation was used instead of a real hardware
 implementation. Simulation allows quickly modifying the environment
@@ -356,37 +361,52 @@ and models to examine a greater range of tasks.
 \label{impl:sensors}
 
 The standard model for cameras is the pinhole projective model. This model 
-keeps lines in the real world as straight lines in the pixel plane,
-and can be implemented as a single matrix multiplication
+retains lines in the real world as straight lines in the pixel plane,
+and can be implemented full as a series of matrix multiplications using
+homogenous coordinate representations~\cite{cipollaCV}.
 
-TODO matrices describing world => pixel transformation
+\begin{flalign}
+    \tilde{\bm{w}} &= P_c P_p P_r \\
+    &= \begin{bmatrix} 
+        k_u & 0 & u_v \\ 0 & k_v & v_0 \\ 0 & 0 & 1
+       \end{bmatrix}
+       \begin{bmatrix}
+           f & 0 & 0 & 0 \\ 0 & f & 0 & 0 \\ 0 & 0 & 1 & 0 
+       \end{bmatrix}
+       \begin{bmatrix}
+           r_{11} & r_{12} & r_{13} & T_1 \\
+           r_{21} & r_{22} & r_{23} & T_2 \\
+           r_{31} & r_{32} & r_{33} & T_3 \\
+           0 & 0 & 0 & 1
+       \end{bmatrix}
+\end{flalign}
 
-My implementation is a raytracing module that only uses the
-translation and rotation portions of the matrices above, which bring the world into place
-in the camera's zero-centered, Z-axis aligned coordinate system. Raytracing
-allows adding parametric geometry into the world, which is used later.
+
+My camera implementation is actually a raytracing module that only uses the
+translation and rotation portions of the matrices above ($r_{ij}$ and $T_i$ components) to
+move the world into place about the camera's zero-centered, Z-axis aligned coordinate system. Raytracing
+allows adding parametric geometry into the world, which is used to define road boundaries. 
 Additionally, my formulation can also be used to model non-pinhole camera models,
 including ones that better represent ultra-wide field of view cameras. However, this work leaves
 examining the impact of such cameras on robot localization and navigation as
-a future research direction; I cap the maximum field of view of the pinhol model
-at 110 degrees horizontally and vertically, when the perspective model
-breaks down~\cite{fleckperspective} (some authors claim different cutoffs all the way down
-to 70 degrees~\cite{sharpless2010pannini}, but for the analysis presented here it won't 
-matter too much). 
+a future research direction; I cap the maximum field of view of the pinhole model
+at 100 degrees horizontally and vertically, when the perspective model
+loses its realism~\cite{fleckperspective}.
 
-An infrastructure-mounted camera's task is to localize vehicles in its pixel plane 
-into world coordinates, and provide an error bound. The error bound is developed 
-in Chapter~\ref{chap:cameramodel}. To localize the vehicle, the camera needs to
-be provided with its own world orientation and location, as well as its parameters.
+In the presented scenario, a camera's task is to localize vehicles in world coordinates, and
+provide an error or confidence in each localization. To localize the vehicle, the camera needs to
+be provided with its own world location and orientation, as well as its parameters.
 \textit{Camera parameters} will be used to mean both the horizontal
 and vertical field of view of the camera, as well as its resolution. 
 
-The parameters, location, orientation and a vehicle in the pixel plane can be
-combined to estimate the geometric center of the vehicle, on the ground plane. Thus,
-the update from the camera is world location $(x,y)$, as I assume a planar surface
-with $z = 0$.
+By analyzing the image the camera sees, vehicles can be identified and a 
+pixel estimate of the vehicle center obtained. Knowledge of the camera's position
+and orientation is combined with the estimate, to calculate the center of the vehicle
+on the ground plane. This estimate is transmitted to the vehicle to update its
+belief. I assume a planar surface at $Z = 0$, so updates from the camera
+are world locations $(x,y)$.
 
-In the following chapter I discuss how I model an abstract localization algorithm. A 
+In the following chapter I model an abstract computer vision algorithm for detecting vehicles. A 
 concrete implementation could use an object detection or segmentation network,
 such as YOLO~\cite{redmon2018yolov3} or DeepLab~\cite{chen2017rethinking}, which are constantly
 improving, to determine a bounding box for the vehicle. The center of the box in the pixel plane
@@ -394,17 +414,23 @@ can be seen as an estimate of the volumetric center of the vehicle.
 Using an estimate of the height of the vehicle, a geometric correction can be applied 
 to obtain a ground estimate of the vehicle position. %TODO maybe put this experiment in the Appendix?
 
-However, real implementations could be arbitrary complex algorithms,
-or even require vehicles carry visual markers.
+However, real implementations could be arbitrarily complex algorithms, including
+machine learning algorithms specifically trained for this task.
 
 \subsection{Coordinate Systems}
-For reference, the following graphic shows the orientations
+For reference, Figure~\ref{fig:impl:rpy} shows the orientations
 associated with camera placements. I only allow pitch and yaw
-to be modified during my optimizations, as it simplifies
+to be modified during my optimizations (in green), as it simplifies
 the geometric modeling performed in following chapters. 
 
-TODO FIGURE
-
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/rpy.png}
+    \caption[Roll, Pitch and Yaw]{Camera orientations referred to as roll, pitch, and yaw. Roll is not modified 
+        in this work, only pitch (tilt downwards) and yaw (rotation about Z). The camera symbolized here
+    is conceptually at 0 degrees roll, pitch and yaw}
+    \label{fig:impl:rpy}
+\end{figure}
 
 \section{Road Representations}
 
@@ -422,8 +448,13 @@ I chose to use a slightly more complex representation: piecewise
 constant curvature paths, also known as Dubins curves~\cite{dubins1957curves}.
 They have an easy geometrical definition, where curvature $C = 1/R$, $R$ 
 being the radius of the circle with the given curvature.
-
-TODO figure of dubins curves - original path I used?
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/dubins.eps}
+    \caption[Dubins Curve]{A Dubins curve with a segment with small curvature, large radius ($R$), a straight line segment
+    with 0 curvature ($R=\infty$), and a large curvature, small radius ($r$).}
+    \label{fig:impl:dubins}
+\end{figure}
 
 Dubins curves can therefore be easily parametrized using only curvature and length.
 My implementation allows specification sequences of curvatures and lengths, which are
@@ -441,7 +472,7 @@ but these were deemed overly complex for the purpose of this work.
 
 I began representation of rotations as
 quaternions and translations as vectors, but this was very error prone. 
-In the end I used homogenous coordinates to jointly store translation
+In the end, I used homogenous coordinates to jointly store translation
 and rotation matrices, and unit tested all geometric transformations.
 
 In order to provide road boundaries and 
@@ -452,6 +483,14 @@ side offset. I then place parametric cylindrical walls
 or planes in the ray-tracing space to prevent cameras from
 seeing beyond the edges of roads.
 
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/dubins_walls.png}
+    \caption[Dubins Curve with Boundaries]{A Dubins curve with cylindrical wall boundaries and road boundaries in gray.}
+    \label{fig:impl:dubinswalls}
+\end{figure}
+
+
 
 \section{Vehicle Model and Controls}
 \label{sec:impl:vehicle}
@@ -459,8 +498,8 @@ seeing beyond the edges of roads.
 The navigation tasks performed throughout are executed by a modified
 open-source model of a Toyota Prius~\cite{osrfPrius}. This model
 takes two primary commands: throttle, and steering wheel angle.
-The state of the robot is both a world position $(x,y,z)$ and
-and orientation quaternion, but due to the planar restriction
+The state of the robot is both a world position $(x,y,z)$
+and orientation quaternion. Due to the planar restriction though,
 the state we are interested in can be written as
 $(x,y, \theta)$, where heading $\theta$ is the angle from the $x=0$ axis 
 on the ground plane.
@@ -472,17 +511,15 @@ PID controllers~\cite{aastrom1995pid} are widely used feedback controllers
 that calculate a response based on an error signal, its integral, and its derivative
 (hence, \textbf{P}roportional, \textbf{I}ntegral, \textbf{D}erivative).
 
-TODO figure of PID feedback
-
 To use a PID controller, one needs to define target value and a current state,
 which together form an error. Then, the PID gains are tuned to match
 the response of the system.
 
-Typical downsides of PID are that they only control a single variable, their
-parameters can be difficult to tune, and that they don't perform
+Typical downsides of PID are that they cannot control interdependent
+multi-dimensional states, that their parameters can be difficult to tune, and that they don't perform
 well in out-of-ordinary scenarios. I implemented a PID controller to 
 maintain vehicle speed, and attempted to use another for steering angle,
-which proved too difficult to tune well for wider variety of scenarios.
+which proved too difficult to tune well for a wider variety of scenarios.
  
 \subsubsection{Speed Controller}
 
@@ -524,7 +561,7 @@ once the curvature decreases.
     \input{figures/implementation/calibration_circuit_plain.pgf}
     \label{fig:ekf:calibration plain}
 \end{subfigure}
-\caption[Speed Controller]{Speed Controller Performance over the calibration curve, traversed from (0,0) counter clockwise. Notice the sharp
+\caption[Speed Controller]{Speed Controller Performance over the calibration curve, traversed from (0,0) counterclockwise. Notice the sharp
 corner in the top right corner corresponds to a big drop in target and actual speed.}
 \label{fig:impl:speedcontroller}
 \end{figure}
@@ -538,25 +575,32 @@ as much as possible. PID controllers are difficult to use for this task
 since they tend to oscillate or underreact, or perform well at once
 constant speed but not others.
 
-Instead, I use the steering controller published in~\cite{thrun2006stanley}, which
-was describes the autonomous vehicle that won the 2006 DARPA Grand Challenge. They define
+Instead, I implement the steering controller published in~\cite{thrun2006stanley}, which
+was used by the autonomous vehicle that won the 2006 DARPA Grand Challenge. They define
 a controller that directly computes the desired steering angle using only the 
 perpendicular distance to the path, as well as the vehicle's speed.
 
-TODO image of crosstrack distance, angles
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/implementation/steering.png}
+    \caption[Steering Controller Definition]{The original figure from~\cite{thrun2006stanley} which
+        describes the crosstrack or lateral distance (here $x$), and $\Psi$ the angle between the current orientation
+    and the tangent to the curve.}
+    \label{fig:impl:steering}
+\end{figure}
 
 \begin{flalign}
     \delta(t) &= \Psi(t) + \arctan\frac{ke(t)}{u(t)}
 \end{flalign}
 
 The original paper shows that when used with
-with a linear bicycle model, the crosstrack error $e(t)$ converges exponentially to zero. The constant $k$ 
+a linear bicycle model, the crosstrack error $e(t)$ converges exponentially to zero. The constant $k$ 
 was experimentally determined to perform well at $k = 0.95$ across a wide variety of paths.
 Some overshoot can be found when entering mid-curvature bends, which is a 
 consequence of using two disjoint controllers for steering and
 velocity. A more sophisticated model might use model predictive
 control for all required controls~\cite{borrelli2005mpc}. Vehicle
-control is a complex task in itself with extensive literature, refer to~\cite{paden2016survey}
+control is a complex task in itself with extensive literature, please refer to~\cite{paden2016survey}
 for a comprehensive survey. The approaches employed here
 were chosen mostly for their computational simplicity.
 
@@ -606,12 +650,12 @@ purposes I set as the identity (ie. a linear relationship,
 which works well enough in practice). Finally, $\bm{R}$ is
 the covariance of the measurement.
 
-An important value is the \textit{Kalman Gain}, $\bm{K}$.
+An interesting value is the \textit{Kalman Gain}, $\bm{K}$.
 In an intuitive sense, the update step can be seen as
 performing a weighted average between the vehicle's state,
 and the incoming measurement. The weighting $\bm{K}$
 is determined by a relationship analogous to $\frac{\bm{\Sigma}}{\bm{\Sigma} + \bm{R}}$,
-if the these matrices were scalars. I come back to this idea
+if these matrices were scalars. I come back to this idea
 in Chapter~\ref{chap:cameraplacement}.
 
 
@@ -622,16 +666,22 @@ in Chapter~\ref{chap:cameraplacement}.
 I describe the probabilistic motion model $f(\bm{x}, \bm{u})$
 that is used as the basis of the EKF predict step~\cite{thrun2005probabilistic}.
 Here, the control commands $\bm{u}$ are not actually the commands sent to the vehicle,
-but taken from the ``wheel odometry'', which is just the simuation's ground
+but taken from the ``wheel odometry'', which is just the simulation's ground
 truth state (a common formulation). So, $\bm{u}_t = (\bar{x}_t, \bar{y}_t, \bar{\theta}_t)$ is the vehicle's
 true state at time t.
 
-The high level explanation of the motion model is as follows: I use the vehicle's ground truth movement 
-between timesteps to calculate a series of deltas:
+The high-level explanation of the motion model is as follows: I use the vehicle's ground truth movement 
+between timesteps to calculate a series of deltas, namely
 the translational change, and a starting and ending angular change. These 
-are perturbed slightly and added to the EKF's current state.
+are perturbed slightly and used to update the EKF's current state.
 
-TODO figure 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/implementation/motion_model.png}
+    \caption[Motion Model Deltas]{From one timestep to the next, the vehicle's true motion
+    is diagrammatically shown in terms of an initial rotation, a translation, and a final rotation}
+    \label{fig:impl:motionmodel}
+\end{figure}
 
 \begin{flalign}
 \delta^{trans}_{t} &= \sqrt{(\bar{x}_{t+1} - \bar{x}_t)^2 + (\bar{y}_{t+1} - \bar{y}_t)^2} \\
@@ -681,17 +731,17 @@ than longitudinal uncertainty.
 
 %TODO Example of state propagation along a line with a sharp turn
 
-Lastly, since I am using a simulation without a physical reference vehicle to
+Since I am using a simulation without a physical reference vehicle to
 calibrate my parameters against, I use data from~\cite{vivacqua2017low}. 
 They measure their vehicle's wheel odometry over 12 laps of a circuit, 1800 meters long, similar
-to the one below. I mainly aim to produce similar order-of-magnitude errors.
+to the one in Figure~\ref{fig:ekf:calibrationcurve}. I mainly aim to produce similar order-of-magnitude errors.
 
 \begin{figure}
     \begin{center}
         \input{figures/implementation/calibration_circuit.pgf}
     \end{center}
     \caption[Calibration Circuit]{The calibration circuit containing one tight turn, two middle turns, and one low curvature turn, for a total length of about 1800 meters.}
-    \label{fig:ekf:noiseparams}
+    \label{fig:ekf:calibrationcurve}
 \end{figure}
 
 I ran my simulation on the circuit 20 times, and compare my calibrated results to~\cite{vivacqua2017low} in
@@ -714,42 +764,46 @@ Angular Error Accumulation Rate & 0.25 $\degree$/min & $\sim$1$\degree$/min
 
 \section{Objective Functions and Optimization}
 
-This work models camera placement as an optimization problem, 
+This work approaches camera placement as an optimization problem, 
 so the objective function needs to be defined clearly.
 
 Past work has used a wide range of metrics for landmark placement, ranging from
 maximally reducing the trace of the robot's covariance matrix (an upper bound on location
-uncertainty)~\ref{beinhofer2013robust}, to entropy of the final
-robot state~\ref{beinhofer2013effective}, to the mutual information between
-robot states and observations~\ref{beinhofer2011near}. Surveillance literature
+uncertainty)~\cite{beinhofer2013robust}, to entropy of the final
+robot state~\cite{beinhofer2013effective}, to the mutual information between
+robot states and observations~\cite{beinhofer2011near}. Surveillance literature
 has also maximized the observability of a path, essentially defined as
 previously unseen path length in the camera's pixel plane~\cite{bodor2007optimal}.
 
-The core difficulty of the multiple-camera placement problem is the exponential
-growth of possible placements. In fact, most variants of the problem are shown to be NP-hard~\cite{beinhofer2014landmark}.
+Most authors discretize the space of possible sensor placements, since analytic or
+even differential solutions amenable to gradient descent are rare. The discretized
+problem is therefore categorized as an instance of the \textit{constrained set size} problem,
+wherein the $n$ best elements from a set of possibilities must be selected to maximize an objective.
+Naturally, we are faced with exponential growth in the number of ways of placing
+$n$ sensors: if the set of possibilities is $V$, the number of subsets of $V$ with cardinality
+$n$ is $|V| \choose n$, which is bounded below by $(\frac{|V|}{n})^n$. In fact, most variants 
+of the problem are shown to be NP-hard~\cite{beinhofer2014landmark}.
 
 The authors in~\cite{beinhofer2011near} deal with the NP-hardness 
 using \textit{submodularity}, which is a diminishing returns property.
 If the objective function can be proved submodular, the greedy
-algorithm is guaranteed find a value within 63\% of the global optimum.
+algorithm is guaranteed to find a value within 63\% of the global optimum.
 Beinhofer et al. show that their formulation of mutual information is submodular --
-I use this measure as my objective function. For comparison, I also
-evaluate the entropy of the final robot state, and the mean
-value of the trace of the covariance matrix.
+I use this measure as my objective function combined with greedy optimization as well.
+I comment on submodularity in Section~\ref{sec:cameraplacement:submodularity}. I also
+examine using the trace of the covariance matrix as an objective.
 
-However, evaluating any of the objective functions even once is expensive, which is why authors have generally
-only optimized one or two camera settings at a time. Since I aim
+Evaluating the mutual information even once is expensive, which is why authors have generally
+only optimized one or two degrees of freedom at a time. Since I aim
 to consider two orientational degrees of freedom, as well as field of view of the cameras, 
 I require a means of cutting down the search space. In Section~\ref{cameraplacement:cheap} 
-I present a new objective function which captures the localization power of a single camera placement.
-The best results from this metric are used as parameters
-for the expensive greedy optimization.
+I present a new, cheap heuristic which captures the localization power of a single camera placement.
+These results influence the discretized space of orientations for the expensive greedy optimization.
 
-***TODO rewrite this it's ugly**
 
 \subsection{Entropy and Mutual Information}
-Two of the possible objective functions utilize entropy, which can
-be seen as a measure of uncertainty of a random variable. 
+To provide mathematical background for the mutual information measure, we need to understand entropy.
+Entropy can be seen as a measure of uncertainty of a random variable. 
 The entropy of a discrete random variable $h(X)$ is maximized when
 every outcome is equally probably (a ``flat'' distribution).
 It is minimized when a specific outcome contains all of the probability.
@@ -762,7 +816,7 @@ ${x_1, x_2..., x_n}$ can be written as:
 \end{flalign}
 
 Differential entropy extends the standard definition to continuous probability 
-distributions:
+distributions, and may be negative if the probability density is greater than one.
 \begin{flalign}
     h(X) &= -\int p(X = x) log(p(X=x)) dx
 \end{flalign}
@@ -794,21 +848,13 @@ informative $Y$ is about $X$.
 I will refer to these equations in Section~\ref{sec:cameraplacement:mutualinformation}.
 
 
-
 \chapter{Camera Model}
 \label{chap:cameramodel}
 
-The analysis presented in the Chapter~\ref{chap:cameraplacement} is based on the navigation of an
-autonomous vehicle guided only by dead reckoning. Errors accumulate over time need
-occasional updates to reduce the positional 
-uncertainty of the robot. The sensor selected to provide this
-information is the camera, which is already widely deployed
-in modern city infrastructure.
-
-The updates to Kalman Filters contain two components: a value (in this case, an $(x,y)$ position),
-along with an uncertainty in the form of covariance. This chapter
-develops the simulated camera which is used to report vehicle 
-location and uncertainty.
+This chapter develops the simulated camera which is used to report vehicle 
+location and uncertainty. After validating the model, I use it to analyze
+absolute feasibility of off-board localization with cameras, and
+illustrate installation and algorithmic accuracy requirements.
  
 \section{Localization and Error}
 
@@ -826,10 +872,8 @@ Note that in practice, using the midpoint of the front or rear axle, rather than
 may be a more consistent reference between vehicles.
 
 Once the computer vision algorithm running on the camera estimates the center of the vehicle,
-we must derive an uncertainty in the form of a covariance. I develop a mathematical model of localization error,
-and analyze its properties. 
-
-To start with, I develop a circular error radius, $r$, which I show to contain
+we must derive an uncertainty in the form of a covariance.  To start with, I develop a
+circular error radius, $r$, which I show to contain
 the true error 99\% of the time. While circular error radii are more amenable to analysis and are good
 estimates at steeper pitch angles, error ellipses are more realistic at low pitch angles and are an 
 even more accurate error bound. Therefore, I also transform the circular error bounds into error ellipses at the end of this chapter.
@@ -841,8 +885,8 @@ the operational capability of the autonomous vehicles, thus must be accurately r
 I model three components that contribute to the error radius:
 \begin{enumerate}
     \item Error in the camera's own location and orientation due to imprecise installation
-    \item The algorithmic error in the estimation of the pixel that represents the estimated center of the vehicle
-    \item The ground area covered by the pixel that represents the estimated center of the vehicle (encoding camera's finite precision)
+    \item The algorithmic error in the estimation of the pixel that represents the center of the vehicle
+    \item The ground area covered by the pixel that represents the center of the vehicle (encoding cameras' finite precision)
 \end{enumerate}
  
 These will be analysed in turn. Note that I assume calibrated cameras without distortions, and no motion blur.
@@ -853,40 +897,13 @@ These will be analysed in turn. Note that I assume calibrated cameras without di
         \input{figures/camera/a_estimate_example.pgf}
     \end{center}
     \caption[Example Predictions about a World Point]{The red point is a true world location, while green points were
-    estimated by a large sample of cameras. Discrepancies occur due to the three errors listed above. We must associate an error with each green point.}
+    estimated by a large sample of cameras, incorporating positional, orientational and algorithmic errors. We must associate an error with each green point.}
     \label{fig:camera:dist}
 \end{figure}
 
 
 
 \subsection{Location and Orientation Error}
-
-Of the three sources of error, this one is the most difficult to reason about. 
-Many transport authorities have standard mounting specifications, including mount heights, for cameras~\cite{StreetscapeGuideance}.
-However, none of these specify the tolerances in location and orientation, and we will have to make some educated guesses.
-
-I assume for now that the position and orientation error is normally distributed, with
-95\% of positions within 0.03 meters in any direction, 
-and orientation within a 0.5 degree cone about the principal axis 95\% of the time.
-In mathematical terms, this means $\Delta_{x}$, $\Delta_{y}$, and $\Delta_{z}$ 
-are all sampled from $\mathcal{N}(0, (0.03/2)^2)$. The orientation error is given as
-$\Delta_{orientation} \sim \mathcal{N}(0, (0.5/2)\degree2)$.
-These tight bounds could be achieved using some sort of post-installation 
-calibration procedure. 
-
-% TODO discuss such a calibration procedure!
-
-%Orientation accuracy can be further improved by adding 
-%an interial measurement unit to the camera, which on its own
-%could provide better than $0.5\degree$ accuracy in the roll and raw directions according
-%to~\cite{kok2017}.
-
-To translate these values into an uncertainty on the ground plane, consider that
-any horizontal camera movement ($\Delta_{x}$, $\Delta_{y}$) from its true position simply translates
-the predicted vehicle location and therefore increases its error by the length of the translation.
-I call this combined value $err_{xy}$ and at two standard deviations it is bounded above by
-$\abs{err_{xy}} = 0.03$.
-
 \begin{figure}[htb]
 \centering
 \begin{subfigure}[b]{.45\textwidth}
@@ -903,7 +920,35 @@ $\abs{err_{xy}} = 0.03$.
 \end{subfigure}
 \label{fig:camera:errors}
 \end{figure}
-Vertical translation, $\Delta_z\sim \mathcal{N}(0, (0.03/2)^2)$
+
+Of the three sources of error, this one is the most difficult to reason about. 
+Many transport authorities have standard mounting specifications, including mount heights, for cameras~\cite{StreetscapeGuideance}.
+However, none of these specify the tolerances in location and orientation, and we will have to make some educated guesses.
+
+I assume that the position and orientation error is normally distributed, with
+95\% of positions within $\sigma_{xyz}$ meters in any direction, 
+and orientation within a $\sigma_{orientation}$ degree conical radius about the principal axis 95\% of the time.
+In mathematical terms, this means $\Delta_{x}$, $\Delta_{y}$, and $\Delta_{z}$ 
+are all sampled from $\mathcal{N}(0, \sigma_{xyz}^2)$. The orientation error is given as
+$\Delta_{orientation} \sim \mathcal{N}(0, \sigma_{orientation}\degree2)$.
+Unless otherwise mentioned, I throughout this report default to an installation accuracy of
+$\sigma_{xyz} = 0.015m$ and $\sigma_{orientation} = 0.25\degree$. These relatively
+tight bounds could be achieved using a post-installation calibration.
+
+% TODO discuss such a calibration procedure!
+
+%Orientation accuracy can be further improved by adding 
+%an interial measurement unit to the camera, which on its own
+%could provide better than $0.5\degree$ accuracy in the roll and raw directions according
+%to~\cite{kok2017}.
+
+To translate these values into an uncertainty on the ground plane, consider that
+any horizontal camera movement ($\Delta_{x}$, $\Delta_{y}$) from its true position simply translates
+the predicted vehicle location and therefore increases its error by the length of the translation.
+I call this combined value $err_{xy}$ and at two standard deviations it is bounded above by
+$\abs{err_{xy}} = 2\sigma_{xyz}$.
+
+Vertical translation, $\Delta_z\sim \mathcal{N}(0, \sigma_{xyz}^2)$
 of the camera induces an error as $err_{z}(d, h) = \Delta_z \frac{d}{h}$ %, with variance $\sigma_{z}(d,h)^2 = (d/h)^2(0.03/2)^2$ 
 where $d$ is the ground distance to the vehicle (on the XY plane), and $h$ is the true intended
 height of the camera.
@@ -911,10 +956,10 @@ height of the camera.
 Thus, the total contribution from the camera's positional error to the error radius
 will (95\% of the time) be bounded by $(err_{xy} + err_{z}(d, h))$, which evaluates to
 
-\[ err_{xyz}(h, d) = 0.03 + \frac{0.03d}{h} \]
+\[ err_{xyz}(h, d) = 2\sigma_{xyz} + \frac{2\sigma_{xyz}d}{h} \]
 
 Similarly, it can be shown that using a conical error region about the desired principal axis
-of magnitude $\Delta_{orientation} \sim \mathcal{N}(0,(0.5/2)\degree)$, 
+of magnitude $\Delta_{orientation} \sim \mathcal{N}(0,\sigma_{orientation}\degree2)$, 
 for a camera at height $h$, and ground distance to the vehicle $d$, the
 error induced in the estimation of the vehicle's center is 
 
@@ -925,6 +970,12 @@ error induced in the estimation of the vehicle's center is
 
 \subsection{Algorithmic Error}
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/camera/alg_error.png}
+    \caption[Algorithmic Error]{Illustration of Algorithmic Error in the camera's pixel plane.}
+\end{figure}
+
 The vehicle localization algorithm needs to scan the pixel plane for vehicles,
 and return pixel representing the center of vehicles on the ground plane.
 The center of the pixel projected onto the ground plane is taken as the vehicle center.
@@ -934,7 +985,8 @@ computer vision algorithms are very good at this task, but may still
 be wrong by several pixels. I analyze the effect of this inaccuracy
 in the model validation Section~\ref{sec:camera:validation} and refer to the Euclidean distance
 in the pixel plane from the true center pixel to the calculated one
-as $\Delta_{alg} \sim \mathcal{N}(0, \eta_{alg}/2)$.
+as $\Delta_{alg} \sim \mathcal{N}(0, (\eta_{alg}/2)^2)$. Unless otherwise specified,
+I default to a 95\% radius of 4 pixels.
 
 \subsection{Error from Camera Limitations}
 
@@ -966,17 +1018,15 @@ error radius for the vehicle localization.
 \]
 
 For any individual camera, the $err_{xyz}$ and $err_{orientation}$ terms introduce
-a directed bias for any point in the pixel plane, though over many installed cameras
+a directed bias for any point in the pixel plane, though over many (slightly mis-)installed cameras
 these terms have a normal distribution. The $\Delta_{alg}$ is 
-modeled as normal as well. To take advantage of this, I also multiply each with a tuning
-parameter, related to their variances, which I use to trade off error bound size versus
-error bound accuracy. The $err_{pixel}$ term is a systematic 
+modeled as normal as well. The $err_{pixel}$ term is a systematic 
 and complex function of camera parameters and estimated vehicle location, and
 the only component with a non-zero mean over a large number of samples.
 
 To use $r$ in simulation, when a vehicle is visible to a camera,
-I project the ground truth vehicle center to a (slightly-mispositioned) camera, which
-automatically incorporates the positional and orientational errors.
+I project the ground truth vehicle center to a (randomly slightly-mispositioned) camera, 
+automatically incorporating the positional and orientational errors.
 The algorithmic error shifts the incident pixel a distance sampled according to the distribution 
 of $\Delta_{alg}$, in a randomly sampled direction. 
 Finally, I use a second, fake, perfectly positioned camera 
@@ -1004,7 +1054,8 @@ was ignored as it does not affect results.
 \subsection{Quality of $r$ as an Error Bound}
 
 For this and the following subsection I assume a perfect vision algorithm,
-setting $\Delta_{alg}$ to 1.
+setting $\Delta_{alg}$ to 1, and use a camera with resolution 400x400 pixels and
+field of view of 60 degrees horizontally and vertically.
 
 \begin{table}[htb]
     \centering
@@ -1018,7 +1069,7 @@ setting $\Delta_{alg}$ to 1.
 \end{table}
 
 Table~\ref{tab:camera:bound accuracy} shows that more than 99\% of 125000 sampled camera positions
-and vehicle positions, the distance from the predicted vehicle position to 
+and vehicle positions (randomly placed to account for installation inaccuracy), the distance from the predicted vehicle position to 
 its actual position is within the calculated error radius. This
 is actually better than intended, since the construction was for 95\% accuracy.
 
@@ -1028,37 +1079,51 @@ the predicted error radius and the actual error distance is small, meaning
 it is not an excessively high bound. Secondly, when the bound is \textit{incorrect} (very small region less than zero in blue)
 the true error only slightly exceeds the error bound.
 
-\begin{figure}[htb]
-    \begin{center}
-        %\input{figures/camera/diff_radius_true_error.pgf}
-        \includegraphics{figures/camera/diff_radius_true_error.pdf}
-    \end{center}
-    \caption[Bound Minus True Distance]{Computed radius minus actual error distance.}
-    \label{fig:camera:diff bound error}
-\end{figure}
 
-\begin{figure}[htb]
-    \begin{center}
-        \input{figures/camera/proportion_radius_true_error.pgf}
-    \end{center}
+\begin{figure}[h!]
+\begin{subfigure}[t]{0.45\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/camera/diff_radius_true_error.pdf}
+    \caption[Bound Minus True Distance]{Computed radius minus actual error distance.}
+    \label{fig:camera:diff}
+\end{subfigure}
+\begin{subfigure}[t]{0.45\textwidth}
+    \centering
+    \resizebox{1\linewidth}{!}{\input{figures/camera/proportion_radius_true_error.pgf}}
     \caption[Bound Minus True Distance as a Proportion]{Radius error bound minus actual error distance as a proportion of radius.}
     \label{fig:camera:proportional diff}
+\end{subfigure}
+\label{fig:camera:diffs}
 \end{figure}
 
-To look at how tight the error radius computation is, I present the same chart
-but plot the residual between predicted radius and actual error distance as a 
-proportion of the predicted radius. Figure~\ref{fig:camera:proportional diff} shows that for the majority
-of predictions, the error radius is far too large -- most commonly it is 3 times 
-too large. 
+%\begin{figure}[htb]
+    %\begin{center}
+        %%\input{figures/camera/diff_radius_true_error.pgf}
+    %\end{center}
+    %\caption[Bound Minus True Distance]{Computed radius minus actual error distance.}
+    %\label{fig:camera:diff bound error}
+%\end{figure}
 
-Note that the true error is dependent on several random variables -- sampled positional and orientational
+
+
+Note that the actual error is dependent on several random variables -- sampled positional and orientational
 error, and perturbations modeling algorithmic error (pixel ground area is not randomly sampled). Each
-of these are approximately Gaussian and added together r(in absolute values, meaning the computed error bound is intended to be in the tail
-of a rectified Gaussian distribution as well. Thus, we expect most samples to
-fall far from the error bound, which is exactly what we see.
-Attempts to make the bound tighter resulted in a loss of the 99\% accuracy.
+of these are normally distributed and added together (in absolute values). Since the computed
+error bound is in the tail of this distribution, we should expect that most of the time,
+it is actually several times too large. I plot the true errors from Figure~\ref{fig:camera:diff}
+as a proportion in Figure~\ref{fig:camera:proportional diff}, showing what fraction of the bound the actual error consumes.
 
-These results suggests the $r$ is good at modeling the true error, even though during construction
+%\begin{figure}[htb]
+    %\begin{center}
+        %\resizebox{0.5\linewidth}{2in}{\input{figures/camera/proportion_radius_true_error.pgf}}
+    %\end{center}
+%\end{figure}
+
+As expected, most samples are a small fraction of the bound. Attempts to tighten it resulted in 
+the loss of the 99\% accuracy. This doesn't look entirely like a rectified Gaussian because
+of the square root operation in Euclidean distance.
+
+Overall these results suggest the $r$ is good at modeling the true error, even though during construction
 I did not model interplay between some of the factors (eg. how orientation 
 or positional error affects pixel area inaccuracy).
 
@@ -1071,7 +1136,7 @@ illustrates the components of the error radius as a function of pitch.
 
 \begin{figure}[htb]
     \begin{center}
-        \input{figures/camera/mean_error_pitch_variation.pgf}
+        \resizebox{.95\linewidth}{!}{\input{figures/camera/mean_error_pitch_variation.pgf}}
     \end{center}
     \caption[$r$ as a Function of Pitch Angle]{How $r$ varies as a function pitch angle. Error bars are left out for clarity.}
     \label{fig:camera:radius versus pitch}
@@ -1124,7 +1189,7 @@ how well could we perform? Alternatively, how much accuracy do we gain from incr
     \begin{center}
         \input{figures/camera/resolution_angle_effects_mean.pgf}
     \end{center}
-    \caption[Resolution Limits]{How increased resolution can increase the error bound at different pitch angles.}
+    \caption[Resolution Limits]{How increased resolution can increase the error bound at different pitch angles. Error bars left out for clarity.}
     \label{fig:camera:resolution}
 \end{figure}
 
@@ -1145,7 +1210,7 @@ of the proposed system at no cost and is thus not interesting.
 
 Figure~\ref{fig:camera:resolution} was created assuming the following 95\% bounds: positional error
 within 3 centimeters in any direction, orientational error within a
-$5\degree$ diameter cone about the intended axis, 
+$1\degree$ diameter cone about the intended axis, 
 and an algorithmic inaccuracy radius of 4 pixels. Table \ref{tab:camera:best error bounds}
 shows how well such a configuration might perform at different pitch angles (sampled from
 a large number of cameras instantiated according to the allowed variations,
@@ -1183,7 +1248,7 @@ and across various world vehicle positions).
 
 
 As discussed in Section~\ref{sec:intro:motivation}, allowable lateral deviations are generally
-quoted at $\pm$10-25cm. The table above shows in bold which camera placements would be 
+quoted at $\pm$10-25cm for autonomous vehicles. The table above shows in bold which camera placements would be 
 within these limits. Note that even though the mean and 95\% percentile error bounds
 at lower pitch angles are high, the median tells us that most measurements
 from such a camera would still be useful.
@@ -1192,7 +1257,7 @@ Lastly, I present some installation accuracies that would need to be achieved
 in order for the system to provide acceptable performance. In bold in 
 Tables~\ref{tab:camera:best error bounds}, ~\ref{tab:camera:70deg}, and
 ~\ref{tab:camera:45deg} I highlight positional and orientational 
-constraints that provide sub-25 centimeter median localization performance.
+constraints that provide sub-20 centimeter median localization performance.
 
 
 
@@ -1209,7 +1274,7 @@ constraints that provide sub-25 centimeter median localization performance.
 \cmidrule(lr){1-1}
 \cmidrule(ll){2-9}
 0.0 & \textbf{0.017} & \textbf{0.034} & \textbf{0.051} & \textbf{0.069} & \textbf{0.087} & \textbf{0.103} & \textbf{0.124} & \textbf{0.140} \\
-0.1 & \textbf{0.177} & \textbf{0.196} & \textbf{0.214} & \textbf{0.230} & \textbf{0.248} & 0.268 & 0.280 & 0.298 \\
+0.1 & \textbf{0.177} & \textbf{0.196} & 0.214 & 0.230 & 0.248 & 0.268 & 0.280 & 0.298 \\
 0.2 & 0.342 & 0.360 & 0.378 & 0.394 & 0.409 & 0.430 & 0.443 & 0.460  \\
 0.2 & 0.503 & 0.524 & 0.538 & 0.552 & 0.566 & 0.586 & 0.605 & 0.616  \\
 0.4 & 0.665 & 0.685 & 0.702 & 0.715 & 0.737 & 0.757 & 0.765 & 0.794  \\
@@ -1229,8 +1294,8 @@ constraints that provide sub-25 centimeter median localization performance.
 \multicolumn{1}{N}{\textbf{95\% Pos. Error (m)}} & 0$\degree$& 0.2$\degree$& 0.4$\degree$ & 0.6$\degree$ & 0.8$\degree$ & 1$\degree$ & 1.2$\degree$ & 1.4$\degree$\\
 \cmidrule(lr){1-1}
 \cmidrule(ll){2-9}
-0 & \textbf{0.027} & \textbf{0.060} & \textbf{0.083} & \textbf{0.114} & \textbf{0.145} &\textbf{ 0}.180 & \textbf{0.211} & \textbf{0.228} \\
-0.1 & \textbf{0.222} & \textbf{0.250} & 0.285 & 0.324 & 0.338 & 0.365 & 0.398 & 0.446 \\
+0 & \textbf{0.027} & \textbf{0.060} & \textbf{0.083} & \textbf{0.114} & \textbf{0.145} &\textbf{0.180} & 0.211 & 0.228 \\
+0.1 & 0.222 & 0.250 & 0.285 & 0.324 & 0.338 & 0.365 & 0.398 & 0.446 \\
 0.2 & 0.421 & 0.460 & 0.484 & 0.504 & 0.540 & 0.561 & 0.599 & 0.636 \\
 0.3 & 0.624 & 0.661 & 0.682 & 0.713 & 0.761 & 0.764 & 0.796 & 0.837 \\
 0.4 & 0.839 & 0.828 & 0.873 & 0.921 & 0.950 & 0.971 & 1.030 & 1.030 \\
@@ -1238,9 +1303,9 @@ constraints that provide sub-25 centimeter median localization performance.
 \end{table}
 
 These tables show that achieving a 10 centimeter installation accuracy 95\% of the time is an absolute necessity, while angular deviations of up to
-one degree are acceptable. Finally, Table~\ref{tab:camera:alg} shows how algorithmic inaccuracy impacts localization:
-with the usual 3 centimeter placement and a 0.5 degree orientation error as well as 45 degree pitch the algorithm must be able to
-localize the vehicle center to within 20 pixels at the most. 
+one degree are probably acceptable. Finally, Table~\ref{tab:camera:alg} shows how algorithmic inaccuracy impacts localization:
+with the usual 3 centimeter placement and a 0.5 degree orientation error as well as 45 degree pitch. The algorithm must be able to
+localize the vehicle center to within 10 pixels at the most. 
 
 \begin{table}[htb]
 \centering
@@ -1249,9 +1314,14 @@ localize the vehicle center to within 20 pixels at the most.
 \begin{tabular}{ccccccccc}
 \toprule
 Error (pixels) & 4 & 8 & 12 & 16 & 20 & 24 & 28 \\ \midrule
-Median $r$ (m)	&  \textbf{0.157} & \textbf{0.183} & \textbf{0.219} & \textbf{0.237} & 0.260 & 0.294 & 0.313 \\
+Median $r$ (m)	&  \textbf{0.157} & \textbf{0.183} & 0.219 & 0.237 & 0.260 & 0.294 & 0.313 \\
 \end{tabular} 
 \end{table}
+
+In the analysis above I used a tighter bound for localization error (20cm); some literature
+allows for up to 40cm lateral deviation, and it is unclear if this is total, or in either direction.
+The values tabled here are radii, so they can be in either lateral direction. Tighter bounds
+can be achieved if the algorithmic performance is very good or installation is extremely precise.
 
 \section{Error Circles to Error Ellipses}
 
@@ -1283,7 +1353,7 @@ ground position.
 \end{figure}
 
 This modification improves the accuracy of the error bound even further, as shown
-in Table~\ref{tab:camera:ellipse vs circle}. A case of this occuring is shown
+in Table~\ref{tab:camera:ellipse vs circle}. A case of this occurring is shown
 in Figure~\ref{fig:camera:oval better} which samples many camera positions and orientations
 estimating the location of the point in red. The circular and elliptical 
 error bounds that contain the red point are shown faintly in the background. One
@@ -1330,10 +1400,21 @@ similar to early approaches proposed for handling delayed measurements
 such as those in~\cite{larsen1998incorporation}\cite{tessier2006real}.
 To further avoid partially stale updates from corrupting the vehicle's state,
 I also made the oval 50\% more circular, as defined by the ratio
-of its major to minor axis lengths. Together these proved to 
+of its major to minor axis lengths. Together these 
 provide adequate performance. The issue of timing delays is not considered 
 further, though would need to be re-examined in a physical implementation.
- 
+
+\section{Final Implementation Comments}
+Everything described in this section was programmed from scratch,
+except the Gazebo vehicle model. This resulted in a rather large
+code base, which due to using Python was not as efficient as it could be.
+Combined with the computational cost of Gazebo itself, I eventually
+decided to run all computations on Amazon AWS. To take full
+advantage of this I modified the system to be 
+parallelizable, running many instances concurrently, collecting
+logs from each, and analyzing them to extract whichever metrics
+are defined.
+
 \section{Summary}
 
 This chapter has developed and evaluated the camera sensor model
@@ -1344,7 +1425,7 @@ is associated with an error, which informs how trustworthy
 an individual update is.
 
 The error bound developed here, $r$, is a function of camera height,
-camera pixel areas, and the horizontal distance to the vehicle center.
+pixel area on the ground, and the horizontal distance to the vehicle center.
 It was shown to be an effective upper bound, 99\% of the time, and
 small enough to be usable in a real-world implementation (assuming
 the installation bounds can be achieved). The effect of pitch angle
@@ -1367,82 +1448,93 @@ some objective function, or given some objective function criteria,
 place as many cameras as required. I focus on the first formulation
 in this chapter.
 
-I split the results in this chapter based on the objective
-function optimized.
 
-\section{A Cheap Objective Function}
+\section{A Cheap Heuristic Objective}
 \label{cameraplacement:cheap}
 
 Since I hope to explore up to four degrees of freedom in a single camera placement (
-pitch, yaw, horizontal and vertical field of view), the search space grows even
-faster than what previous authors in this field have dealt with. Additionally,
-the mutual information objective function used in the following section is an extremely expensive to compute.
-Due to its cost and the size of the search space, I develop a cheaper objective that can be used for optimizing
-the parameters of a single camera. The interesting points from this search are then used
+pitch, yaw, horizontal and vertical field of view), the search space is even larger
+than what previous authors in this field have dealt with. Additionally,
+the mutual information objective function used in the following section is extremely expensive to compute, 
+requiring about 2000 simulations per evaluation of the mutual information.
+Due to its cost and the size of the search space, I attempt to develop a cheaper objective that can be used for optimizing
+the parameters of a single camera. Some high scoring parameters from this search are then used
 as discretized points in the full optimization.
-
 
 \subsection{Objective Function for Localization}
 
-The task of a camera is to maximally aid in vehicle localization: a natural
+Our off-board camera network aims to maximally inform vehicle localization: a natural
 objective is therefore to maximize the reduction in vehicle uncertainty
-after an update. This intuitive means we have to provide the best possible
-updates to the vehicles, or minimize $r$ the error radius, in all possible updates sent to vehicles
-passing by the camera. I consider circular errors here,
-since they neatly quantify uncertainty as a single number.
+after an update. 
 
-To quantify ``all possible updates'', consider that we know roughly where vehicles will be: 
-for vehicles to be running they must self-localize to at most $\pm25cm$ lateral error. 
-Additionally, if the controllers are implemented well, their position estimate should be exactly on the path
-to be traversed. Thus, assuming the 25cm represents two standard deviations,
+Peeking into the implementation of the Kalman filter,
+we can deduce that maximal reductions in vehicle uncertainty occur when we receive
+maximally accurate updates from the offboard cameras. Since
+the covariance of an update is dependent on $r$ from the prior chapter,
+a first attempt might be to minimize the average covariance
+provided by the camera. This is too simple since it assumes the vehicle is equiprobably 
+seen in the camera's field of view.
+
+Consider then that we know roughly where vehicles will be: 
+for vehicles to be operating they must be within 25cm lateral error. Assuming
+the steering controller is efficient, this implies the robot's belief of its own position
+is also within 25cm of the path it wishes to be on. Thus, assuming the 25cm represents two standard deviations,
 the vehicle will be within 25cm of the path 95\% of the time.
 
 Using this information, I place a normal distribution
 along the path, which defines the probability of being at a distance
-from the center line at all points, and call it $p(x,y)$.
+from the center line at all points, and call it a function $P$.
 
-Now, I can formulate the objective function as minimizing the
+Now, I can formulate an objective function that minimizes the
 expected reported error radius over the camera's pixel plane.
-In other words, for a camera $Cam$ 
+In other words, for a camera $Cam$, camera to ground projection function 
+$proj_{Cam}(i,j)$ which takes a pixel $(i,j)$ to project, and the error
+radius function $r(i,j)$ (shorthand for the function in Section~\ref{sec:cameramodel:r})
+
 \begin{flalign}
-    obj_1(Cam) &= \sum_{(i,j)\in Cam}p(proj_{Cam}(i,j)) * r_{Cam}(i,j) 
+    obj_1(Cam) &= \sum_{(i,j)\in Cam}P(proj_{Cam}(i,j)) * r_{Cam}(i,j) 
 \end{flalign}
 
-where $(i,j)$ represent the pixels in the camera plane, $proj_{Cam}$ projects
-a pixel onto the ground plane from the camera, and $r_{Cam}(i,j)$ is shorthand for 
-the error radius for a prediction at pixel $(i,j)$ as given in Section~\ref{sec:cameramodel:r}.
-
-The problem with this formulation is that when allowing the camera
-to minimize the objective, it naturally selects views
-where the road is not visible at all, driving the expectation to 0.
+The problem with this minimizing this formulation is a minimum is achieved
+when the camera does not see the road at all, driving the expectation to 0.
 Really, the problem needs to be reformulated as a maximization to obtain
 sensible results. To do this, $r$ needs to be inverted, but there are 
-many ways to achieve this.
+many ways to achieve this, including negation and inversion.
 
 My insight is to utilize the Kalman gain, $\bm{K}$, from Section~\ref{chap:impl:vehicle:ekf}.
 It directly quantifies how much the vehicle's localization will ``trust'' an update,
 and is highest when the error in the measurement is low. This provides
-a principled way of inverting $r$.
+a principled way of inverting $r$ and generating a maximization problem.
 
-A simple one dimensional Kalman Filter computes the gain $K = \frac{\sigma^2}{\sigma^2 + \sigma_{measurement}^2}$.
-So, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, resulting in the following objective function:
+A simple one dimensional Kalman Filter computes the gain 
 
 \begin{flalign}
-    obj_2(Cam) &= \sum_{(i,j)\in Cam}\frac{p(proj_{Cam}(i,j))}{1 + (r_{Cam}(i,j)/3)^2}
+    K &= \frac{\sigma^2}{\sigma^2 + \sigma_{measurement}^2}
 \end{flalign}
 
+So, directly using $r$ as the measurement error, I set $\sigma=1$ and $\sigma_{measurement} = (r/3)$, 
+resulting in the following objective function:
+
+\begin{flalign}
+    obj(Cam) &= \sum_{(i,j)\in Cam}\frac{p(proj_{Cam}(i,j))}{1 + (r_{Cam}(i,j)/3)^2}
+\end{flalign}
+
+This expectation can cheaply be evaluated across the pixel plane of the camera, and is even
+well approximated with resolutions as low as 30x30 pixels. Thus, it is amenable
+to exhaustively search.
 
 \subsection{Optimizing Pitch and Yaw with varying Curvature}
 
-I perform an exhaustive grid search over the pitch and yaw parameters using the defined
-objective function. The results are presented in Figure~\ref{fig:simpleobjective}.
+I perform a grid search over the pitch and yaw parameters using the defined
+objective function, fixed field of view at 60 degrees in both directions,
+and a camera at a height of 6 meters. The results are presented in Figure~\ref{fig:simpleobjective}.
 
 \begin{figure}[h!]
     \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/simple_objective/pitch_yaw_0_curvature_annotated.png}
     \label{fig:simpleobjective:0curvature}
-    \caption{0 Curvature Scores}
+    \caption{0 Curvature Scores -- lighter is better}
 \end{subfigure}
 \begin{subfigure}[b]{0.45\textwidth}
     \centering
@@ -1493,11 +1585,11 @@ objective function. The results are presented in Figure~\ref{fig:simpleobjective
     \includegraphics[width=\textwidth]{figures/simple_objective/radius_5m_pos1_small.png}
     \caption{Configuration \#1}
 \end{subfigure}
-\caption[Cheaper Objective Function Results]{Results and high scoring orientations from the cheaper objective function.}
+\caption[Cheaper Objective Function Results]{Results and high scoring orientations from the cheaper objective function. Lighter colors indicate higher objective values.}
 \label{fig:simpleobjective}
 \end{figure}
 
-The first images in a row show the evaluated objective function, the others
+The first images in a row show the evaluated objective function $obj$, the others
 are diagrams of the path and camera's field of view. The displayed
 configurations the top-scoring and distinct orientations (I ignored
 symmetric cases). The filled gray areas are world obstacles
@@ -1513,9 +1605,8 @@ As the curvature increases, the number of different ``good''
 orientations decreases -- with a highly curved path, there is only
 one best choice - the one observing the most of the path possible.
 
-Going forward into the more expensive objectives in Section REF TODO, I use
-the depicted configurations as the only allowed orientations to restrict
-the search space as much as possible.
+Going forward into the more expensive objectives in Section~\ref{sec:placement:nav}, I use the
+points on the ridge of ``good'' values (bright colors) as allowed orientations.
 
 %\subsection{Aside: Intersection}
 %*** optional -- examine if time remaining at the end ***
@@ -1529,8 +1620,9 @@ As mentioned in the introduction of this dissertation, I also attempt
 to optimize the field of view simultaneously with the pitch and yaw
 directions, which has not been examined as a variable before.
 
-To examine this I used a hill-climbing optimization algorithm~\cite{russel2016artificial}
-with random restarts to explore the space of options. The optimization
+To examine this I used a hill-climbing optimization algorithm~\cite{russell2016artificial}
+with random restarts to explore the space of options, as the search
+space is now $O(n^4)$ rather than $O(n^2)$ and makes exhaustive search prohibitive. This optimization algorithm
 takes steps in each parameter that increase the objective function, effectively
 zig-zagging along axes towards (local) maxima.
 
@@ -1581,7 +1673,7 @@ we see more diverse solutions with high scores.
 
 \begin{table}[htb]
     \centering
-    \caption[Hillclimbing Top Scorers]{Top 3 results from hillclimbing across four parameters with curvature 0.05.}
+    \caption[Hillclimbing Top Scorers]{Top 4 results from hillclimbing across four parameters with curvature 0.05 (symmetric possibilities are color coded the same).}
     \label{tab:simpleobjective:hillclimb}
     \begin{tabular}{@{}lllll@{}}
         \toprule
@@ -1605,7 +1697,7 @@ we see more diverse solutions with high scores.
 The objective function used in this section can be seen as
 a measure of the \textit{instantaneous localization power}
 of the camera. In other words, if a vehicle appeared suddenly, or
-could only be sent a single update, how can the camera best be chosen
+could only be sent a single update, how should the camera configuration be chosen
 to reduce its localization error, on average.
 
 There are several issues with this metric. Biggest of them
@@ -1628,12 +1720,6 @@ other objective functions in this work are centered about
 a single path. The latter property is discussed 
 as a future research direction at the end of this report.
 
-Since I am essentially able to perform exhaustive searches
-over the possible pitch and yaw angles, I use this
-as a pre-optimization step to discover interesting orientations
-to explore further with more expensive objective functions.
-
-
 % TODO attempt an intersection
 
 
@@ -1648,39 +1734,39 @@ that drives the odometry motion model from $x_{t-1}$ to
 $x_{t}$, and $z^{A}_{t}$ is the measurements received
 at time $t$ from cameras in the set $A$. Corresponding
 capital letters are used to denote the random variables
-for state, controls, a measurements.
+for state, controls, and  measurements.
 
-\subsection{Entropy of the Final State}
-The entropy of a robot's state is a measure of the 
-spread of its probability distribution. A peaked distribution
-has low entropy -- all the probability is concentrated in a few
-regions. A flat distribution is maximally uncertain.
+%\subsection{Entropy of the Final State}
+%The entropy of a robot's state is a measure of the 
+%spread of its probability distribution. A peaked distribution
+%has low entropy -- all the probability is concentrated in a few
+%regions. A flat distribution is maximally uncertain.
 
-The robot's belief of its own state is estimated by
-the EKF running on board. It captures, via the mean state $x_t$
-and covariance matrix $\Sigma_t$, the distribution $p(x_t | u_{1:t}, z^{A}_{1:t})$.
+%The robot's belief of its own state is estimated by
+%the EKF running on board. It captures, via the mean state $x_t$
+%and covariance matrix $\Sigma_t$, the distribution $p(x_t | u_{1:t}, z^{A}_{1:t})$.
 
-At the end of an execution of a path, we can measure the
-differential entropy of this distribution as follows:
+%At the end of an execution of a path, we can measure the
+%differential entropy of this distribution as follows:
 
-\begin{flalign}
-    h(x_t | u_{1:t}, z^{A}_{1:t}) = \frac{1}{2}log((2 \pi e)^k |\Sigma_t|)
-\end{flalign}
+%\begin{flalign}
+    %h(x_t | u_{1:t}, z^{A}_{1:t}) = \frac{1}{2}log((2 \pi e)^k |\Sigma_t|)
+%\end{flalign}
 
-Here, $|\Sigma|$ is the determinant of the covariance matrix. Since
-entropy is a measure of uncertainty, we try to minimize it via
-the camera placements.
+%Here, $|\Sigma|$ is the determinant of the covariance matrix. Since
+%entropy is a measure of uncertainty, we try to minimize it via
+%the camera placements.
 
-It is tempting to try to compute the entropy of the joint robot states
- as the sum of the differential entropy at each time step, ie. 
-\begin{flalign}
-\notag     h(x_1,...x_t | u_{1:t}, z^{A}_{1:t}) &= \\
-h(x_1 | u_1, z^A_1) + ... + h(x_t | u_{1:t}, z^{A}_{1:t})
-\end{flalign}
+%It is tempting to try to compute the entropy of the joint robot states
+ %as the sum of the differential entropy at each time step, ie. 
+%\begin{flalign}
+%\notag     h(x_1,...x_t | u_{1:t}, z^{A}_{1:t}) &= \\
+%h(x_1 | u_1, z^A_1) + ... + h(x_t | u_{1:t}, z^{A}_{1:t})
+%\end{flalign}
 
-However, this transformation would imply that the state at each time
-is completely independent. The actual joint entropy is the value optimized in~\cite{beinhofer2011near},
-and is described in the next section.
+%However, this transformation would imply that the state at each time
+%is completely independent. The actual joint entropy is the value optimized in~\cite{beinhofer2011near},
+%and is described in the next section.
 
 \subsection{Mutual Information}
 \label{sec:cameraplacement:mutualinformation}
@@ -1748,37 +1834,41 @@ several thousand times to obtain valid results.
 
 
 \subsection{Mean Trace of Covariance Matrix}
-Finally, another measure of uncertainty is the trace of the covariance matrix.
-I use the mean trace  across $T$ timesteps in a single trajectory:
+Alternatively, I consider another measure of uncertainty: the trace of the covariance matrix.
+I use the mean trace across $T$ timesteps in a single trajectory:
 
 \begin{flalign}
     MTrace &= \sum_{t=0}^{T} tr(\Sigma_t)
 \end{flalign}
 
-It is interesting to note that the determinant of the covariance,
-the trace of the covariance, and the graphical uncertainty ellipse
-of the EKF are all related to the eigenvalues of $\Sigma$: the ellipse's major
-and minor axes are the eigenvectors scaled by
-the square root of the eigenvalues; $tr(\Sigma)$ is the sum of the eigenvalues,
-and the determinant is the product of the eigenvalues. Thus,
-these measures can interpreted measuring the sum of the radii (squared),
-and the approximate area of the ellipse (squared), respectively.
+It is interesting to consider that the entropy of the robot's belief, as
+defined over its covariance is related to the determinant of the covariance.
+The determinant of the covariance is related to the product of the eigenvalues.
+Comparatively, the trace of the covariance is the sum of the eigenvalues.
+These both relate to the graphical uncertainty ellipse, which is defined
+by the the eigenvectors and eigenvalues as well. This means 
+that the trace measure can be interpreted as a measure of the sum
+of the radii, while entropy-based measures take the area of the ellipse.
+Depending on the application, it may be important to consider therefore
+that entropy-based metrics can optimize towards long and flat ellipses,
+which low area but high uncertainty in one axis; the trace however weights
+each axis equally.
 
 
 
 \section{Placing Single Cameras With Navigational Metrics}
-
-I present selected results from many experiments with the mutual informaton
-and mean trace of the covariance as placement metrics and use
-these to motivate discussion of metrics and conclusions about
-camera placements.
+\label{sec:placement:nav}
+I present selected results from multiple experiments with the mutual informaton
+and mean trace as placement metrics. Due to the size of the search space and cost 
+evaluating the metrics, greedy optimization is used. In past work, submodularity was
+used to justify this choice, which provides constant-factor bounds 
+on the greedy solution to particular NP-hard problems. Unfortunately, my problem
+misses this property, and consequences are discussed in Section~\ref{sec:cameraplacement:submodularity}.
 
 \subsection{Straight Roads}
 
-I first use the mutual information maximization/conditional entropy
-minimization measure to compute the best orientation, with a fixed 
-field of view, of a selection of possibilities discovered by 
-the cheaper optimization algorithm.
+The first experiment minimized conditional entropy (identical to maximizing mutual information)
+to compute the best orientation of a single camera on a straight road, with a fixed field of view.
 
 \begin{figure}[htb]
     \centering
@@ -1788,35 +1878,30 @@ the cheaper optimization algorithm.
 \end{figure}
 
 
-The two highest scoring orientationa are the diagonally orientations, labeled 1 and 2 in Figure~\ref{fig:miplacement:straightroad80m}.
-These were among the middle of the range of predicted orientations by the previous
-objective. Table~\ref{tab:straightroad80m} ranks the choices and shows some other possible measures,
+The two highest scoring orientations are the diagonal orientations, labeled 1 and 2 in Figure~\ref{fig:miplacement:straightroad80m}.
+These were among the middle of the range of predicted orientations by the heuristic.
+Table~\ref{tab:straightroad80m} ranks the choices and shows some other possible measures,
 such as the lateral error and total trace. 
 
 \begin{table}[htb]
     \centering
-    \caption{Mean values of various metrics for each allowed orientation. Vehicle travels left to right.}
+    \caption[Metrics For Single Camera, Straight Road]{Mean values of various metrics for each allowed orientation. Vehicle travels left to right. Results from 2000 simulations with a camera at 6 meters elevation.}
     \label{tab:straightroad80m}
     \begin{tabular}{@{}lllll@{}}
         \toprule
         Rank & $h(X|U, Z)$ & Total Trace & Lateral Error & Localization Error \\ \midrule
-        1    & \textbf{4e-549}    & \textbf{1.788}       & \testbf{0.0151}        & TODO (4x server)   \\
-        2    & 5e-546    & 2.05        & 0.0163        &                    \\
-        3    & 6e-540    & 2.14        & 0.0168        &                    \\
-        4    & 2e-537    & 2.11        & 0.0165        &                    \\
-        5    & 9e-537    & 2.16        & 0.0154        &                    \\
-        6    & 2e-536    & 2.18        & 0.0174        &                    \\
-        7    & 5e-534    & 2.28        & 0.0165        &                   
+        1    & \textbf{4e-549} & \textbf{1.788}  & \textbf{0.0151}        & 0.01382   \\
+        2    & 5e-546    & 2.05        & 0.0163        & \textbf{0.01381}              \\
+        3    & 6e-540    & 2.14        & 0.0168        & 0.01391 \\
+        4    & 2e-537    & 2.11        & 0.0165        & 0.01394                  \\
+        5    & 9e-537    & 2.16        & 0.0154        & 0.01443                   \\
+        6    & 2e-536    & 2.18        & 0.0174        & 0.01646                   \\
+        7    & 5e-534    & 2.28        & 0.0165        & 0.01683             
     \end{tabular}
 \end{table}
 
-We can recognize the mutual information has ranked the choices according to how 
-a human might intuitively expect the best placements to be. Also note that
-the trace and mutual information measure generally agree on placements, but don't
-necessarily imply the lowest lateral error from the path. Although not shown here,
-I also tested variations on these orientations and established that
-using the diagonal of the field of view is in fact one of the best orientations
-possible in all metrics.
+The trace and mutual information measure generally agree on placements, but don't
+necessarily imply the lowest lateral error from the path. 
 
 I also used results from the hillclimbing joint optimization of field of view and
 orientation, which I visualize and rank in Figure~\ref{fig:straightroad160multi}.
@@ -1834,71 +1919,207 @@ the field of view to obtain a better score -- that seems to be detrimental
 for mutual information and covariance trace measures. Even a wide field of view
 along the path (rank 5, purple) scores badly in these respects. This stems
 from firstly being able to send multiple updates to the vehicle, as well as
-not being perpendicular to the path. This is discused in more detail
+not being perpendicular to the path. This is discussed in more detail
 in Section REF TODO DISCUSSION. Lastly, I purposely chose to provide symmetric
 choices in the optimization process. Here labels 1 and 2 are identical in
 parameters except being flipped about the perpendicular to the road. In all
 of the symmetric cases, the optimization ranks the left-facing option higher.
-This makes sense, since these all face the vehicle's incoming direction, 
+This makes sense, since these all face the vehicle's oncoming direction, 
 and it is beneficial to reduce the vehicle's uncertainty or error as 
 early in the navigation as possible to decrease all of the objective scores.
 This is a trend we will continue to see in the following examples.
 
 \subsection{Curved Roads}
 
-* curve 20m singlecam, fixed fov (finished)
-* curve 20m singlecam, multi fov (c5.large4x computation, restarted 3:30PM)
+Following on from the heuristic optimization, I test the five options
+found by the hillclimbing algorithm previous.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/hillclimb_curvature_MI_eval.png}
+    \caption[Single Camera Optimization Using MI on Curved Road]{Rankings of various options found by the hillclimbing algorithm
+    for a curved road with 20 meter radius.}
+    \label{fig:complexobjective:curve}
+\end{figure}
+
+Once again we see that the views further down the road perform better, as well as the ones
+that face the oncoming vehicle. Additionally, we can again notice
+that the optimal points from the heuristic (smallest green squares, numbered 4 and 5)
+performed badly in this metric, ranking last according to mutual information,
+and mean trace.
+
+\begin{table}[htb]
+    \centering
+    \caption[Metrics for 20 Meter Curvature]{Mean values of various metrics for each allowed orientation and field of view. Vehicle travels counter-clockwise Results from 2000 simulations per orientation with a camera at 6 meters elevation. Road has 20 meter radius.}
+    \label{tab:curvedroad multifov}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        Rank & $h(X|U, Z)$ & Total Trace & Lateral Error & Localization Error \\ \midrule
+        1    & \textbf{9e-1430}    & \textbf{6.28}        & \textbf{0.4433}        & \textbf{0.02280}              \\
+        2    & 4e-1426    & 8.05        & 0.4444        & 0.02531 \\
+        3    & 1e-1406    & 6.95        & 0.4654        & 0.02294     \\
+        4    & 8e-1390    & 8.29        & 0.4435        & 0.02671     \\
+        5    & 5e-1386    & 8.77        & 0.4441        & 0.02751     \\
+    \end{tabular}
+\end{table}
 
 \section{Multiple Camera Placement}
 
-The prior sections used more sophisticated metrics than my cheap objective function
-to select the best of a set of possible orientations. I showed that the
-hillclimbing variant, which generally minimizes field of view, produces unreliable
-results for the navigation of the vehicle. TODO DOUBLE CHECK 
-
 I now test the placement of several cameras along a straight path using
-the mutual information metric.
+the mutual information metric. There are three possible locations,
+each with 5 options for orientation. I keep field of view fixed, as
+I find the hillclimbing results too unreliable overall. Figure~\ref{fig:complexobjective:straightpre}
+shows this graphically.
 
-straight road 80m -- rerunning!
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/multi_placement/straightroad_80m_choices.png}
+    \caption[Multi-camera Placement Choices]{on a straight road of length 80 meters, there are 3 possible placement locations
+    with 5 orientations each.}
+    \label{fig:complexobjective:straightpre}
+\end{figure}
+
+The greedy optimization result, using mutual information, is shown below in Figure~\ref{fig:complexobjective:straightresult}.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3in]{figures/multi_placement/straightroad_80m_result.png}
+    \caption[Multi-camera Placement Choices Result]{The result of greedy optimization of two placements and orientations.}
+    \label{fig:complexobjective:straightresult}
+\end{figure}
+
+Both mutual information and trace metrics agree with these two placements, by a high margin (selected data is given 
+for the first iteration in Table ~\ref{tab:straightroad multiplacement}). The first choice by the algorithm is the leftmost one, which means
+there was utility in correcting the vehicle localization early on. Interestingly,
+the next left-most camera is then skipped, opting for a view slightly further 
+along the road, and away from the oncoming vehicle. The implication is that
+the vehicle uncertainty has not grown much, so there is no point
+spending a camera updating the state when it is still relatively certain.
+With this property, we would expect to obtain
+relatively evenly distributed camera placements along a path. Unfortunately,
+due to the time and computational cost of the metrics used I was unable to
+explore multi-camera placement further.
+
+\begin{table}[htb]
+    \centering
+    \caption[Multi-camera Placement Data, Iteration 1]{Top two choices for the first iteration of the multi-camera placement task.}
+    \label{tab:straightroad multiplacement}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        Rank & $h(X|U, Z)$ & Total Trace & Lateral Error & Localization Error \\ \midrule
+        1    & \textbf{1e-562}    & \textbf{1.1935}        & \textbf{0.01393}        & 0.0181              \\
+        2    & 1e-546    & 1.43389        & 0.01361        & \textbf{0.0167} \\
+        ...
+    \end{tabular}
+\end{table}
 
 
-\section{Submodularity}
 
-TODO discuss how none of these are submodular, but we can empirically
-test how submodular they are -- do this with mean trace.
+\section{Non-Submodularity and Implications}
+\label{sec:cameraplacement:submodularity}
 
-Discuss how mean trace has agreed with MI most of the time in these tests.
+None of the metrics presented in this Chapter are actually submodular. Recall
+that submodularity is the property of diminishing returns -- 
+formally, for a discrete set of choices $S$, 
+take two sets set $A \subset B \subset $. Then pick another, different singleton
+${c} \subset S, c \not\in B$. For the objective function $F$, it must hold over
+all possible $A$'s, $B$'s and ${c}$'s that 
 
-If trace is highly submodular, discuss how the greedy algorithm gives good results
-Discuss overlap of camera regions and its affect
+\begin{flalign}
+    F(B \bigcup {c} ) - F(B) \leq F(A \bigcup {C}) - F(A)
+\end{flalign}
 
-If have time: Do a gradient ascent using trace??
+In other words, when maximizing $F$, we achieve smaller gains by adding
+an element to a larger set than to a smaller set. To see why
+my problem is not submodular, consider that the cameras may have 
+overlapping fields of view. In this case, choosing the second
+camera will yield only a small improvement in the objective function,
+while choosing a non-overlapping camera will yield a larger one. Thus,
+submodularity is invalidated.
+
+If submodularity can be proven, constant-factor optimality
+guarantees can be made for NP-hard problems. Although I do not have
+submodularity, one can very roughly empirically check how submodular an objective is by sampling subsets $A$, $B$,
+and singleton ${c}$, and testing how often and by how much the submodularity
+property fails.
+
+I was only able to empirically test the submodularity of the mean trace
+of the covariance matrix since it requires fewer simulations to obtain
+stable results. Unfortunately, this yielded that only 75\% 
+of randomly sampled placement sets met the submodularity property,
+and those that failed sometimes had large increasing gains
+when adding another placement to the larger set $B$. I suspect this is
+due to large overlaps in field of view, though was unable to find the
+root cause of these violations.
+
+The lack of submodularity implies that the greedy algorithm I used
+may only be a poor approximation for the true global optimum.
+Future work may thus be forced to consider more expensive optimization
+routines. 
+
+
+\section{Discussion}
+
+There are a few conclusions to be drawn. Firstly, that all metrics
+consistently chose to orient a single camera along the direction of the path, rather
+than perpendicularly to the road. Further, orientations
+preferred pointing towards the oncoming vehicle. As long as the vehicle is not
+already well-localized, this provides the lowest average deviation
+from the path, localization error, and mean covariance trace. In the case
+of multiple placements, the directionality is less important.
+
+On the topic of direction, the paths tested were only traversed
+either from left to right or counter-clockwise. Given more time,
+it would have been interesting to compute metrics for a conceptual
+two-lane road that doesn't bias results towards the start
+of the path.
+
+Ultimately, I found that although mutual information is the more
+principled measure, the results provided by the mean trace of the
+covariance matrix very often matched the results from mutual information.
+Further, the mean trace has a definite guide to its stability, namely
+its variance. On the other hand, with the Monte Carlo driven mutual
+information measure, we essentially hope enough of the space
+has been explored to approximate the full integral. Thus,
+unless submodularity can be proven, I do not believe
+there is much point in using expensive yet principled objective functions.
+
+
+\section{Summary}
+
+This chapter has explored the placement of a single camera, then multiple cameras,
+along straight roads and curved roads. To be able to handle
+the larger search space than has been handled previously, I devised a
+heuristic inspired by the internal mechanism of Kalman filters. This
+gave some insight into the relationship between curvature and single camera placements,
+when optimizing for instantaneous (ie. single-update) improvements in 
+vehicle uncertainty. However, using it to optimize the field of view
+as well as orientations yielded unsatisfactory results; thus I still consider
+the joint optimization of field of view and orientation to be
+an open problem. 
+
+Using the complex metrics from the literature lead to the primary conclusion 
+that cameras should generally be pointed along roads rather than
+perpendicular to them. Also, matching the diagonal of the field of view 
+to the path does in fact provide superior results to the other discrete options I examined,
+but further in depth examination is required to exclude all other possible
+orientations from being better. Lastly, although the metrics
+generally point towards the oncoming vehicle, if it is already well localized
+it is better to pick another high-performing orientation (eg. along the road)
+a little further down the road.
+
+\chapter{Conclusion} 
+
+Recap results from each section and why this is important, 
+implications for the real world.
 
 
 
-* Discuss submodularity
+\section{Remarks and Future Work}
 
-* test submodularity by sampling -- make sure minimum overlap of camera ground areas!
+IE what i'd do differently, and what could be done with this in the future
 
-* straight roads + 1 curvature
-
-
-
-* straight road 80m 3/2 positions, fixed FoV (finished)
-* curve multi-fov placement 3/5 positions, (c5.9x, probably finished tomorrow)
-
-
-
-\section{Conclusion}
-
-\chapter{Optimizing Road Construction for Navigation}
-
-* brief - look at how to connect two points if various obstacles are put in the way
-* maybe try a triangular point an and rectangular block 
-
-
-\chapter{Summary and Conclusion} 
-
+Heuristic, future work possibility
 
 
 
